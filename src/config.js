@@ -1,77 +1,182 @@
-// World constants and the hand-authored map of our stylised central Bengaluru.
+// World constants and the hand-authored map of our stylised Bengaluru.
 // Units are metres. +x is east, +z is south, +y is up. Traffic drives on the LEFT.
+// Geography is compressed: Peenya and Yeshwanthpur in the north-west, the CBD in the middle,
+// Indiranagar to the east, Koramangala and Silk Board to the south-east.
 
 export const LANE_W = 3.4;
 export const SIDEWALK_W = 4;
 export const CURB_H = 0.15;
-export const WORLD_MIN = -480;
-export const WORLD_MAX = 480;
+export const WORLD_MIN = -1800;
+export const WORLD_MAX = 1400;
+
+// A road's display name can change along its length: names = [[upToCoordinate, name], ...].
+const R = (pos, names, lanes, extra = {}) => ({ pos, names: typeof names === 'string' ? [[Infinity, names]] : names, name: typeof names === 'string' ? names : names[Math.min(1, names.length - 1)][1], lanes, ...extra });
+const INF = Infinity;
 
 // North-south roads (constant x), west to east.
 export const X_ROADS = [
-  { name: 'Raj Bhavan Road', pos: -400, lanes: 1 },
-  { name: 'Kasturba Road', pos: -250, lanes: 2 },
-  { name: "St. Mark's Road", pos: -120, lanes: 1 },
-  { name: 'Brigade Road', pos: 0, lanes: 2 },
-  { name: 'Museum Road', pos: 130, lanes: 1 },
-  { name: 'Commercial Street', pos: 260, lanes: 1 },
-  { name: 'Old Madras Road', pos: 400, lanes: 2 },
+  R(-1700, 'Peenya 2nd Stage Road', 1),
+  R(-1540, 'Peenya Industrial Main Road', 2),
+  R(-1380, 'Jalahalli Road', 1),
+  R(-1220, 'HMT Main Road', 2),
+  R(-1060, 'Mathikere Road', 1),
+  R(-900, [[-450, 'Yeshwanthpur Main Road'], [INF, 'Chord Road']], 2),
+  R(-750, 'Malleshwaram 18th Cross', 1),
+  R(-580, 'Sampige Road', 2),
+  R(-400, [[-450, 'Palace Road'], [450, 'Raj Bhavan Road'], [INF, 'K.H. Road']], 1),
+  R(-250, [[-450, 'Cunningham Road'], [450, 'Kasturba Road'], [INF, 'Lalbagh Main Road']], 2),
+  R(-120, [[-450, 'Millers Road'], [450, "St. Mark's Road"], [INF, 'Siddapura Road']], 1),
+  R(0, [[-450, 'Bellary Road'], [450, 'Brigade Road'], [INF, 'Lalbagh Double Road']], 2),
+  R(130, [[-450, 'Infantry Road'], [450, 'Museum Road'], [INF, 'Wilson Garden Main Road']], 1),
+  R(260, [[-450, 'Shivajinagar Main Road'], [450, 'Commercial Street'], [INF, 'Adugodi Road']], 1),
+  R(400, [[-450, 'Frazer Town Road'], [450, 'Ulsoor Main Road'], [INF, 'Koramangala 1st Block Road']], 2),
+  R(540, [[450, 'Indiranagar Double Road'], [INF, 'Koramangala 3rd Block Road']], 1),
+  R(680, [[450, '100 Feet Road'], [INF, 'Koramangala 80 Feet Road']], 2),
+  R(820, [[450, 'CMH Road'], [INF, 'Koramangala 6th Block Road']], 1),
+  R(960, [[450, 'Domlur Main Road'], [INF, 'Hosur Road']], 3, { median: 2 }),
+  R(1110, [[450, 'Wind Tunnel Road'], [INF, 'Sarjapur Road']], 2),
+  R(1260, 'HSR 27th Main Road', 1),
 ];
 
 // East-west roads (constant z), north to south.
 export const Z_ROADS = [
-  { name: 'Ambedkar Veedhi', pos: -400, lanes: 2 },
-  { name: 'Queens Road', pos: -260, lanes: 1 },
-  { name: 'Cubbon Road', pos: -120, lanes: 1 },
-  { name: 'MG Road', pos: 0, lanes: 2, median: 4, metro: true },
-  { name: 'Church Street', pos: 140, lanes: 1 },
-  { name: 'Residency Road', pos: 270, lanes: 2 },
-  { name: 'Richmond Road', pos: 400, lanes: 1 },
+  R(-1700, 'Peenya 1st Stage Road', 1),
+  R(-1540, 'Tumkur Road', 3, { median: 4 }),
+  R(-1380, 'TVS Cross Road', 1),
+  R(-1220, [[-450, 'Goraguntepalya Road'], [INF, 'Hebbal Road']], 2),
+  R(-1060, [[-450, 'Yeshwanthpur Station Road'], [INF, 'Mekhri Circle Road']], 2),
+  R(-900, [[-450, 'Dr. Rajkumar Road'], [INF, 'Palace Cross Road']], 2),
+  R(-750, [[-450, 'Margosa Road'], [INF, 'Sadashivanagar Main Road']], 1),
+  R(-580, 'Sankey Road', 2),
+  R(-400, [[-450, 'Seshadri Road'], [450, 'Ambedkar Veedhi'], [INF, 'Cambridge Road']], 2),
+  R(-260, [[-450, 'Race Course Road'], [450, 'Queens Road'], [INF, 'Ulsoor Road']], 1),
+  R(-120, [[-450, 'Kumara Park Road'], [450, 'Cubbon Road'], [INF, 'CMH Link Road']], 1),
+  R(0, [[-450, 'K.G. Road'], [450, 'MG Road'], [INF, 'Old Madras Road']], 2, { median: 4 }),
+  R(140, [[-450, 'Mission Road'], [450, 'Church Street'], [INF, 'Domlur Layout Road']], 1),
+  R(270, [[-450, 'Mysore Road'], [450, 'Residency Road'], [INF, 'Intermediate Ring Road']], 2),
+  R(400, [[-450, 'Lalbagh Fort Road'], [450, 'Richmond Road'], [INF, 'Ejipura Main Road']], 1),
+  R(540, [[300, 'Lalbagh West Gate Road'], [INF, 'Koramangala 1st Main']], 1),
+  R(680, [[300, 'Jayanagar 4th Block Road'], [INF, 'Koramangala 5th Block Road']], 2),
+  R(820, [[300, 'South End Road'], [INF, 'Koramangala Inner Ring Road']], 2),
+  R(960, [[300, 'Jayanagar 9th Block Road'], [INF, 'Koramangala 7th Block Road']], 1),
+  R(1180, 'Outer Ring Road', 3, { median: 2 }),
+  R(1320, 'BTM 2nd Stage Road', 1),
 ];
 
-// Block zoning, keyed by "i,j" where i is the x-interval (0 = west edge .. 7 = east edge)
-// and j is the z-interval (0 = north edge .. 7 = south edge).
-export const ZONES = {
-  '1,1': { zone: 'landmark', landmark: 'highCourt', district: 'High Court' },
-  '2,1': { zone: 'landmark', landmark: 'vidhanaSoudha', district: 'Vidhana Soudha' },
-  '3,1': { zone: 'gov', district: 'Sampangi Rama Nagar' },
-  '4,1': { zone: 'gov', district: 'Sampangi Rama Nagar' },
-  '5,1': { zone: 'residential', district: 'Vasanth Nagar' },
-  '6,1': { zone: 'residential', district: 'Shivajinagar' },
-
-  '1,2': { zone: 'park', district: 'Cubbon Park' },
-  '2,2': { zone: 'park', landmark: 'library', district: 'Cubbon Park' },
-  '3,2': { zone: 'park', district: 'Cubbon Park' },
-  '1,3': { zone: 'park', district: 'Cubbon Park' },
-  '2,3': { zone: 'park', landmark: 'bandstand', district: 'Cubbon Park' },
-  '3,3': { zone: 'park', district: 'Cubbon Park' },
-
-  '4,2': { zone: 'landmark', landmark: 'stadium', district: 'Chinnaswamy Stadium' },
-  '5,2': { zone: 'gov', district: 'Shivajinagar' },
-  '6,2': { zone: 'lake', district: 'Ulsoor Lake' },
-  '4,3': { zone: 'towers', landmark: 'skyTower', district: 'Ashok Nagar' },
-  '5,3': { zone: 'towers', district: 'Ashok Nagar' },
-  '6,3': { zone: 'commercial', district: 'Halasuru' },
-
-  '1,4': { zone: 'mixed', district: 'Shanthala Nagar' },
-  '2,4': { zone: 'mixed', district: 'Shanthala Nagar' },
-  '3,4': { zone: 'commercial', landmark: 'cathedral', district: "St. Mark's" },
-  '4,4': { zone: 'commercial', district: 'MG Road' },
-  '5,4': { zone: 'commercial', district: 'MG Road' },
-  '6,4': { zone: 'market', district: 'Commercial Street' },
-  '1,5': { zone: 'mixed', district: 'Shanthala Nagar' },
-  '2,5': { zone: 'commercial', district: 'Church Street' },
-  '3,5': { zone: 'commercial', district: 'Church Street' },
-  '4,5': { zone: 'commercial', district: 'Brigade Road' },
-  '5,5': { zone: 'commercial', district: 'Brigade Road' },
-  '6,5': { zone: 'market', district: 'Commercial Street' },
+// Named junctions (x,z). All of these get traffic signals.
+export const JUNCTIONS = {
+  '680,820': 'Sony World Junction',
+  '960,1180': 'Silk Board Junction',
+  '-900,-1060': 'Yeshwanthpur Circle',
+  '-250,-400': 'K.R. Circle',
+  '0,0': 'Anil Kumble Circle',
+  '680,0': 'Indiranagar 100 Feet Road Junction',
+  '-1220,-1540': 'Jalahalli Cross',
+  '-1540,-1540': 'Peenya 8th Mile',
+  '-580,-580': 'Malleshwaram Circle',
+  '400,270': 'Richmond Circle',
+  '960,0': 'Domlur Flyover Junction',
 };
 
-export function defaultZone(i, j) {
-  if (j >= 6) return { zone: 'residential', district: i < 4 ? 'Richmond Town' : 'Langford Town' };
-  if (i === 0) return { zone: 'mixed', district: 'Vasanth Nagar' };
-  if (i === 7) return { zone: 'mixed', district: 'Halasuru' };
-  if (j === 0) return { zone: 'gov', district: 'Vasanth Nagar' };
+// Districts, matched by a block's centre (first match wins).
+export const DISTRICTS = [
+  { name: 'Peenya', x: [-1800, -1300], z: [-1800, -1060], zone: 'industrial' },
+  { name: 'Yeshwanthpur', x: [-1300, -820], z: [-1800, -820], zone: 'mixed' },
+  { name: 'Jalahalli', x: [-1800, -1300], z: [-1060, -450], zone: 'residential' },
+  { name: 'Rajajinagar', x: [-1300, -820], z: [-820, -450], zone: 'residential' },
+  { name: 'Malleshwaram', x: [-820, -450], z: [-1800, -450], zone: 'residential' },
+  { name: 'Sadashivanagar', x: [-450, 450], z: [-1800, -450], zone: 'residential' },
+  { name: 'Frazer Town', x: [450, 1400], z: [-1800, -450], zone: 'mixed' },
+  { name: 'Vijayanagar', x: [-1800, -450], z: [-450, 450], zone: 'residential' },
+  { name: 'Basavanagudi', x: [-1800, -450], z: [450, 1400], zone: 'residential' },
+  { name: 'Indiranagar', x: [450, 900], z: [-450, 450], zone: 'commercial', pubs: true },
+  { name: 'HAL Old Airport Road', x: [900, 1400], z: [-450, 450], zone: 'mixed' },
+  { name: 'Lalbagh', x: [-250, 0], z: [400, 680], zone: 'park' },
+  { name: 'Jayanagar', x: [-450, 300], z: [450, 1400], zone: 'residential' },
+  { name: 'Koramangala', x: [300, 900], z: [450, 1060], zone: 'mixed', pubs: true },
+  { name: 'BTM Layout', x: [300, 900], z: [1060, 1400], zone: 'residential' },
+  { name: 'Silk Board', x: [900, 1110], z: [1060, 1400], zone: 'commercial' },
+  { name: 'HSR Layout', x: [900, 1400], z: [450, 1400], zone: 'residential' },
+  { name: 'Bengaluru', x: [-450, 450], z: [-450, 450], zone: 'mixed' },
+];
+
+// Specific blocks, located by any point inside them. These win over districts.
+export const BLOCKS = [
+  // Central Business District.
+  { at: [-325, -330], zone: 'landmark', landmark: 'highCourt', district: 'High Court' },
+  { at: [-185, -330], zone: 'landmark', landmark: 'vidhanaSoudha', district: 'Vidhana Soudha' },
+  { at: [-60, -330], zone: 'gov', district: 'Sampangi Rama Nagar' },
+  { at: [65, -330], zone: 'gov', district: 'Sampangi Rama Nagar' },
+  { at: [195, -330], zone: 'residential', district: 'Vasanth Nagar' },
+  { at: [330, -330], zone: 'residential', district: 'Shivajinagar' },
+  { at: [-325, -190], zone: 'park', district: 'Cubbon Park' },
+  { at: [-185, -190], zone: 'park', landmark: 'library', district: 'Cubbon Park' },
+  { at: [-60, -190], zone: 'park', district: 'Cubbon Park' },
+  { at: [-325, -60], zone: 'park', district: 'Cubbon Park' },
+  { at: [-185, -60], zone: 'park', landmark: 'bandstand', district: 'Cubbon Park' },
+  { at: [-60, -60], zone: 'park', landmark: 'statue', district: 'Cubbon Park' },
+  { at: [65, -190], zone: 'landmark', landmark: 'stadium', district: 'Chinnaswamy Stadium' },
+  { at: [195, -190], zone: 'gov', district: 'Shivajinagar' },
+  { at: [330, -190], zone: 'lake', district: 'Ulsoor Lake', lakeName: 'Ulsoor Lake' },
+  { at: [65, -60], zone: 'towers', landmark: 'skyTower', district: 'Ashok Nagar' },
+  { at: [195, -60], zone: 'towers', district: 'Ashok Nagar' },
+  { at: [330, -60], zone: 'commercial', district: 'Halasuru' },
+  { at: [-325, 70], zone: 'mixed', district: 'Shanthala Nagar' },
+  { at: [-185, 70], zone: 'mixed', district: 'Shanthala Nagar' },
+  { at: [-60, 70], zone: 'commercial', landmark: 'cathedral', district: "St. Mark's" },
+  { at: [65, 70], zone: 'commercial', district: 'MG Road' },
+  { at: [195, 70], zone: 'commercial', district: 'MG Road' },
+  { at: [330, 70], zone: 'market', district: 'Commercial Street' },
+  { at: [-325, 205], zone: 'mixed', district: 'Shanthala Nagar' },
+  { at: [-185, 205], zone: 'commercial', district: 'Church Street', pubs: true },
+  { at: [-60, 205], zone: 'commercial', district: 'Church Street', pubs: true },
+  { at: [65, 205], zone: 'commercial', district: 'Brigade Road', pubs: true },
+  { at: [195, 205], zone: 'commercial', district: 'Brigade Road' },
+  { at: [330, 205], zone: 'market', district: 'Commercial Street' },
+  { at: [-185, 335], zone: 'residential', district: 'Richmond Town' },
+  { at: [-60, 335], zone: 'residential', district: 'Richmond Town' },
+  { at: [65, 335], zone: 'residential', district: 'Langford Town' },
+  { at: [195, 335], zone: 'residential', district: 'Langford Town' },
+  // Peenya and Yeshwanthpur.
+  { at: [-1300, -1300], zone: 'landmark', landmark: 'ibcPlatinumCity', district: 'Peenya' },
+  { at: [-980, -980], zone: 'landmark', landmark: 'yeshwanthpurStation', district: 'Yeshwanthpur' },
+  { at: [-1140, -980], zone: 'market', district: 'Yeshwanthpur APMC Yard' },
+  { at: [-825, -825], zone: 'towers', landmark: 'wtc', district: 'Brigade Gateway' },
+  { at: [-980, -665], zone: 'landmark', landmark: 'iskcon', district: 'Rajajinagar' },
+  { at: [-490, -665], zone: 'lake', district: 'Sankey Tank', lakeName: 'Sankey Tank' },
+  // Lalbagh.
+  { at: [-185, 610], zone: 'park', landmark: 'glassHouse', district: 'Lalbagh' },
+  // Indiranagar, Koramangala, Silk Board.
+  { at: [610, 610], zone: 'landmark', landmark: 'forumMall', district: 'Koramangala' },
+  { at: [1035, 1250], zone: 'landmark', landmark: 'silkBoardOffice', district: 'Silk Board' },
+  { at: [890, 1250], zone: 'lake', district: 'Madiwala Lake', lakeName: 'Madiwala Lake' },
+];
+
+// Elevated metro lines along roads. Stations: centre coordinate along the road.
+export const METRO_LINES = [
+  { road: 'MG Road', axis: 'z', pos: 0, from: -580, to: WORLD_MAX, color: 0x6a2c91, name: 'Purple Line',
+    stations: [{ at: 0, en: 'M.G. ROAD', kn: 'ಎಂ.ಜಿ. ರಸ್ತೆ' }, { at: 610, en: 'INDIRANAGAR', kn: 'ಇಂದಿರಾನಗರ' }] },
+  { road: 'Tumkur Road', axis: 'z', pos: -1540, from: WORLD_MIN, to: -820, color: 0x1f9a4a, name: 'Green Line',
+    stations: [{ at: -1620, en: 'PEENYA INDUSTRY', kn: 'ಪೀಣ್ಯ ಇಂಡಸ್ಟ್ರಿ' }, { at: -980, en: 'YESHWANTHPUR', kn: 'ಯಶವಂತಪುರ' }] },
+];
+
+// Railway through Yeshwanthpur. Every north-south road it crosses dips under it.
+export const RAILWAY = { z: -980, from: WORLD_MIN, to: -500 };
+
+// Extra road underpasses (road under a bridge deck), notorious for flooding.
+export const UNDERPASSES = [
+  { road: 'Kasturba Road', at: -330, name: 'K.R. Circle Underpass' },
+  { road: 'Koramangala 80 Feet Road', at: 750, name: 'Ejipura Underpass' },
+];
+export const UNDERPASS = { half: 50, depth: 5, flat: 0.4 };
+
+// Silk Board flyover: Hosur Road's inner lanes ride over the Outer Ring Road junction.
+export const FLYOVERS = [{ road: 'Hosur Road', at: 1180, half: 120, flat: 0.5, height: 6.5, name: 'Silk Board Flyover' }];
+
+export function defaultBlockInfo(cx, cz) {
+  for (const d of DISTRICTS) {
+    if (cx >= d.x[0] && cx < d.x[1] && cz >= d.z[0] && cz < d.z[1]) return { zone: d.zone, district: d.name, pubs: d.pubs };
+  }
   return { zone: 'mixed', district: 'Bengaluru' };
 }
 
@@ -94,12 +199,24 @@ export const SHOP_SIGNS = [
   { en: 'Bharath Footwear', kn: 'ನಮ್ಮ' },
   { en: 'Kannadiga Book House', kn: 'ಕನ್ನಡ' },
   { en: 'Nandini Milk Parlour', kn: 'ನಂದಿನಿ', food: true },
-  { en: 'Pub Street Brewery', kn: 'ಬೆಂಗಳೂರು', food: true },
+  { en: 'Hoppy Bear Brewpub', kn: 'ಬೆಂಗಳೂರು', food: true, pub: true },
   { en: 'Startup Co-Work Hub', kn: 'ನಮ್ಮ' },
   { en: 'Vinayaka Hardware', kn: 'ವಿನಾಯಕ' },
+  { en: 'Brew Bros Taproom', kn: 'ಬೆಂಗಳೂರು', food: true, pub: true },
+  { en: 'Third Wave Filter Co.', kn: 'ಕಾಫಿ', food: true, pub: true },
+  { en: 'Dosa Corner', kn: 'ದೋಸೆ', food: true },
+  { en: 'Kodava Kitchen', kn: 'ಕೊಡವ', food: true },
+  { en: 'Andhra Spice Meals', kn: 'ಊಟ', food: true },
+  { en: 'Rolls & Momos', kn: 'ನಮ್ಮ', food: true, pub: true },
+  { en: 'Sri Manjunatha Engg. Works', kn: 'ಮಂಜುನಾಥ', industrial: true },
+  { en: 'Ganesha Lathe Works', kn: 'ಗಣೇಶ', industrial: true },
+  { en: 'Bharat Electricals', kn: 'ಭಾರತ್' },
+  { en: 'Gully Gaming Lounge', kn: 'ನಮ್ಮ', pub: true },
+  { en: 'Silk Route Bar & Kitchen', kn: 'ಬೆಂಗಳೂರು', food: true, pub: true },
+  { en: 'Mavalli Tiffin Corner', kn: 'ತಿಂಡಿ', food: true },
 ];
 
-// Things people shout when you pull them out of their vehicle, bump them, or block the road.
+// Things people shout.
 export const LINES = {
   carjacked: [
     'Ayyo! My vehicle!',
@@ -109,5 +226,9 @@ export const LINES = {
     'My EMI is not even finished!',
   ],
   bumped: ['Oye! Kannu illva?', 'Swalpa nodkondu hogi!', 'Ayyo, slowly saar!', 'Yen guru, road nim appandha?'],
+  punched: ['Ayyo amma!', 'Enu maadthiya?!', 'Hodibeda, please!', 'Police! Police!', 'Yaake hodiyuttiya?!'],
+  fightBack: ['Baa, nodkotini!', 'Ninge ide ivattu!', 'Gothilla naanu yaaru antha?'],
+  cop: ['Nillu! Stop right there!', 'Hoysala control, suspect spotted!', 'Gaadi nillisu!', 'Lathi charge!'],
   autoDriver: ['Meter? Meter illa saar. One-and-half.', 'Koramangala? No saar, return empty.', 'Twenty extra, traffic jaasti.'],
+  flood: ['Ayyo, the underpass is a swimming pool again!', 'BBMP, where are you?!', 'Engine full of water, guru.'],
 };

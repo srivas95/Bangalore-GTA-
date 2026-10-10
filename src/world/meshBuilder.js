@@ -8,11 +8,19 @@ const _c = new THREE.Color();
 const _m3 = new THREE.Matrix3();
 
 export class MeshBuilder {
-  constructor() {
+  // opts.pbr: store per-vertex [roughness, metalness, emissive] (see makePbrMaterial).
+  // opts.skin: store a rigid bone index per vertex for SkinnedMesh rigs.
+  constructor(opts = {}) {
     this.pos = [];
     this.nor = [];
     this.uv = [];
     this.col = [];
+    this.usePbr = !!opts.pbr;
+    this.useSkin = !!opts.skin;
+    this.pbrArr = [];
+    this.boneArr = [];
+    this.pbr = [0.6, 0, 0];
+    this.bone = 0;
   }
 
   get empty() {
@@ -24,6 +32,8 @@ export class MeshBuilder {
     this.nor.push(n[0], n[1], n[2]);
     this.uv.push(u, v);
     this.col.push(c.r, c.g, c.b);
+    if (this.usePbr) this.pbrArr.push(this.pbr[0], this.pbr[1], this.pbr[2]);
+    if (this.useSkin) this.boneArr.push(this.bone);
   }
 
   // a,b,c,d counter-clockwise when viewed from the front. uv = [u0, v0, u1, v1].
@@ -36,6 +46,13 @@ export class MeshBuilder {
     this._vert(a, n, u0, v0, col);
     this._vert(c, n, u1, v1, col);
     this._vert(d, n, u0, v1, col);
+  }
+
+  // Quad with an explicit UV per corner.
+  quad4(a, b, c, d, n, ua, ub, uc, ud, color) {
+    const col = color instanceof THREE.Color ? color : _c.set(color ?? 0xffffff);
+    this._vert(a, n, ua[0], ua[1], col); this._vert(b, n, ub[0], ub[1], col); this._vert(c, n, uc[0], uc[1], col);
+    this._vert(a, n, ua[0], ua[1], col); this._vert(c, n, uc[0], uc[1], col); this._vert(d, n, ud[0], ud[1], col);
   }
 
   // Axis-aligned box with UVs measured in tiles of tileW x tileH metres.
@@ -84,6 +101,8 @@ export class MeshBuilder {
       if (uv) this.uv.push(uv.getX(k), uv.getY(k));
       else this.uv.push(0, 0);
       this.col.push(col.r, col.g, col.b);
+      if (this.usePbr) this.pbrArr.push(this.pbr[0], this.pbr[1], this.pbr[2]);
+      if (this.useSkin) this.boneArr.push(this.bone);
     }
     if (g !== geo) g.dispose();
   }
@@ -110,6 +129,14 @@ export class MeshBuilder {
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    if (this.usePbr) g.setAttribute('pbr', new THREE.Float32BufferAttribute(this.pbrArr, 3));
+    if (this.useSkin) {
+      const n = this.boneArr.length;
+      const idx = new Uint16Array(n * 4), w = new Float32Array(n * 4);
+      for (let k = 0; k < n; k++) { idx[k * 4] = this.boneArr[k]; w[k * 4] = 1; }
+      g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(idx, 4));
+      g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(w, 4));
+    }
     g.computeBoundingSphere();
     g.computeBoundingBox();
     return g;
@@ -121,6 +148,44 @@ export class MeshBuilder {
     mesh.receiveShadow = receiveShadow;
     return mesh;
   }
+}
+
+// Rigid-skinned mesh: `bones` is an array of THREE.Bone with bones[0] as root, already
+// positioned in bind pose relative to the mesh origin.
+export function buildSkinned(builder, material, bones, { castShadow = true, receiveShadow = true } = {}) {
+  const mesh = new THREE.SkinnedMesh(builder.geometry(), material);
+  mesh.add(bones[0]);
+  mesh.updateMatrixWorld(true);
+  mesh.bind(new THREE.Skeleton(bones));
+  mesh.castShadow = castShadow;
+  mesh.receiveShadow = receiveShadow;
+  // Bounding sphere is computed in bind pose; pad it for animated limbs.
+  mesh.geometry.computeBoundingSphere();
+  mesh.boundingSphere = mesh.geometry.boundingSphere.clone();
+  mesh.boundingSphere.radius += 1;
+  return mesh;
+}
+
+// Global uniforms shared by procedural materials (driven by the day/night system).
+export const sharedUniforms = { uNight: { value: 0 }, uWet: { value: 0 } };
+
+// MeshStandardMaterial whose roughness/metalness/emissive come from the per-vertex `pbr` attribute.
+// Emissive parts (lamps) glow softly by day and brightly at night.
+export function makePbrMaterial(opts = {}) {
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, ...opts });
+  mat.onBeforeCompile = (s) => {
+    s.uniforms.uNight = sharedUniforms.uNight;
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec3 pbr;\nvarying vec3 vPbr;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPbr = pbr;');
+    s.fragmentShader = s.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vPbr;\nuniform float uNight;')
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = vPbr.x;')
+      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = vPbr.y;')
+      .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = vColor.rgb * vPbr.z * (0.25 + uNight * 2.5);');
+  };
+  mat.customProgramCacheKey = () => 'pbr-vertex';
+  return mat;
 }
 
 export class BuilderSet {

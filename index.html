@@ -14,9 +14,11 @@
 
   <div id="hud">
     <div id="top-right">
+      <div id="clock">4:30 PM · Clear</div>
       <div id="money">₹500</div>
       <div id="stars">☆☆☆☆☆</div>
     </div>
+    <div id="damage"></div>
     <div id="mission">
       <div id="mission-title"></div>
       <div id="mission-body"></div>
@@ -27,6 +29,7 @@
     <div id="radio"></div>
     <div id="subtitle"></div>
     <div id="prompt"></div>
+    <div id="health"></div>
     <canvas id="minimap" width="200" height="200"></canvas>
     <div id="bottom-right">
       <div id="speed"><span id="speed-val">0</span><small>km/h</small><div id="vehicle-name"></div></div>
@@ -35,6 +38,8 @@
     </div>
     <div id="bigmap"><canvas width="760" height="760"></canvas><div class="hint">M to close</div></div>
   </div>
+
+  <div id="screen"><div id="screen-title"></div><div id="screen-sub"></div></div>
 
   <div id="help" class="show">
     <div class="panel">
@@ -46,11 +51,17 @@
         <div><span class="key">Mouse</span> look around</div>
         <div><span class="key">Shift</span> run</div>
         <div><span class="key">Space</span> jump / handbrake</div>
+        <div><span class="key">LMB</span>/<span class="key">Z</span> punch</div>
+        <div><span class="key">RMB</span>/<span class="key">X</span> kick</div>
         <div><span class="key">F</span> get in / out (or "borrow") a vehicle</div>
         <div><span class="key">H</span> horn (use generously)</div>
+        <div><span class="key">G</span> siren (in a Hoysala)</div>
         <div><span class="key">J</span> accept a gig on your phone</div>
         <div><span class="key">M</span> map</div>
         <div><span class="key">R</span> radio on / off</div>
+        <div><span class="key">K</span> summon / stop the monsoon</div>
+        <div><span class="key">T</span> fast-forward time</div>
+        <div><span class="key">O</span> performance mode</div>
         <div><span class="key">Esc</span> pause</div>
       </div>
       <button id="start" disabled>Click to play</button>

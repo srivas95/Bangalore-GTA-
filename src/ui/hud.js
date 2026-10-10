@@ -3,23 +3,37 @@ import { WORLD_MIN, WORLD_MAX } from '../config.js';
 
 const ZONE_COLOURS = {
   park: '#5d8a46', lake: '#5d8a46', landmark: '#b8ad98', gov: '#a8a090', residential: '#bfb29a',
-  commercial: '#c9b9a0', market: '#d0b48c', towers: '#b0b8c0', mixed: '#c4b8a4',
+  commercial: '#c9b9a0', market: '#d0b48c', towers: '#b0b8c0', mixed: '#c4b8a4', industrial: '#a8a4a0',
 };
+const MAP_SCALE = 0.5; // minimap texture pixels per metre
+const METRO_COLOURS = ['#8a3cc0', '#2aa04a'];
 
 const $ = (id) => document.getElementById(id);
 
 export class HUD {
-  constructor(layout, pois) {
+  constructor(layout, pois, { metroLines = [], railway = null } = {}) {
     this.layout = layout;
     this.pois = pois;
+    this.metroLines = metroLines;
+    this.railway = railway;
+    // District label positions for the big map.
+    const acc = new Map();
+    for (const b of layout.blocks) {
+      if (b.edge) continue;
+      const a = acc.get(b.district) || { x: 0, z: 0, n: 0 };
+      a.x += b.cx; a.z += b.cz; a.n++;
+      acc.set(b.district, a);
+    }
+    this.districtLabels = [...acc].filter(([, a]) => a.n >= 2).map(([name, a]) => ({ name, x: a.x / a.n, z: a.z / a.n }));
     this.el = {
       money: $('money'), stars: $('stars'), toast: $('toast'), toastSub: $('toast-sub'), sub: $('subtitle'), street: $('street'), district: $('district'),
       speed: $('speed'), speedVal: $('speed-val'), vehicle: $('vehicle-name'), prompt: $('prompt'), mission: $('mission'), missionTitle: $('mission-title'),
       missionBody: $('mission-body'), missionTimer: $('mission-timer'), map: $('bigmap'), help: $('help'), radio: $('radio'), phone: $('phone'),
+      clock: $('clock'), health: $('health'), damage: $('damage'), screen: $('screen'), screenTitle: $('screen-title'), screenSub: $('screen-sub'),
     };
     this.mini = $('minimap');
     this.miniCtx = this.mini.getContext('2d');
-    this.mapCanvas = this.renderMap(1);
+    this.mapCanvas = this.renderMap(MAP_SCALE);
     this.lastDistrict = null;
     this.toastT = 0;
     this.subT = 0;
@@ -52,9 +66,11 @@ export class HUD {
       if (r.axis === 'x') ctx.fillRect(X(r.pos - r.width / 2), 0, r.width * scale, size);
       else ctx.fillRect(0, X(r.pos - r.width / 2), size, r.width * scale);
     }
-    // Metro line.
-    const metro = this.layout.zRoads.find((r) => r.metro);
-    if (metro) { ctx.fillStyle = '#8a3cc0'; ctx.fillRect(0, X(metro.pos) - 1.5 * scale, size, 3 * scale); }
+    // Metro lines and the railway.
+    this.metroLines?.forEach((m, k) => { ctx.fillStyle = METRO_COLOURS[k % 2]; ctx.fillRect(X(m.from), X(m.pos) - 2, (m.to - m.from) * scale, 4); });
+    if (this.railway) { ctx.fillStyle = '#5a3a2a'; ctx.fillRect(X(this.railway.from), X(this.railway.z) - 2, (this.railway.to - this.railway.from) * scale, 4); }
+    ctx.fillStyle = '#2a5a9a';
+    for (const u of this.layout.underpasses) ctx.fillRect(X(u.minX), X(u.minZ), (u.maxX - u.minX) * scale, (u.maxZ - u.minZ) * scale);
     return c;
   }
 
@@ -63,9 +79,43 @@ export class HUD {
     if (instant) { this.shownMoney = m; this.el.money.textContent = '₹' + m.toLocaleString('en-IN'); }
   }
 
-  setStars(n) {
+  setStars(n, searching = false) {
+    const key = n + ':' + searching;
+    if (this._stars === key) return;
+    this._stars = key;
     this.el.stars.textContent = '★'.repeat(n) + '☆'.repeat(5 - n);
     this.el.stars.classList.toggle('active', n > 0);
+    this.el.stars.classList.toggle('searching', n > 0 && searching);
+  }
+
+  flashDamage() {
+    this.el.damage.classList.remove('show');
+    void this.el.damage.offsetWidth;
+    this.el.damage.classList.add('show');
+  }
+
+  setHealth(h) {
+    const v = Math.round(h);
+    if (this._hp === v) return;
+    this._hp = v;
+    this.el.health.style.setProperty('--hp', v / 100);
+    this.el.health.classList.toggle('low', v < 30);
+  }
+
+  setClock(text, weather) {
+    const t = `${text} · ${weather}`;
+    if (this._clock !== t) { this._clock = t; this.el.clock.textContent = t; }
+  }
+
+  showScreen(title, sub, colour) {
+    this.el.screenTitle.textContent = title;
+    this.el.screenTitle.style.color = colour;
+    this.el.screenSub.textContent = sub;
+    this.el.screen.classList.add('show');
+  }
+
+  hideScreen() {
+    this.el.screen.classList.remove('show');
   }
 
   toast(title, sub = '') {
@@ -133,8 +183,12 @@ export class HUD {
       this.lastDistrict = block.district;
     }
     const road = this.layout.roadAt(p.x, p.z);
-    this.el.street.textContent = road ? road.name : block.district;
-    this.el.district.textContent = road ? block.district : 'Bengaluru';
+    const junction = this.layout.junctionNear(p.x, p.z);
+    const street = junction || (road ? this.layout.roadName(road, p.x, p.z) : block.district);
+    if (this._street !== street) { this._street = street; this.el.street.textContent = street; }
+    const dist = road || junction ? block.district : 'Bengaluru';
+    if (this._dist !== dist) { this._dist = dist; this.el.district.textContent = dist; }
+    this.setHealth(player.health);
     if (this.toastT > 0) { this.toastT -= dt; if (this.toastT <= 0) this.el.toast.parentElement.classList.remove('show'); }
     if (this.subT > 0) { this.subT -= dt; if (this.subT <= 0) this.el.sub.classList.remove('show'); }
     if (player.vehicle) this.el.speedVal.textContent = Math.round(Math.abs(player.vehicle.forwardSpeed) * 3.6);
@@ -163,7 +217,8 @@ export class HUD {
     // Rotate so the camera's view direction, -(sin yaw, cos yaw), points up.
     ctx.rotate(camYaw);
     ctx.scale(scale, scale);
-    ctx.translate(-(p.x - WORLD_MIN), -(p.z - WORLD_MIN));
+    ctx.scale(1 / MAP_SCALE, 1 / MAP_SCALE);
+    ctx.translate(-(p.x - WORLD_MIN) * MAP_SCALE, -(p.z - WORLD_MIN) * MAP_SCALE);
     ctx.drawImage(this.mapCanvas, 0, 0);
     ctx.restore();
     // Markers.
@@ -206,14 +261,16 @@ export class HUD {
     const S = c.width / (WORLD_MAX - WORLD_MIN);
     ctx.drawImage(this.mapCanvas, 0, 0, c.width, c.height);
     const X = (v) => (v - WORLD_MIN) * S;
-    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    for (const r of this.layout.xRoads) { ctx.save(); ctx.translate(X(r.pos) - 4, X(WORLD_MIN + 60)); ctx.rotate(-Math.PI / 2); ctx.fillText(r.name, 0, 0); ctx.restore(); }
-    for (const r of this.layout.zRoads) ctx.fillText(r.name, X(WORLD_MIN + 60), X(r.pos) - 4);
+    ctx.font = 'bold 15px "Oswald", sans-serif';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillStyle = '#fff';
+    for (const d of this.districtLabels) { ctx.strokeText(d.name.toUpperCase(), X(d.x), X(d.z)); ctx.fillText(d.name.toUpperCase(), X(d.x), X(d.z)); }
     ctx.fillStyle = '#ffe9a8';
-    ctx.font = 'bold 12px sans-serif';
-    for (const l of this.pois.landmarks) ctx.fillText('◆ ' + l.name, X(l.x), X(l.z));
+    ctx.font = 'bold 11px sans-serif';
+    for (const l of this.pois.landmarks) { if (!l) continue; ctx.strokeText('◆ ' + l.name, X(l.x), X(l.z) + 14); ctx.fillText('◆ ' + l.name, X(l.x), X(l.z) + 14); }
+    ctx.lineWidth = 1;
     for (const m of markers) {
       ctx.fillStyle = m.color || '#ffd400';
       ctx.beginPath(); ctx.arc(X(m.x), X(m.z), 7, 0, Math.PI * 2); ctx.fill();

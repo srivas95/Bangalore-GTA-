@@ -199,4 +199,186 @@ function statue(ctx, x, z) {
   colliders.addCentered(x, z, 5, 5, 7, 'building');
 }
 
-export const LANDMARKS = { vidhanaSoudha, highCourt, library, bandstand, stadium, cathedral, skyTower, statue };
+// ---------------------------------------------------------------------------------------------
+// Peenya / Yeshwanthpur / Rajajinagar / Koramangala / Silk Board landmarks.
+
+// IBC Platinum City, HMT Main Road: a gated high-rise township of lettered residential blocks
+// around a clubhouse, pool and central garden. (Stylised: block count and heights approximate.)
+function ibcPlatinumCity(ctx, block) {
+  const { B, colliders, signs, plaza } = ctx;
+  const i = block.inner;
+  const { cx, cz, w, d } = centre(block);
+  plaza(block, 0xe0d8cc);
+  const apt = B.get('apartment'), roof = B.get('roof'), stone = B.get('stone'), grass = B.get('grass');
+  // Central garden.
+  grass.rect(cx - 26, cx + 26, cz - 26, cz + 26, 0.17, 0xffffff, (x, z) => [x / 6, -z / 6]);
+  // Compound wall with a gate on the HMT Main Road (east) side.
+  const wallC = 0xd8cbb4, wh = 2.2;
+  stone.box(cx, 0.15, i.minZ + 0.2, w, wh, 0.4, wallC); colliders.addCentered(cx, i.minZ + 0.2, w, 0.4, wh, 'wall');
+  stone.box(cx, 0.15, i.maxZ - 0.2, w, wh, 0.4, wallC); colliders.addCentered(cx, i.maxZ - 0.2, w, 0.4, wh, 'wall');
+  stone.box(i.minX + 0.2, 0.15, cz, 0.4, wh, d, wallC); colliders.addCentered(i.minX + 0.2, cz, 0.4, d, wh, 'wall');
+  const gate = 9;
+  for (const [z0, z1] of [[i.minZ, cz - gate], [cz + gate, i.maxZ]]) {
+    stone.box(i.maxX - 0.2, 0.15, (z0 + z1) / 2, 0.4, wh, z1 - z0, wallC);
+    colliders.addCentered(i.maxX - 0.2, (z0 + z1) / 2, 0.4, z1 - z0, wh, 'wall');
+  }
+  for (const s of [-1, 1]) { stone.box(i.maxX - 0.6, 0.15, cz + s * gate, 1.4, 7, 1.4, 0xb5523a); colliders.addCentered(i.maxX - 0.6, cz + s * gate, 1.4, 1.4, 7, 'pole'); }
+  stone.box(i.maxX - 0.6, 7.15, cz, 1.6, 1.4, gate * 2 + 1.4, 0xb5523a);
+  signs.push({ key: 'ibcGate', text: ['IBC PLATINUM CITY', 'ಐಬಿಸಿ ಪ್ಲಾಟಿನಂ ಸಿಟಿ'], x: i.maxX + 0.25, y: 7.85, z: cz, w: 16, h: 1.3, face: 'e', bg: '#1d2a44', fg: '#e8d8a8' });
+  // Towers: plus-shaped plans, cream with terracotta accents, lettered A–I.
+  const letters = 'ABCDEFGHI';
+  let k = 0;
+  for (const fz of [-1, 0, 1]) {
+    for (const fx of [-1, 0, 1]) {
+      const tx = cx + fx * (w * 0.33), tz = cz + fz * (d * 0.33);
+      const letter = letters[k++];
+      if (fx === 0 && fz === 0) continue;
+      const floors = 14 + ((k * 7) % 4);
+      const H = floors * 3.1;
+      apt.box(tx, 0.15, tz, 24, H, 13, 0xf3ead8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
+      apt.box(tx, 0.15, tz, 13, H, 24, 0xf0e4cc, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
+      for (const [ox, oz] of [[-12.05, 0], [12.05, 0]]) stone.box(tx + ox, 0.15, tz + oz, 0.3, H + 1.5, 4, 0xb5523a);
+      for (const [ox, oz] of [[0, -12.05], [0, 12.05]]) stone.box(tx + ox, 0.15, tz + oz, 4, H + 1.5, 0.3, 0xb5523a);
+      stone.box(tx, H + 0.15, tz, 8, 4, 8, 0xe8dcc4); // lift machine room
+      stone.box(tx, H + 4.15, tz, 9, 0.4, 9, 0xb5523a);
+      put(stone, G.cyl, tx + 6, H + 0.9, tz + 6, 0x1a1a1a, 0, 1, 1.5, 1);
+      put(stone, G.cyl, tx - 6, H + 0.9, tz - 6, 0x1a1a1a, 0, 1, 1.5, 1);
+      signs.push({ key: 'ibc' + letter, text: [letter + ' BLOCK'], x: tx, y: H - 2, z: tz + 12.25, w: 5, h: 1.6, face: 's', bg: '#b5523a', fg: '#fff8e8' });
+      colliders.addCentered(tx, tz, 24.4, 13.4, H + 4, 'building');
+      colliders.addCentered(tx, tz, 13.4, 24.4, H + 4, 'building');
+    }
+  }
+  // Clubhouse and pool in the middle of the garden.
+  B.get('glass').box(cx - 8, 0.15, cz - 8, 18, 7, 12, 0xd8e8f0, { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, topBuilder: roof });
+  colliders.addCentered(cx - 8, cz - 8, 18, 12, 8, 'building');
+  stone.box(cx + 10, 0.15, cz + 10, 16, 0.25, 9, 0xd8d0c0);
+  stone.box(cx + 10, 0.4, cz + 10, 14, 0.02, 7, 0x2a9ad0);
+  ctx.trees(cx, cz, 26, 14);
+  return { name: 'IBC Platinum City', x: i.maxX + 4, z: cz };
+}
+
+// Yeshwanthpur Junction railway station: platforms along the line and a station building.
+function yeshwanthpurStation(ctx, block, railZ) {
+  const { B, colliders, signs, plaza } = ctx;
+  const i = block.inner;
+  const { cx } = centre(block);
+  plaza(block, 0xd8d0c0);
+  const stone = B.get('stone'), her = B.get('heritage'), roof = B.get('roof'), metal = B.get('metal');
+  const pl = i.maxX - i.minX - 6;
+  for (const s of [-1, 1]) {
+    const pz = railZ + s * 7;
+    stone.box(cx, 0.15, pz, pl, 0.75, 4, 0xc8bca8);
+    stone.box(cx, 0.9, pz - s * 1.85, pl, 0.02, 0.3, 0xf2c200); // yellow platform edge
+    for (let x = i.minX + 8; x < i.maxX - 6; x += 12) put(metal, G.cyl8, x, 3.5, pz, 0x5a6a7a, 0, 0.12, 5.2, 0.12);
+    metal.box(cx, 6, pz, pl, 0.15, 5, 0x8a9aaa);
+    colliders.addCentered(cx, pz, pl, 4, 0.9, 'platform');
+  }
+  // Station building on the north side, facing Yeshwanthpur Station Road.
+  const bz = i.minZ + 14;
+  her.box(cx, 0.15, bz, 70, 9, 16, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
+  stone.box(cx, 9.15, bz, 72, 1, 18, 0xa8302a);
+  her.box(cx, 0.15, bz, 18, 14, 18, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof });
+  put(stone, G.cone4, cx, 16.5, bz, 0xa8302a, Math.PI / 4, 13, 5, 13);
+  colliders.addCentered(cx, bz, 72, 18, 15, 'building');
+  // Indian Railways station boards are yellow with black lettering.
+  signs.push({ key: 'ypr1', text: ['ಯಶವಂತಪುರ ಜಂಕ್ಷನ್', 'YESHWANTHPUR JN.'], x: cx, y: 11.5, z: bz - 9.05, w: 16, h: 3.2, face: 'n', bg: '#f2c200', fg: '#111' });
+  for (const s of [-1, 1]) signs.push({ key: 'ypr2', text: ['ಯಶವಂತಪುರ', 'YESHWANTHPUR'], x: cx + 25, y: 3, z: railZ + s * 8.6, w: 5, h: 1.4, face: s < 0 ? 'n' : 's', bg: '#f2c200', fg: '#111' });
+  return { name: 'Yeshwanthpur Junction', x: cx, z: i.minZ - 2 };
+}
+
+// ISKCON temple on its hillock at Rajajinagar: tall gold-and-glass tower over a stepped plinth.
+function iskcon(ctx, block) {
+  const { B, colliders, signs, lawn } = ctx;
+  const { cx, cz } = centre(block);
+  lawn(block, 0x6a8a4a);
+  const stone = B.get('stone'), glass = B.get('glass'), metal = B.get('metal');
+  for (let k = 0; k < 4; k++) stone.box(cx, 0.15 + k * 1.2, cz, 70 - k * 8, 1.2, 56 - k * 7, 0xe8dcc8 - k * 0x050505);
+  stone.box(cx, 4.95, cz, 34, 10, 24, 0xf4ecdc);
+  glass.box(cx, 14.95, cz, 14, 10, 14, 0xf0c860, { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, top: false });
+  for (let k = 0; k < 5; k++) put(metal, G.box, cx, 24.95 + k * 2.6, cz, 0xe0b040, Math.PI / 4 * (k % 2), 12 - k * 2.2, 2.6, 12 - k * 2.2);
+  put(metal, G.cone, cx, 40, cz, 0xf0c040, 0, 1.2, 4, 1.2);
+  put(metal, G.sphere, cx, 42.6, cz, 0xf0c040, 0, 0.8, 0.8, 0.8);
+  for (const sx of [-1, 1]) {
+    stone.box(cx + sx * 13, 14.95, cz, 6, 4, 6, 0xf4ecdc);
+    put(metal, G.cone4, cx + sx * 13, 21, cz, 0xe0b040, Math.PI / 4, 4, 8, 4);
+  }
+  colliders.addCentered(cx, cz, 70, 56, 4.8, 'plinth');
+  colliders.addCentered(cx, cz, 34, 24, 40, 'building');
+  signs.push({ key: 'iskcon', text: ['ISKCON SRI RADHA KRISHNA TEMPLE', 'ಇಸ್ಕಾನ್'], x: cx, y: 6.5, z: cz + 12.05, w: 18, h: 2, face: 's', bg: '#7a1a1a', fg: '#f8e0a0' });
+  ctx.trees(cx, cz, 0, 0, block);
+  return { name: 'ISKCON Temple', x: cx, z: cz + 34 };
+}
+
+// World Trade Center Bengaluru at Brigade Gateway, with its mall podium.
+function wtc(ctx, x, z) {
+  const { B, colliders, signs } = ctx;
+  const glass = B.get('glass'), stone = B.get('stone'), roof = B.get('roof'), glow = B.get('glow');
+  stone.box(x, 0.15, z, 60, 14, 40, 0xe8e0d4, { topBuilder: roof });
+  glass.box(x, 0.15, z + 20.05, 50, 12, 0.2, 0xb0c8e0, { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, top: false });
+  const H = 124;
+  glass.box(x + 8, 14.15, z - 4, 24, H, 24, 0xa8c4dc, { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, top: false });
+  stone.box(x + 8, H + 14.15, z - 4, 25, 1.5, 25, 0xe8e8e8);
+  put(stone, G.cyl8, x + 8, H + 22, z - 4, 0xcccccc, 0, 0.4, 14, 0.4);
+  glow.box(x + 8, H + 29, z - 4, 1, 1, 1, 0xff3030);
+  colliders.addCentered(x, z, 60, 40, 15, 'building');
+  colliders.addCentered(x + 8, z - 4, 24, 24, H + 20, 'building');
+  signs.push({ key: 'wtc', text: ['WORLD TRADE CENTER', 'BENGALURU'], x: x + 8, y: H + 8, z: z + 8.05, w: 16, h: 3, face: 's', bg: '#1a2a40', fg: '#e8f0ff' });
+  signs.push({ key: 'gatewayMall', text: ['GATEWAY MALL', 'ಮಾಲ್'], x, y: 11, z: z + 20.2, w: 18, h: 2.5, face: 's', bg: '#c0182a', fg: '#fff' });
+  return { name: 'World Trade Center', x, z: z + 26 };
+}
+
+// Lalbagh Glass House: a Victorian conservatory with a glazed barrel roof and dome.
+function glassHouse(ctx, block) {
+  const { B, colliders, signs } = ctx;
+  const { cx, cz } = centre(block);
+  const glass = B.get('glass'), stone = B.get('stone');
+  const barrel = new THREE.CylinderGeometry(1, 1, 1, 20, 1, false, 0, Math.PI);
+  stone.box(cx, 0.15, cz, 64, 0.6, 18, 0xd8d0c0);
+  for (const [w, x] of [[60, 0]]) {
+    glass.box(cx + x, 0.75, cz, w, 5, 14, 0xd0e8f0, { tileW: GLASS_TILE.w / 2, tileH: GLASS_TILE.h / 2, top: false });
+    put(glass, barrel, cx + x, 5.75, cz, 0xd0e8f0, 0, 7, w, 7, 0, Math.PI / 2);
+  }
+  for (let k = -30; k <= 30; k += 5) put(stone, new THREE.TorusGeometry(7, 0.12, 4, 16, Math.PI), cx + k, 5.75, cz, 0xf8f8f8, Math.PI / 2);
+  stone.box(cx, 0.75, cz, 18, 6, 18, 0xf8f8f8, { top: false });
+  put(glass, G.dome, cx, 6.75, cz, 0xd0e8f0, 0, 9.5, 9, 9.5);
+  put(stone, G.sphere, cx, 15.9, cz, 0xf8f8f8, 0, 0.6, 0.6, 0.6);
+  colliders.addCentered(cx, cz, 64, 18, 12, 'building');
+  signs.push({ key: 'lalbagh', text: ['LALBAGH GLASS HOUSE', 'ಲಾಲ್‌ಬಾಗ್ ಗಾಜಿನ ಮನೆ'], x: cx, y: 2, z: cz + 9.3, w: 10, h: 1.6, face: 's', bg: '#1f5a2a', fg: '#fff' });
+  return { name: 'Lalbagh Glass House', x: cx, z: cz + 20 };
+}
+
+// The Forum, Koramangala: the city's original big mall.
+function forumMall(ctx, block) {
+  const { B, colliders, signs, plaza } = ctx;
+  const { cx, cz, w, d } = centre(block);
+  plaza(block, 0xe8e4dc);
+  const stone = B.get('stone'), glass = B.get('glass'), roof = B.get('roof');
+  const mw = w - 30, md = d - 40;
+  stone.box(cx, 0.15, cz - 8, mw, 22, md, 0xe8e0d0, { topBuilder: roof, topTile: 10 });
+  glass.box(cx, 0.15, cz - 8 + md / 2 + 0.05, mw * 0.6, 18, 0.3, 0x9ab8d0, { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, top: false });
+  stone.box(cx, 18.15, cz - 8 + md / 2 + 3, mw * 0.7, 1, 6, 0xc0182a);
+  for (let k = -2; k <= 2; k++) put(stone, G.cyl, cx + k * 12, 9, cz - 8 + md / 2 + 5, 0xf0f0f0, 0, 0.5, 18, 0.5);
+  colliders.addCentered(cx, cz - 8, mw, md, 23, 'building');
+  signs.push({ key: 'forum', text: ['THE FORUM', 'ಫೋರಮ್ ಮಾಲ್'], x: cx, y: 20, z: cz - 8 + md / 2 + 6.05, w: 20, h: 3.2, face: 's', bg: '#c0182a', fg: '#fff' });
+  return { name: 'Forum Mall', x: cx, z: cz + d / 2 - 2 };
+}
+
+// Central Silk Board office, which gave India's most infamous junction its name.
+function silkBoardOffice(ctx, block) {
+  const { B, colliders, signs, lawn } = ctx;
+  const { cx, cz } = centre(block);
+  lawn(block, 0x7a8a5a);
+  const her = B.get('plaster'), stone = B.get('stone'), roof = B.get('roof');
+  her.box(cx, 0.15, cz, 64, 16, 26, 0xe8dcc0, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
+  stone.box(cx, 16.15, cz, 66, 1, 28, 0x9a6a3a);
+  stone.box(cx, 0.15, cz + 14, 20, 6, 3, 0xd8c8a8);
+  colliders.addCentered(cx, cz, 66, 30, 17, 'building');
+  signs.push({ key: 'csb', text: ['ಕೇಂದ್ರ ರೇಷ್ಮೆ ಮಂಡಳಿ', 'CENTRAL SILK BOARD'], x: cx, y: 13.5, z: cz + 13.05, w: 18, h: 3, face: 's', bg: '#5a1a3a', fg: '#f8e0a0' });
+  ctx.trees(cx, cz, 0, 0, block);
+  return { name: 'Central Silk Board', x: cx, z: cz + 30 };
+}
+
+export const LANDMARKS = {
+  vidhanaSoudha, highCourt, library, bandstand, stadium, cathedral, skyTower, statue,
+  ibcPlatinumCity, yeshwanthpurStation, iskcon, wtc, glassHouse, forumMall, silkBoardOffice,
+};

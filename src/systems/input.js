@@ -21,6 +21,13 @@ export class Input {
       this.mouseDX += e.movementX;
       this.mouseDY += e.movementY;
     });
+    addEventListener('mousedown', (e) => {
+      if (!this.locked) return;
+      this.keys.add('Mouse' + e.button);
+      this.pressed.add('Mouse' + e.button);
+    });
+    addEventListener('mouseup', (e) => this.keys.delete('Mouse' + e.button));
+    addEventListener('contextmenu', (e) => e.preventDefault());
     addEventListener('wheel', (e) => { this.wheel += Math.sign(e.deltaY); }, { passive: true });
     document.addEventListener('pointerlockchange', () => { this.locked = document.pointerLockElement === canvas; });
   }

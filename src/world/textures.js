@@ -521,3 +521,42 @@ export function waterNormal() {
 export function resetRandom(seed = 1337) {
   rng = mulberry32(seed);
 }
+
+// Night-time emissive maps: the same window layout as each facade texture, with a random
+// mix of warm incandescent and cool tubelight-lit rooms.
+export function windowGlow(style) {
+  const shop = style === 'shop';
+  const [c, ctx] = canvas(512, shop ? 256 : 512);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 512, shop ? 256 : 512);
+  const lit = () => rng() < 0.45;
+  const colour = () => (rng() < 0.4 ? '#cfe2ff' : rng() < 0.5 ? '#ffd9a0' : '#ffe8c0');
+  const rect = (x, y, w, h) => { ctx.fillStyle = colour(); ctx.globalAlpha = rand(0.55, 1); ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; };
+  if (style === 'plaster') {
+    for (let f = 0; f < 2; f++) for (let b = 0; b < 2; b++) if (lit()) rect(b * 256 + 58, f * 256 + 78, 140, 116);
+  } else if (style === 'apartment') {
+    for (let f = 0; f < 2; f++) for (let b = 0; b < 2; b++) {
+      if (lit()) rect(b * 256 + 50, f * 256 + 70, 70, 90);
+      if (lit()) rect(b * 256 + 140, f * 256 + 80, 70, 80);
+    }
+  } else if (style === 'heritage') {
+    for (let f = 0; f < 2; f++) for (let b = 0; b < 2; b++) if (lit()) rect(b * 256 + 78, f * 256 + 80, 100, 130);
+  } else if (style === 'glass') {
+    for (let f = 0; f < 4; f++) for (let b = 0; b < 4; b++) if (rng() < 0.55) rect(b * 128 + 4, f * 128 + 4, 120, 100);
+  } else if (shop) {
+    for (let s = 0; s < 2; s++) { if (rng() < 0.25) continue; ctx.fillStyle = rng() < 0.5 ? '#ffe2a8' : '#dfefff'; ctx.globalAlpha = rand(0.4, 0.9); ctx.fillRect(s * 256 + 24, 100, 208, 150); ctx.globalAlpha = 1; }
+  }
+  return toTexture(c);
+}
+
+// Soft pool of light cast by a street lamp, drawn additively on the road at night.
+export function lightPoolTexture() {
+  const [c, ctx] = canvas(128, 128);
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255,214,150,0.9)');
+  g.addColorStop(0.4, 'rgba(255,190,120,0.35)');
+  g.addColorStop(1, 'rgba(255,170,100,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  return toTexture(c, { repeat: false });
+}

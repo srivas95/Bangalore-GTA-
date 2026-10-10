@@ -14,8 +14,9 @@ export class Colliders {
   }
 
   // h = height of the obstacle top (used by the camera and to let tall things block it).
-  add(minX, maxX, minZ, maxZ, h = 10, tag = 'static') {
-    const box = { minX, maxX, minZ, maxZ, h, tag, _s: 0 };
+  // y0 = bottom of the obstacle (for walls on raised decks that traffic can pass beneath).
+  add(minX, maxX, minZ, maxZ, h = 10, tag = 'static', y0 = -100) {
+    const box = { minX, maxX, minZ, maxZ, h, y0, tag, _s: 0 };
     this.all.push(box);
     for (let cx = Math.floor(minX / CELL); cx <= Math.floor(maxX / CELL); cx++) {
       for (let cz = Math.floor(minZ / CELL); cz <= Math.floor(maxZ / CELL); cz++) {
@@ -28,8 +29,8 @@ export class Colliders {
     return box;
   }
 
-  addCentered(cx, cz, w, d, h, tag) {
-    return this.add(cx - w / 2, cx + w / 2, cz - d / 2, cz + d / 2, h, tag);
+  addCentered(cx, cz, w, d, h, tag, y0) {
+    return this.add(cx - w / 2, cx + w / 2, cz - d / 2, cz + d / 2, h, tag, y0);
   }
 
   query(minX, maxX, minZ, maxZ, out = []) {
@@ -57,7 +58,7 @@ export class Colliders {
     for (let iter = 0; iter < 3; iter++) {
       let moved = false;
       for (const b of hits) {
-        if (b.h < y + 0.3) continue; // low enough to step over / jump on
+        if (b.h < y + 0.3 || b.y0 > y + 1.2) continue; // low enough to step over, or overhead
         const px = Math.max(b.minX, Math.min(x, b.maxX));
         const pz = Math.max(b.minZ, Math.min(z, b.maxZ));
         let dx = x - px, dz = z - pz;
@@ -88,9 +89,9 @@ export class Colliders {
   }
 
   // Is the point inside a box taller than y?
-  pointBlocked(x, z, y) {
+  pointBlocked(x, z, y, tag) {
     const hits = this.query(x, x, z, z, this._tmp2 || (this._tmp2 = []));
-    for (const b of hits) if (b.h > y && x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) return true;
+    for (const b of hits) if (b.h > y && b.y0 < y && (!tag || b.tag === tag) && x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) return true;
     return false;
   }
 }

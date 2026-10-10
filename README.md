@@ -1,9 +1,16 @@
 # Namma Bengaluru
 
-An open-world, GTA-style game set in central Bengaluru, built for the browser with [Three.js](https://threejs.org).
+An open-world, GTA-style game set in Bengaluru, built for the browser with [Three.js](https://threejs.org).
 No downloads and no asset packs: the city, vehicles, people, textures and sound are all generated in code.
 
-![Driving an auto rickshaw down Old Madras Road](docs/screenshot.png)
+![Hoysala patrol cars on MG Road](docs/hoysala.png)
+
+| | |
+| --- | --- |
+| ![IBC Platinum City, Peenya](docs/ibc-platinum-city.png) | ![Flooded rail underpass in the monsoon](docs/monsoon-underpass.png) |
+| IBC Platinum City on HMT Main Road, Peenya | A Yeshwanthpur rail underpass filling up in the monsoon |
+| ![Yeshwanthpur Junction](docs/yeshwanthpur.png) | ![Silk Board flyover](docs/silk-board-flyover.png) |
+| Yeshwanthpur Junction with an Indian Railways train | Hosur Road and the Silk Board flyover |
 
 ## Play it
 
@@ -13,6 +20,7 @@ npm run dev        # open the printed URL (default http://localhost:5173)
 ```
 
 `npm run build` writes a static site to `dist/` that can be hosted anywhere (GitHub Pages, Netlify, etc.).
+On slower machines press **O** for performance mode.
 
 ### Controls
 
@@ -22,71 +30,98 @@ npm run dev        # open the printed URL (default http://localhost:5173)
 | Mouse | Look around (click the game to capture the mouse) |
 | Shift | Run |
 | Space | Jump / handbrake |
+| Left mouse / Z | Punch |
+| Right mouse / X | Kick |
 | F (or E) | Get in or out of a vehicle. Works on traffic too ("borrowing") |
-| H (or Q) | Horn |
+| H (or Q) | Horn (every vehicle type sounds different) |
+| G | Siren, when you're driving a Hoysala |
 | J | Accept the gig on your phone |
 | M | City map |
 | R | Radio on/off |
+| K | Summon (or stop) the monsoon |
+| T | Fast-forward time ×30 |
+| O | Performance mode |
 | Esc | Pause |
 
-## What's in Milestone 1 (drivable sandbox)
+## What's in the game
 
-- **A stylised central Bengaluru**, about 1 km², laid out on real street names: MG Road, Brigade Road, Church Street,
-  Residency Road, Kasturba Road, Queens Road, Cubbon Road, Commercial Street and more.
-- **Landmarks:** Vidhana Soudha (with *ಸರ್ಕಾರದ ಕೆಲಸ ದೇವರ ಕೆಲಸ* over the portico), Attara Kacheri (High Court), Cubbon Park
-  with the State Central Library, bandstand and Queen Victoria statue, Chinnaswamy Stadium, St. Mark's Cathedral,
-  Ulsoor Lake, a UB City-style sky tower, and the **Namma Metro Purple Line** above MG Road with a working station and trains.
-- **Vehicles:** auto rickshaws (green and yellow, fare meter included), Activa-style scooters, hatchbacks, city cabs
-  (yellow plates), SUVs and BMTC buses (Vajra blue, classic red, green). Arcade handling with drift on the handbrake,
-  two-wheeler lean and right-hand drive (you exit on the right).
-- **Traffic** that keeps left, follows the road graph, stops for obstacles and honks constantly. When it's stuck long
-  enough it squeezes through anyway.
-- **Street life:** pedestrians in shirts, kurtas, sarees and lungis on the footpaths, chai stalls, and cows that wander
-  the roads and that traffic must respect.
-- **Look:** physical sky with image-based lighting, late-afternoon sun with soft shadows, haze, grimy facades with
-  chajjas, split ACs, balconies with drying clothes, black Sintex tanks on every roof, rain trees and gulmohars, and
-  shop signs in English and Kannada.
-- **Gigs:** food delivery runs (Masala Dosa from Sri Sagar Darshini to Richmond Town in under 90 seconds), or auto
-  fares when you're driving an auto. Timed, paid in ₹, with tips and a star rating.
-- **GTA basics:** district name toasts, a rotating minimap, full map, speedometer, a wanted level (theft and reckless
-  driving), and a synthesised engine, horns, ambience and radio.
+- **The map:** about 3.2 km × 3.2 km, using real road names segment by segment. It covers Peenya, Yeshwanthpur,
+  Rajajinagar, Malleshwaram, the CBD, Indiranagar, Lalbagh, Koramangala, Silk Board, HSR and BTM.
+- **Landmarks:**
+  - **Peenya and Yeshwanthpur:** IBC Platinum City, Yeshwanthpur Junction, ISKCON, World Trade Center Bengaluru at
+    Brigade Gateway, Sankey Tank.
+  - **CBD:** Vidhana Soudha, the High Court, Cubbon Park with the State Central Library, Chinnaswamy Stadium,
+    St. Mark's Cathedral, Ulsoor Lake.
+  - **South:** the Lalbagh Glass House, Forum Mall, Central Silk Board, Madiwala Lake.
+- **Infrastructure:**
+  - The Purple Line metro over MG Road to Indiranagar, and the Green Line along Tumkur Road.
+  - An Indian Railways line through Yeshwanthpur, with every road crossing it running through an underpass.
+  - The K.R. Circle and Ejipura underpasses.
+  - The **Silk Board flyover** over the Outer Ring Road.
+  - About 110 signalised junctions.
+- **Vehicles:** 16 types, each with its own horn and engine note:
+  - **Two-wheelers:** scooter, delivery scooter, Royal Bullet.
+  - **Autos:** auto rickshaw, goods auto.
+  - **Cars:** hatchback, sedan, city cab, SUV, and the **Hoysala** (a Maruti Ertiga, with a Pink Hoysala variant).
+  - **Heavy vehicles:** tempo traveller, Tata Ace-style mini truck, lorry ("Horn OK Please", with a musical horn),
+    water tanker, BMTC bus, school bus.
+- **Traffic:**
+  - About 170 vehicles streamed around you, ×1.3 at rush hour.
+  - Lorries come out at night (when the city lets them).
+  - Signals have red-light jumpers, two-wheelers filter to the front, everyone honks, and cows get right of way.
+- **People:**
+  - Sarees, kurtas, lungis and office wear.
+  - Crowds bunch up at signals and cross on the walk phase, or dash across early.
+  - Punch or kick someone and they'll flee, call 112, or occasionally fight back.
+- **Police:**
+  - A wanted level from 1 to 5 stars.
+  - Hoysalas route through the streets to you and ram on sight; constables get out with lathis.
+  - Break line of sight to lose them, or get **BUSTED**.
+  - Run out of health and you're **WASTED**, and the hospital sends a bill.
+- **Day/night and monsoon:**
+  - A 24-minute day, with lit windows and shopfronts, sodium street-lamp pools, headlights and bloom.
+  - Rain showers come on their own: lightning, thunder, wet reflective roads, underpasses that fill with brown
+    floodwater, and then roads that flood.
+  - Deep water stalls engines, scooters first.
+- **Gigs:** food deliveries, or auto fares when you drive an auto.
+
+See **[docs/GAME_OUTLINE.md](docs/GAME_OUTLINE.md)** for the game outline: pillars, map, core loop, systems,
+art direction and what's next.
 
 ## Code tour
 
 ```
 src/
-  config.js            Map definition: roads, zoning, districts, shop signs, dialogue
-  main.js              Renderer, sky and lighting, game loop, vehicle-vehicle collisions
+  config.js            Map: roads (with per-segment names), districts, landmark blocks, metro, railway, underpasses, flyovers
+  main.js              Renderer + bloom, game loop, busted/wasted, vehicle-vehicle collisions
   world/
-    layout.js          Derived blocks, traffic graph, spatial queries (roadAt, blockAt, groundHeight)
-    city.js            Builds roads, footpaths, buildings, trees, lamps from the layout
+    layout.js          Blocks, junction graph, underpass/flyover geometry, multi-level groundHeight()
+    city.js            Footpaths, buildings (incl. Peenya factories), trees with LOD, lamps, night glow
+    infrastructure.js  Roads, junctions, medians, underpasses + flood water, Silk Board flyover, railway and trains
     landmarks.js       Procedural landmark models
-    metro.js           Purple Line viaduct, station and trains
-    textures.js        Canvas-painted textures (facades, asphalt, pavers, signs, water normals)
-    meshBuilder.js     Merges thousands of boxes into a few chunked draw calls
+    metro.js           Purple and Green Line viaducts, stations, trains
+    textures.js        Canvas-painted textures (facades, lit windows, asphalt, pavers, signs, water)
+    meshBuilder.js     Merged/chunked geometry, per-vertex PBR material, rigid skinning helper
   entities/
-    vehicleModels.js   Vehicle specs and procedural models
-    vehicle.js         Arcade vehicle physics
-    traffic.js         AI drivers following the road graph
-    pedestrians.js     Footpath walkers, chai stalls, cows
-    human.js           Procedural people + walk/sit animations
-    player.js          On-foot controller, entering/exiting/carjacking
-  systems/             Input, camera rig, colliders, audio, missions + wanted level
-  ui/hud.js            Minimap, toasts, speedometer, phone, map
+    human.js           Skinned 13-bone people + animations (walk, run, sit, punch, kick, lathi, wait…)
+    vehicleModels.js   16 vehicle types as single skinned meshes (wheels are bones), decals
+    vehicle.js         Arcade physics, flood drag and stalling, police light bars
+    traffic.js         Streaming AI traffic: signals, filtering, flyover lanes, pooling
+    pedestrians.js     Walkers, signal crowds, chai stalls, cows, melee reactions
+    player.js          On foot, melee, swimming, vehicles
+  systems/
+    police.js          Wanted level, Hoysala pursuit AI, constables on foot, busting
+    signals.js         Junction signal cycles, signal heads, traffic constables
+    environment.js     Day/night, sky, rain, lightning, wetness, flooding, headlights
+    audio.js           Synthesised engines, per-type horns, siren, rain, thunder, punches
+    missions.js        Gigs, cameraRig.js, colliders.js, input.js
+  ui/hud.js            Minimap, health ring, wanted stars, clock/weather, map, busted/wasted screens
 ```
 
-Every model is built from code, so swapping in real art later is local: replace a `build*` function in
-`vehicleModels.js` / `landmarks.js` / `human.js` with a glTF loader and the rest of the game won't notice.
+`window.__game.step(n)` advances the simulation without rendering, which is how the automated checks drive the game.
 
-## Roadmap (let's decide the order together)
+## Roadmap
 
-1. **Police & chases:** Hoysala patrol cars that respond to the wanted level, roadblocks, getting busted.
-2. **Story missions:** a first chapter, e.g. a newcomer hustling through gigs who gets pulled into a real-estate
-   mafia's land grab. Cutscenes and a character cast.
-3. **Day/night cycle and monsoon rain:** streetlights, lit signs, flooded underpasses, wet roads.
-4. **Bigger map:** Koramangala, Indiranagar 100 Feet Road, Silk Board junction (the boss level), Majestic bus stand,
-   KR Market, ORR tech parks, flyovers.
-5. **Real art pass:** glTF models for hero vehicles, characters and landmarks; skinned, animated characters.
-6. **More Bengaluru:** traffic police at junctions, signals, potholes and speed breakers, BMTC bus routes you can
-   ride, Namma Metro you can board, Kannada/Hinglish voice lines, a proper radio with stations.
-7. **Mobile/touch controls** and performance settings.
+The full list is in [docs/GAME_OUTLINE.md](docs/GAME_OUTLINE.md#next-up-proposed). Highlights: vehicle damage,
+a phone UI, saving, police roadblocks, more districts (Majestic, KR Market, Whitefield), a glTF art pass for hero
+models, and story missions once the outline is settled.
