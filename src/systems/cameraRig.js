@@ -1,0 +1,75 @@
+// Third-person orbit camera that follows the player or their vehicle.
+import * as THREE from 'three';
+
+export class CameraRig {
+  constructor(camera) {
+    this.camera = camera;
+    this.yaw = Math.PI; // camera sits at +(sin yaw, cos yaw) from the target
+    this.pitch = 0.32;
+    this.dist = 5;
+    this.zoom = 1;
+    this.idle = 0;
+    this.target = new THREE.Vector3();
+    this.shakeAmt = 0;
+    this.current = new THREE.Vector3();
+    this.first = true;
+  }
+
+  shake(a) {
+    this.shakeAmt = Math.max(this.shakeAmt, a);
+  }
+
+  update(dt, input, player, colliders) {
+    const v = player.vehicle;
+    if (input.mouseDX || input.mouseDY) this.idle = 0; else this.idle += dt;
+    this.yaw -= input.mouseDX * 0.0025;
+    this.pitch = THREE.MathUtils.clamp(this.pitch + input.mouseDY * 0.002, -0.15, 1.2);
+    if (input.wheel) this.zoom = THREE.MathUtils.clamp(this.zoom + input.wheel * 0.1, 0.5, 2.2);
+
+    let tx, ty, tz, baseDist;
+    if (v) {
+      tx = v.x; tz = v.z; ty = v.y + (v.type === 'bus' ? 3.2 : v.spec.twoWheeler ? 1.4 : 1.6);
+      baseDist = v.spec.cam;
+      // Swing behind the vehicle when moving and the mouse is idle.
+      if (this.idle > 1.2 && v.speed > 2) {
+        const behind = v.forwardSpeed >= 0 ? v.heading + Math.PI : v.heading;
+        let d = behind - this.yaw;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        this.yaw += d * Math.min(1, dt * 2.5);
+        this.pitch += (0.22 - this.pitch) * Math.min(1, dt * 1.5);
+      }
+    } else {
+      tx = player.x; tz = player.z; ty = player.y + 1.55;
+      baseDist = 4.2;
+    }
+    // Pull back a little at speed.
+    const sp = v ? Math.min(1, v.speed / 30) : 0;
+    const want = baseDist * this.zoom * (1 + sp * 0.35);
+    this.dist += (want - this.dist) * Math.min(1, dt * 3);
+    const lerp = this.first ? 1 : Math.min(1, dt * 12);
+    this.target.lerp(this.current.set(tx, ty, tz), lerp);
+    this.first = false;
+
+    const cp = Math.cos(this.pitch), spch = Math.sin(this.pitch);
+    const dirX = Math.sin(this.yaw) * cp, dirY = spch, dirZ = Math.cos(this.yaw) * cp;
+    // Shorten the boom if a building is in the way.
+    let d = this.dist;
+    for (let s = 0.5; s <= this.dist; s += 0.5) {
+      const px = this.target.x + dirX * s, py = this.target.y + dirY * s, pz = this.target.z + dirZ * s;
+      if (colliders.pointBlocked(px, pz, py)) { d = Math.max(1.2, s - 0.6); break; }
+    }
+    const cam = this.camera;
+    cam.position.set(this.target.x + dirX * d, Math.max(0.4, this.target.y + dirY * d), this.target.z + dirZ * d);
+    if (this.shakeAmt > 0) {
+      cam.position.x += (Math.random() - 0.5) * this.shakeAmt;
+      cam.position.y += (Math.random() - 0.5) * this.shakeAmt;
+      this.shakeAmt *= Math.exp(-dt * 6);
+      if (this.shakeAmt < 0.01) this.shakeAmt = 0;
+    }
+    cam.lookAt(this.target);
+    // Speed-based FOV kick.
+    const fov = 62 + sp * 12;
+    if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
+  }
+}

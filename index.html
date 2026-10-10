@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Namma Bengaluru</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Kannada:wght@400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud">
+    <div id="top-right">
+      <div id="money">₹500</div>
+      <div id="stars">☆☆☆☆☆</div>
+    </div>
+    <div id="mission">
+      <div id="mission-title"></div>
+      <div id="mission-body"></div>
+      <div id="mission-timer"></div>
+    </div>
+    <div id="phone"></div>
+    <div id="toast-wrap"><div id="toast"></div><div id="toast-sub"></div></div>
+    <div id="radio"></div>
+    <div id="subtitle"></div>
+    <div id="prompt"></div>
+    <canvas id="minimap" width="200" height="200"></canvas>
+    <div id="bottom-right">
+      <div id="speed"><span id="speed-val">0</span><small>km/h</small><div id="vehicle-name"></div></div>
+      <div id="street"></div>
+      <div id="district"></div>
+    </div>
+    <div id="bigmap"><canvas width="760" height="760"></canvas><div class="hint">M to close</div></div>
+  </div>
+
+  <div id="help" class="show">
+    <div class="panel">
+      <h1>NAMMA <span>BENGALURU</span></h1>
+      <p class="tag">ಸ್ವಾಗತ! You just landed in Bengaluru with ₹500 and a dream. Rent won't pay itself.</p>
+      <div id="loading">Building the city…</div>
+      <div class="controls">
+        <div><span class="key">W A S D</span> walk / drive</div>
+        <div><span class="key">Mouse</span> look around</div>
+        <div><span class="key">Shift</span> run</div>
+        <div><span class="key">Space</span> jump / handbrake</div>
+        <div><span class="key">F</span> get in / out (or "borrow") a vehicle</div>
+        <div><span class="key">H</span> horn (use generously)</div>
+        <div><span class="key">J</span> accept a gig on your phone</div>
+        <div><span class="key">M</span> map</div>
+        <div><span class="key">R</span> radio on / off</div>
+        <div><span class="key">Esc</span> pause</div>
+      </div>
+      <button id="start" disabled>Click to play</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
