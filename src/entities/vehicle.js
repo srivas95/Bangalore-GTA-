@@ -134,7 +134,8 @@ export class Vehicle {
     const n = Math.max(1, Math.ceil(dt / (1 / 120)));
     let impact = 0;
     for (let k = 0; k < n; k++) impact = Math.max(impact, this.step(dt / n, input, world));
-    if (impact > 3 && this.lastHit) this.takeDamage(damageFromSpeed(impact), this.lastHit.x, this.lastHit.z, world);
+    // AI police drive like maniacs; their cars are built (and forgiven) accordingly.
+    if (impact > 3 && this.lastHit) this.takeDamage(damageFromSpeed(impact) * (this.driver === 'police' ? 0.3 : 1), this.lastHit.x, this.lastHit.z, world);
     this.syncVisual(dt, world);
     return impact;
   }

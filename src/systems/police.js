@@ -1,7 +1,8 @@
 // Bengaluru City Police: wanted level, Hoysala (Maruti Ertiga) pursuit units that route through
 // the road graph and ram on sight, and lathi-wielding constables who chase you on foot.
 import { Vehicle } from '../entities/vehicle.js';
-import { createHuman, animateWalk, poseLathi, poseDown, poseIdle } from '../entities/human.js';
+import { createHuman, animateWalk, poseLathi, poseDown, poseIdle, poseAim } from '../entities/human.js';
+import { WEAPONS, equip, npcFire } from './weapons.js';
 import { LINES } from '../config.js';
 
 const MAX_UNITS = [0, 1, 2, 3, 4, 5];
@@ -44,7 +45,12 @@ export class Police {
       }
     }
     const before = this.level;
-    if (witnessed || Math.random() < 0.6 || this.level > 0) this.level = Math.min(5, this.level + stars);
+    // A crime sets the wanted level to its severity; carrying on raises it one star at a time.
+    if (witnessed || Math.random() < 0.6 || this.level > 0) {
+      const now = this.time || 0;
+      if (this.level < stars) this.level = Math.min(5, stars);
+      else if (stars > 0 && now - (this.escT ?? -99) > 12) { this.level = Math.min(5, this.level + 1); this.escT = now; }
+    }
     if (this.level > before) {
       this.cool = 0;
       this.hud.say(`★ Wanted: ${reason}${witnessed ? '' : ' (someone called 112)'}`, 2.5);
@@ -86,20 +92,84 @@ export class Police {
     return null;
   }
 
-  // Shortest route over the junction graph (BFS), as a list of junction positions.
-  route(fromX, fromZ, toX, toZ) {
+  // Shortest route over the junction graph (Dijkstra by distance), as junction positions.
+  // Starts from a junction ahead of the car when there is one, so it doesn't U-turn.
+  route(fromX, fromZ, toX, toZ, heading) {
     const L = this.layout;
-    const a = L.nearestNode(fromX, fromZ), b = L.nearestNode(toX, toZ);
-    const prev = new Map([[a.id, null]]);
-    const q = [a];
-    while (q.length) {
-      const n = q.shift();
-      if (n === b) break;
-      for (const e of n.out) if (!prev.has(e.to.id)) { prev.set(e.to.id, n); q.push(e.to); }
+    let a = L.nearestNode(fromX, fromZ);
+    if (heading !== undefined) {
+      const fx = Math.sin(heading), fz = Math.cos(heading);
+      let best = null, bd = 160;
+      for (const n of L.nodes) {
+        const dx = n.x - fromX, dz = n.z - fromZ, d = Math.hypot(dx, dz);
+        if (d < bd && d > 4 && (dx * fx + dz * fz) / d > 0.7) { bd = d; best = n; }
+      }
+      if (best) a = best;
     }
+    const b = L.nearestNode(toX, toZ);
+    const dist = new Map([[a.id, 0]]), prev = new Map([[a.id, null]]);
+    const open = [a], done = new Set();
+    while (open.length) {
+      let bi = 0;
+      for (let i = 1; i < open.length; i++) if (dist.get(open[i].id) < dist.get(open[bi].id)) bi = i;
+      const n = open.splice(bi, 1)[0];
+      if (n === b) break;
+      if (done.has(n.id)) continue;
+      done.add(n.id);
+      for (const e of n.out) {
+        const m = e.to, nd = dist.get(n.id) + Math.hypot(m.x - n.x, m.z - n.z);
+        if (nd < (dist.get(m.id) ?? Infinity)) { dist.set(m.id, nd); prev.set(m.id, n); open.push(m); }
+      }
+    }
+    if (!prev.has(b.id)) return [{ x: toX, z: toZ }];
     const path = [];
     for (let n = b; n; n = prev.get(n.id)) path.unshift({ x: n.x, z: n.z });
     return path;
+  }
+
+  // Pure pursuit along a polyline: returns the aim point a few car-lengths ahead (kept to the
+  // left lane), plus the turn coming up (angle and distance) so the driver can brake for it.
+  pursuit(u, pts, v, look) {
+    let best = { d: Infinity, k: u.seg || 0, t: 0 };
+    for (let k = u.seg || 0; k < Math.min(pts.length - 1, (u.seg || 0) + 4); k++) {
+      const a = pts[k], b = pts[k + 1];
+      const abx = b.x - a.x, abz = b.z - a.z, L2 = abx * abx + abz * abz || 1;
+      const t = Math.max(0, Math.min(1, ((v.x - a.x) * abx + (v.z - a.z) * abz) / L2));
+      const d = Math.hypot(a.x + abx * t - v.x, a.z + abz * t - v.z);
+      if (d < best.d) best = { d, k, t };
+    }
+    u.seg = best.k;
+    // Walk `look` metres along the line from the projection.
+    let k = best.k, t = best.t, left = look;
+    for (;;) {
+      const a = pts[k], b = pts[k + 1];
+      const segL = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+      const rem = (1 - t) * segL;
+      if (left <= rem || k >= pts.length - 2) { t = Math.min(1, t + left / segL); break; }
+      left -= rem; k++; t = 0;
+    }
+    const a = pts[k], b = pts[k + 1];
+    const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1;
+    const lane = k >= pts.length - 2 ? 0 : 2.4; // keep left (and off the median) until the end
+    const aim = { x: a.x + dx * t + (dz / l) * lane, z: a.z + dz * t - (dx / l) * lane };
+    // The next corner after the car's segment.
+    let turn = { ang: 0, dist: Infinity };
+    const j = best.k + 1;
+    if (j < pts.length - 1) {
+      const p0 = pts[j - 1], p1 = pts[j], p2 = pts[j + 1];
+      const h1 = Math.atan2(p1.x - p0.x, p1.z - p0.z), h2 = Math.atan2(p2.x - p1.x, p2.z - p1.z);
+      turn = { ang: Math.abs(wrap(h2 - h1)), dist: Math.hypot(p1.x - v.x, p1.z - v.z) };
+    }
+    return { aim, turn };
+  }
+
+  clearPath(ax, az, bx, bz) {
+    const d = Math.hypot(bx - ax, bz - az), steps = Math.ceil(d / 2);
+    for (let k = 1; k < steps; k++) {
+      const t = k / steps;
+      if (this.colliders.pointBlocked(ax + (bx - ax) * t, az + (bz - az) * t, 0.6)) return false;
+    }
+    return true;
   }
 
   lineOfSight(ax, az, bx, bz) {
@@ -121,11 +191,13 @@ export class Police {
     const v = u.v;
     for (let k = 0; k < u.officers; k++) {
       const h = createHuman({ outfit: 'police', lathi: true });
+      h.owner = null;
       const side = k === 0 ? -1 : 1;
       const x = v.x + Math.cos(v.heading) * side * (v.spec.width / 2 + 0.6), z = v.z - Math.sin(v.heading) * side * (v.spec.width / 2 + 0.6);
       h.group.position.set(x, v.y, z);
       this.scene.add(h.group);
       const c = { h, x, z, y: v.y, r: 0.32, unit: u, state: 'chase', health: 100, attack: 0, isCop: true, shout: Math.random() * 3 };
+      h.owner = c;
       this.cops.push(c);
       u.onFoot.push(c);
     }
@@ -143,11 +215,13 @@ export class Police {
     });
   }
 
-  hitCop(c, dmg, fx, fz, kick) {
+  hitCop(c, dmg, fx, fz, kick, lethal = false) {
+    if (c.dead) return;
     c.health -= dmg;
     this.audio?.punch(kick);
     this.audio?.grunt(false);
-    if (c.health <= 0 || kick) { c.state = 'down'; c.timer = 5; c.vx = fx * (kick ? 6 : 3); c.vz = fz * (kick ? 6 : 3); }
+    if (lethal && c.health <= 0) { c.dead = true; c.state = 'down'; c.timer = 1e9; c.vx = fx * 4; c.vz = fz * 4; c.h.weaponMesh && (c.h.weaponMesh.visible = false); }
+    else if (c.health <= 0 || kick) { c.state = 'down'; c.timer = 5; c.vx = fx * (kick ? 6 : 3); c.vz = fz * (kick ? 6 : 3); }
     else { c.x += fx * 0.6; c.z += fz * 0.6; }
   }
 
@@ -159,6 +233,7 @@ export class Police {
       c.x += c.vx * dt; c.z += c.vz * dt; c.vx *= Math.exp(-5 * dt); c.vz *= Math.exp(-5 * dt);
       h.group.rotation.x += (-Math.PI / 2 - h.group.rotation.x) * Math.min(1, dt * 8);
       poseDown(h);
+      if (c.dead && c.unit) { c.unit.onFoot = c.unit.onFoot.filter((q) => q !== c); c.unit = null; }
       c.timer -= dt;
       if (c.timer <= 0) { c.state = 'chase'; c.health = 70; h.group.rotation.x = 0; }
     } else {
@@ -170,6 +245,18 @@ export class Police {
       h.group.rotation.y = Math.atan2(dx, dz);
       if (target === pl && d < 1.25) {
         if (c.attack <= 0 && Math.random() < dt * 1.6) c.attack = 0.7;
+      }
+      // At three stars, or when you've got a gun out, the constables draw their revolvers.
+      const gunOut = WEAPONS[pl.weapon]?.kind === 'gun' && !pl.vehicle;
+      const armed = this.level >= 3 || (this.level >= 2 && gunOut);
+      if (armed && !c.armed) { c.armed = true; equip(h, 'revolver'); }
+      if (c.armed && target === pl && d > 2.5 && d < 26 && c.attack <= 0 && this.lineOfSight(c.x, c.z, pl.pos.x, pl.pos.z)) {
+        c.fireCd = (c.fireCd ?? 1 + Math.random()) - dt;
+        poseAim(h, 0);
+        if (c.fireCd <= 0) { c.fireCd = 1.1 + Math.random() * 0.9; npcFire(world, h, c, 'revolver', 0.3); }
+        c.y = this.layout.groundHeight(c.x, c.z, c.y);
+        h.group.position.set(c.x, c.y, c.z);
+        return;
       }
       if (c.attack > 0) {
         c.attack -= dt;
@@ -216,37 +303,42 @@ export class Police {
     }
     if (u.state === 'leave') {
       v.siren = false;
-      if (!u.path.length || u.replan <= 0) { u.path = this.route(v.x, v.z, v.x + (v.x - px), v.z + (v.z - pz)); u.replan = 5; }
+      if (!u.goal) u.goal = { x: v.x + (v.x - px), z: v.z + (v.z - pz) };
     } else if (u.state === 'parked') {
       v.update(dt, { throttle: 0, steer: 0, handbrake: true }, world);
       return;
     }
     u.replan -= dt;
-    const los = d < 70 && this.lineOfSight(v.x, v.z, px, pz);
+    // Ram directly only when nothing at all (kerbs, medians, piers) is in the way.
+    const los = d < 45 && this.clearPath(v.x, v.z, px, pz);
+    let turn = { ang: 0, dist: Infinity };
     if (u.state === 'pursue' && los) {
       // Lead the target a little and ram.
       aimX = px + (tgt.vx || 0) * 0.5; aimZ = pz + (tgt.vz || 0) * 0.5;
       if (!pl.vehicle && d < 14) throttle = d < 8 ? -0.6 : 0.3;
     } else {
-      if (u.replan <= 0 || !u.path.length) { u.path = u.state === 'leave' ? u.path : this.route(v.x, v.z, px, pz); u.replan = 2.5; }
-      // Drop reached junctions, or ones we're already past (driving along the next road segment).
-      while (u.path.length > 1) {
-        const a = u.path[0], b = u.path[1];
-        const abx = b.x - a.x, abz = b.z - a.z, L = Math.hypot(abx, abz) || 1;
-        const t = ((v.x - a.x) * abx + (v.z - a.z) * abz) / (L * L);
-        const off = Math.abs((v.x - a.x) * abz - (v.z - a.z) * abx) / L;
-        if (Math.hypot(a.x - v.x, a.z - v.z) < 9 || (t > 0 && t < 1 && off < 9)) u.path.shift();
-        else break;
+      const goal = u.state === 'leave' ? u.goal : { x: px, z: pz };
+      if (u.replan <= 0 || !u.pts || (u.state !== 'leave' && Math.hypot(u.goal.x - px, u.goal.z - pz) > 35)) {
+        const g = u.state === 'leave' ? { x: v.x + (v.x - px), z: v.z + (v.z - pz) } : goal;
+        u.goal = g;
+        u.pts = [{ x: v.x, z: v.z }, ...this.route(v.x, v.z, g.x, g.z, v.heading), { x: g.x, z: g.z }];
+        u.seg = 0;
+        u.replan = 4;
       }
-      const wp = u.path[0] || { x: px, z: pz };
-      aimX = wp.x; aimZ = wp.z;
+      const r = this.pursuit(u, u.pts, v, 7 + v.speed * 0.7);
+      aimX = r.aim.x; aimZ = r.aim.z;
+      turn = r.turn;
     }
     let diff = wrap(Math.atan2(aimX - v.x, aimZ - v.z) - v.heading);
     let steer = Math.max(-1, Math.min(1, diff * 2.2));
-    if (Math.abs(diff) > 1.3 && v.speed > 9) throttle = 0.2;
     if (v.speed > (los ? 30 : 26)) throttle = Math.min(throttle, 0); // ~95 km/h through town
-    // Slow for the turn at the next junction.
-    if (!los && u.path.length > 1 && Math.hypot(aimX - v.x, aimZ - v.z) < 35 && v.speed > 12) throttle = -0.3;
+    // Brake for corners: the tyres only hold so much. Work out the speed for the turn we're in
+    // and for the one at the next junction, and slow down in time for it.
+    const cornerV = (ang) => (ang < 0.15 ? 40 : Math.max(6.5, Math.sqrt(110 / ang)));
+    let vAllowed = cornerV(Math.abs(diff) * 0.7);
+    if (turn.ang > 0.15) vAllowed = Math.min(vAllowed, Math.sqrt(cornerV(turn.ang) ** 2 + 2 * 7 * Math.max(0, turn.dist - 8)));
+    if (v.speed > vAllowed + 1.5) throttle = -1;
+    else if (v.speed > vAllowed) throttle = Math.min(throttle, 0.1);
     if (Math.abs(diff) > 2.4 && d < 25 && v.speed < 4) { throttle = -0.8; steer = -steer; }
     // Unstick by reversing.
     if (u.reverse > 0) { u.reverse -= dt; throttle = -1; steer = -u.revSteer; }
@@ -255,10 +347,12 @@ export class Police {
     v.update(dt, { throttle, steer, handbrake: false }, world);
 
     // Officers get out to arrest a player on foot.
-    if (u.state === 'pursue' && !pl.vehicle && !pl.dead && d < 15 && v.speed < 2.5 && u.officers > 0) this.spawnCops(u, world);
+    u.slow = v.speed < 2.5 ? (u.slow || 0) + dt : 0;
+    if (u.state === 'pursue' && !pl.vehicle && !pl.dead && u.officers > 0 && ((d < 15 && v.speed < 2.5) || (d < 40 && u.slow > 2))) this.spawnCops(u, world);
   }
 
   update(dt, world) {
+    this.time = (this.time || 0) + dt;
     const pl = world.player;
     const p = pl.pos;
     this.spawnCd -= dt;
@@ -294,7 +388,7 @@ export class Police {
       const c = this.cops[i];
       this.updateCop(c, dt, world);
       const far = Math.hypot(c.x - p.x, c.z - p.z) > 150;
-      if (c.state === 'gone' || (c.state === 'leave' && far) || (far && this.level === 0)) {
+      if (c.state === 'gone' || (c.state === 'leave' && far) || (far && (this.level === 0 || c.dead))) {
         this.scene.remove(c.h.group);
         this.cops.splice(i, 1);
         if (c.unit) c.unit.onFoot = c.unit.onFoot.filter((q) => q !== c);

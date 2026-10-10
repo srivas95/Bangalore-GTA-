@@ -32,6 +32,13 @@ export class HUD {
       clock: $('clock'), health: $('health'), damage: $('damage'), screen: $('screen'), screenTitle: $('screen-title'), screenSub: $('screen-sub'),
     };
     this.mini = $('minimap');
+    // Weapon readout (top right, under the stars) and the aiming reticle.
+    this.el.weapon = document.createElement('div');
+    this.el.weapon.id = 'weapon';
+    document.getElementById('top-right').appendChild(this.el.weapon);
+    this.el.cross = document.createElement('div');
+    this.el.cross.id = 'crosshair';
+    document.getElementById('hud').appendChild(this.el.cross);
     this.miniCtx = this.mini.getContext('2d');
     this.mapCanvas = this.renderMap(MAP_SCALE);
     this.lastDistrict = null;
@@ -100,6 +107,12 @@ export class HUD {
     this._hp = v;
     this.el.health.style.setProperty('--hp', v / 100);
     this.el.health.classList.toggle('low', v < 30);
+  }
+
+  setWeapon(name, clip, ammo, reloading, aiming, gun) {
+    const txt = gun ? `${name}  ${reloading ? 'reloading…' : `${clip} / ${ammo}`}` : name === 'Fists' ? '' : name;
+    if (this._w !== txt) { this._w = txt; this.el.weapon.textContent = txt; this.el.weapon.style.display = txt ? 'block' : 'none'; }
+    this.el.cross.style.display = aiming ? 'block' : 'none';
   }
 
   setClock(text, weather) {

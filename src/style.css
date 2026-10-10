@@ -82,3 +82,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 /* Vehicle condition bar under the speedometer. */
 .vhp { width: 92px; height: 5px; margin: 4px 0 0 auto; background: rgba(0, 0, 0, 0.45); border-radius: 3px; overflow: hidden; }
 .vhp i { display: block; height: 100%; width: 100%; transition: width 0.25s, background 0.25s; }
+
+#weapon { margin-top: 6px; font: 600 15px var(--hud-font); color: #fff; text-shadow: 0 1px 3px #000; text-align: right; display: none; }
+#crosshair { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; display: none; pointer-events: none; }
+#crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 2px #000; }
+#crosshair::before { left: 7px; top: 0; width: 2px; height: 16px; }
+#crosshair::after { top: 7px; left: 0; height: 2px; width: 16px; }

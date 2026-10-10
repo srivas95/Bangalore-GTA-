@@ -294,6 +294,19 @@ export class Audio {
     this.noiseBurst(0.5 * strength, 220, 0.25, 'lowpass');
   }
 
+  // A sharp crack with a body; the katta is a cruder, boomier bang.
+  gunshot(kind = 'revolver', x, z, camera) {
+    if (!this.enabled) return;
+    const g = x !== undefined && camera ? this.distGain(x, z, camera, 40) : 1;
+    this.noiseBurst(0.7 * g, 3200, 0.07, 'highpass');
+    this.noiseBurst((kind === 'katta' ? 0.9 : 0.6) * g, kind === 'katta' ? 260 : 420, kind === 'katta' ? 0.5 : 0.3, 'lowpass');
+  }
+
+  click() {
+    if (!this.enabled) return;
+    this.noiseBurst(0.15, 4000, 0.03, 'highpass');
+  }
+
   splash() {
     if (!this.enabled) return;
     this.noiseBurst(0.25, 2500, 0.4, 'bandpass');

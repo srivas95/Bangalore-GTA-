@@ -53,11 +53,16 @@ export class CameraRig {
     } else {
       tx = player.x; tz = player.z; ty = player.y + 1.55;
       baseDist = 4.2;
+      if (player.aiming) {
+        // Over the right shoulder.
+        baseDist = 2.1;
+        tx += Math.cos(this.yaw) * 0.55; tz -= Math.sin(this.yaw) * 0.55; ty += 0.1;
+      }
     }
     // Pull back a little at speed.
     const sp = v ? Math.min(1, v.speed / 30) : 0;
-    const want = baseDist * this.zoom * (1 + sp * 0.35);
-    this.dist += (want - this.dist) * Math.min(1, dt * 3);
+    const want = baseDist * (player.aiming ? 1 : this.zoom) * (1 + sp * 0.35);
+    this.dist += (want - this.dist) * Math.min(1, dt * (player.aiming ? 10 : 3));
     const lerp = this.first ? 1 : Math.min(1, dt * 12);
     this.target.lerp(this.current.set(tx, ty, tz), lerp);
     this.first = false;
@@ -81,7 +86,7 @@ export class CameraRig {
     }
     cam.lookAt(this.target);
     // Speed-based FOV kick.
-    const fov = 62 + sp * 12;
+    const fov = player.aiming ? 50 : 62 + sp * 12;
     if (Math.abs(cam.fov - fov) > 0.05) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
   }
 }

@@ -265,3 +265,32 @@ export function poseHandsUp(h, t) {
   b.elL.rotation.z = -0.3; b.elR.rotation.z = 0.3;
   b.neck.rotation.x = Math.sin(t * 3) * 0.05;
 }
+
+// Pointing a pistol: right arm straight out at the target, left hand cupping the grip.
+// pitch: radians above (+) or below (-) horizontal.
+export function poseAim(h, pitch = 0, recoil = 0) {
+  reset(h);
+  const b = h.bones;
+  b.shR.rotation.x = -Math.PI / 2 - pitch - recoil * 0.25;
+  b.elR.rotation.x = -0.05 - recoil * 0.3;
+  b.shL.rotation.x = -Math.PI / 2 - pitch + 0.15;
+  b.shL.rotation.z = -0.55;
+  b.elL.rotation.x = -0.35;
+  b.elL.rotation.z = 0.5;
+  b.chest.rotation.y = 0.2;
+  b.thL.rotation.x = -0.15; b.thR.rotation.x = 0.1;
+}
+
+// A flat, two-handed swing (bat, chain, sickle): wind up behind the right shoulder, sweep across.
+export function poseSwing(h, k) {
+  reset(h);
+  const b = h.bones;
+  const wind = k < 0.35 ? k / 0.35 : 1;
+  const sweep = k < 0.35 ? 0 : Math.min(1, (k - 0.35) / 0.3);
+  b.shR.rotation.x = -1.3 - 0.4 * wind + sweep * 0.3;
+  b.shR.rotation.z = 0.9 * wind - sweep * 1.6;
+  b.elR.rotation.x = -1.0 + sweep * 0.8;
+  b.shL.rotation.x = -1.2; b.elL.rotation.x = -1.2; b.shL.rotation.z = -0.3 - sweep * 0.5;
+  b.chest.rotation.y = 0.7 * wind - sweep * 1.4;
+  b.thL.rotation.x = -0.35; b.knL.rotation.x = 0.35; b.thR.rotation.x = 0.2;
+}

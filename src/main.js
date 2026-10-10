@@ -19,6 +19,8 @@ import { StreetLife } from './entities/pedestrians.js';
 import { Player } from './entities/player.js';
 import { Vehicle, damageFromSpeed } from './entities/vehicle.js';
 import { Particles } from './systems/particles.js';
+import { Pickups, WEAPONS } from './systems/weapons.js';
+import { Gangs } from './entities/gangs.js';
 import { HUD } from './ui/hud.js';
 import { LINES, CURB_H, METRO_LINES, RAILWAY } from './config.js';
 
@@ -112,6 +114,8 @@ async function init() {
   const police = new Police(scene, layout, colliders, hud, audio);
   env.onThunder = (delay) => audio.thunder(delay, 0.6 + Math.random() * 0.4);
   const particles = new Particles(scene);
+  const gangs = new Gangs(scene, layout, colliders);
+  const pickups = new Pickups(scene);
 
   const world = {
     layout, colliders, traffic, streetLife, audio, hud, camera, police, player, signals,
@@ -122,15 +126,17 @@ async function init() {
     get hour() { return env.hour; },
     trafficScale: 1, pedScale: 1, initialFill: true,
     shake: (a) => rig.shake(a),
-    particles,
+    particles, gangs, pickups,
+    money: (n) => missions.addMoney(n),
     crime: (reason, x, z, stars) => police.crime(reason, x, z, stars, world),
   };
 
   // ---------- Crashes and explosions ----------
   world.onVehicleImpact = (a, b, speed, cx, cz) => {
     const share = (m1, m2) => (2 * m2) / (m1 + m2);
-    a.takeDamage(damageFromSpeed(speed * Math.min(1.6, share(a.mass, b.mass)) * 0.75), cx, cz, world);
-    b.takeDamage(damageFromSpeed(speed * Math.min(1.6, share(b.mass, a.mass)) * 0.75), cx, cz, world);
+    const k = (v) => (v.driver === 'police' ? 0.5 : 1);
+    a.takeDamage(damageFromSpeed(speed * Math.min(1.6, share(a.mass, b.mass)) * 0.75) * k(a), cx, cz, world);
+    b.takeDamage(damageFromSpeed(speed * Math.min(1.6, share(b.mass, a.mass)) * 0.75) * k(b), cx, cz, world);
     if (speed > 6) particles.burst('spark', cx, 0.7, cz, Math.min(14, Math.round(speed)), 4, 0.8);
     if (speed > 4) audio.crunch?.(Math.min(1, speed / 18));
     // A traffic vehicle that's been killed stays where it died.
@@ -166,6 +172,69 @@ async function init() {
       v.takeDamage(70 * (1 - d / 9), x, z, world);
       if (v.driver !== 'ai') { const k = (1 - d / 9) * 9000 / v.mass; v.vx += ((v.x - x) / (d || 1)) * k; v.vz += ((v.z - z) / (d || 1)) * k; v.angVel += (Math.random() - 0.5) * k * 0.4; }
     }
+  };
+
+  // ---------- Gunfire ----------
+  world.gunfire = (x, z, npc) => {
+    streetLife.panic(x, z, 45);
+    if (!npc) world.crime('Firing a gun', x, z, 2);
+  };
+  world.bulletHit = (hit, w, dir, shooter) => {
+    const byPlayer = shooter === player;
+    if (hit.kind === 'person') {
+      const p = hit.target;
+      const dmg = w.dmg * (hit.head ? 2 : 1);
+      particles.burst('blood', hit.x, hit.y, hit.z, 6, 2, 0.4);
+      if (p === player) player.damage(w.dmg * (hit.head ? 0.55 : 0.32), shooter?.x, shooter?.z, world);
+      else if (p.isCop) { police.hitCop(p, dmg, dir.x, dir.z, true, true); if (byPlayer) world.crime(p.dead ? 'Killing a police officer' : 'Shooting a police officer', p.x, p.z, p.dead ? 4 : 3); }
+      else if (p.isGang) gangs.hit(p, dmg, dir.x, dir.z, world, true, true);
+      else { streetLife.hit(p, dmg, dir.x, dir.z, world, true, true); if (byPlayer) world.crime(p.dead ? 'Murder' : 'Shooting someone', p.x, p.z, p.dead ? 3 : 2); }
+    } else if (hit.kind === 'vehicle') {
+      const v = hit.target;
+      v.takeDamage(w.dmg * 0.2, hit.x, hit.z, world);
+      particles.burst('spark', hit.x, hit.y, hit.z, 6, 3, 0.6);
+      audio.crunch(0.15);
+      if (v === player.vehicle && Math.random() < 0.35) player.damage(w.dmg * 0.2, shooter?.x, shooter?.z, world);
+      if (byPlayer && v.driver === 'police') world.crime('Shooting at the police', v.x, v.z, 3);
+    } else if (hit.kind === 'wall') particles.burst('spark', hit.x, hit.y, hit.z, 5, 2.5, 0.6);
+    else particles.burst('dust', hit.x, 0.1, hit.z, 4, 1.5, 0.8);
+  };
+
+  // Weapons lying around: bats in the parks, blades in the markets, machetes in the
+  // industrial yards, and a couple of kattas if you know where to look.
+  {
+    const corner = (b, k) => { const o = b.outer; const c = [[o.minX + 1.6, o.minZ + 1.6], [o.maxX - 1.6, o.minZ + 1.6], [o.maxX - 1.6, o.maxZ - 1.6], [o.minX + 1.6, o.maxZ - 1.6]][k % 4]; return c; };
+    let n = 0, ind = 0, mk = 0;
+    for (const b of layout.blocks) {
+      if (b.edge) continue;
+      if (b.zone === 'park' && n++ % 2 === 0) { const [x, z] = corner(b, n); pickups.add(n % 4 === 0 ? 'lathi' : 'bat', x, z, CURB_H, { respawn: 180 }); }
+      if (b.zone === 'market') { const [x, z] = corner(b, mk); pickups.add(['knife', 'chain', 'sickle'][mk++ % 3], x, z, CURB_H, { respawn: 180 }); }
+      if (b.zone === 'industrial') {
+        const [x, z] = corner(b, ind);
+        const what = ind === 2 || ind === 9 ? 'katta' : ind === 5 ? 'ammo:katta' : ind % 3 === 0 ? 'machete' : null;
+        if (what) pickups.add(what, x, z, CURB_H, { respawn: 240 });
+        ind++;
+      }
+    }
+    // One revolver, at the back of the Yeshwanthpur APMC yard.
+    pickups.add('revolver', -1006, -1166, CURB_H, { respawn: 300 });
+  }
+
+  // Rowdies hang about the markets and yards after dark, and don't like being bothered.
+  let rowdyT = 5;
+  const spawnRowdies = (dt) => {
+    rowdyT -= dt;
+    if (rowdyT > 0) return;
+    rowdyT = 20;
+    const night = env.hour >= 20 || env.hour < 5;
+    const loose = gangs.members.filter((m) => !m.crew && !m.dead).length;
+    if (loose >= (night ? 6 : 2)) return;
+    const blocks = layout.blocks.filter((b) => (b.zone === 'market' || b.zone === 'industrial' || (night && b.zone === 'mixed')) && Math.hypot(b.cx - world.focus.x, b.cz - world.focus.z) < 220 && Math.hypot(b.cx - world.focus.x, b.cz - world.focus.z) > 70);
+    if (!blocks.length) return;
+    const b = blocks[Math.floor(Math.random() * blocks.length)];
+    const o = b.outer, x = o.minX + 2, z = o.minZ + 2 + Math.random() * (o.maxZ - o.minZ - 4);
+    const n = 2 + Math.floor(Math.random() * 2);
+    for (let k = 0; k < n; k++) gangs.spawn(x + Math.random() * 1.5, z + k * 1.2, { weapon: Math.random() < 0.08 ? 'katta' : undefined, name: 'Rowdy' });
   };
 
   // ---------- Busted / wasted ----------
@@ -305,6 +374,9 @@ async function init() {
       v.group.visible = Math.abs(v.x - world.focus.x) < 300 && Math.abs(v.z - world.focus.z) < 300;
     }
     police.update(dt, world);
+    gangs.update(dt, world);
+    pickups.update(dt, world);
+    spawnRowdies(dt);
     world.dynamic.length = 0;
     for (const v of free) world.dynamic.push(v);
     for (const u of police.units) world.dynamic.push(u.v);
@@ -342,13 +414,15 @@ async function init() {
     const markers = missions.markers.slice();
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
     hud.update(dt, player, rig.yaw, markers);
+    { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
+    world.rigPitch = rig.pitch;
     hud.setClock(env.clockString(), env.rain > 0.6 ? '⛈ Monsoon' : env.rain > 0.1 ? '🌧 Rain' : env.night > 0.5 ? '🌙 Clear' : '☀ Clear');
     input.endFrame();
   };
   tick();
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, composer };
+  window.__game = { gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, composer };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.

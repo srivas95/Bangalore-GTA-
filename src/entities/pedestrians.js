@@ -154,12 +154,35 @@ export class StreetLife {
     audio?.thud(0.6);
   }
 
-  // Player melee lands on a pedestrian.
-  hit(p, dmg, dirX, dirZ, world, kick) {
+  // Killed: down for good.
+  kill(p, vx, vz, audio) {
+    if (p.dead) return;
+    if (p.kind === 'crowd' || p.kind === 'stall') this.detach(p);
+    p.state = 'walk'; // so knock() takes effect
+    this.knock(p, vx, vz, audio);
+    p.dead = true; p.deadT = 0; p.health = 0;
+  }
+
+  // Gunfire or a blade nearby: everyone runs.
+  panic(x, z, r) {
+    for (const q of this.peds) {
+      if (q.state === 'down' || q.dead) continue;
+      if (Math.abs(q.x - x) < r && Math.abs(q.z - z) < r) this.scare(q, x, z);
+    }
+  }
+
+  // Player melee (or a bullet) lands on a pedestrian.
+  hit(p, dmg, dirX, dirZ, world, kick, lethal = false) {
+    if (p.dead) return;
     p.health -= dmg;
     world.audio?.punch(kick);
     world.audio?.grunt(p.h.female);
-    if (p.health <= 0 || kick) {
+    if (lethal && p.health <= 0) {
+      this.kill(p, dirX * 5, dirZ * 5, world.audio);
+      this.panic(p.x, p.z, 30);
+      return;
+    }
+    if (p.health <= 0 || (kick && !lethal)) {
       this.knock(p, dirX * (kick ? 7 : 4), dirZ * (kick ? 7 : 4));
       p.afterDown = rng() < 0.2 && !p.h.female ? 'angry' : 'flee';
     } else {
@@ -362,6 +385,7 @@ export class StreetLife {
           if (hit) { p.x = hit.x; p.z = hit.z; p.vx *= -0.3; p.vz *= -0.3; }
           p.h.group.rotation.x += (-Math.PI / 2 - p.h.group.rotation.x) * Math.min(1, dt * 8);
           poseDown(p.h);
+          if (p.dead) { p.deadT += dt; if (p.deadT > 60 && dist > 50) { this.freePed(p, i); continue; } break; }
           p.timer -= dt;
           if (p.timer <= 0) {
             p.h.group.rotation.x = 0;
@@ -374,7 +398,7 @@ export class StreetLife {
       }
       if (p.state !== 'down') p.y = this.layout.groundHeight(p.x, p.z, p.y);
       p.h.group.position.set(p.x, p.y, p.z);
-      if (p.health < 100 && p.state !== 'down') p.health = Math.min(100, p.health + dt * 3);
+      if (p.health < 100 && p.state !== 'down' && !p.dead) p.health = Math.min(100, p.health + dt * 3);
     }
     this.updateCows(dt, world, t);
   }
@@ -411,8 +435,8 @@ export class StreetLife {
       if (dx * dx + dz * dz > 64 || Math.abs(p.y - v.y) > 2) continue;
       for (const c of v.circles(this._c || (this._c = []))) {
         if ((p.x - c.x) ** 2 + (p.z - c.z) ** 2 < (c.r + p.r) ** 2) {
-          this.knock(p, v.vx, v.vz, world.audio);
           if (p.kind !== 'walker' && !p.temp) this.detach(p);
+          if (v.speed > 15) this.kill(p, v.vx, v.vz, world.audio); else this.knock(p, v.vx, v.vz, world.audio);
           if (v.driver === 'player') {
             if (rng() < 0.6) world.hud?.say(`"${pickLine(LINES.bumped)}"`, 2.5);
             world.crime?.('Hit a pedestrian', p.x, p.z, 1);
