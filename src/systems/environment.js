@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { sharedUniforms } from '../world/meshBuilder.js';
 import { floodMaterial } from '../world/infrastructure.js';
-import { WORLD_MIN, WORLD_MAX } from '../config.js';
 
 const DAY_MINUTES = 24; // real minutes per in-game day
 const UNDERPASS_MAX_WATER = 1.0; // metres above the underpass floor at the peak of a storm
@@ -128,11 +127,11 @@ export class Environment {
 
   // One plane at road level: blocks and footpaths are raised by the kerb, so only roads go under.
   buildRoadFlood() {
-    const size = WORLD_MAX - WORLD_MIN;
-    const g = new THREE.PlaneGeometry(size, size);
+    const W = this.layout.world;
+    const g = new THREE.PlaneGeometry(W.maxX - W.minX, W.maxZ - W.minZ);
     g.rotateX(-Math.PI / 2);
     this.flood = new THREE.Mesh(g, floodMaterial);
-    this.flood.position.set((WORLD_MIN + WORLD_MAX) / 2, 0, (WORLD_MIN + WORLD_MAX) / 2);
+    this.flood.position.set((W.minX + W.maxX) / 2, 0, (W.minZ + W.maxZ) / 2);
     this.flood.visible = false;
     this.flood.renderOrder = 2;
     this.scene.add(this.flood);

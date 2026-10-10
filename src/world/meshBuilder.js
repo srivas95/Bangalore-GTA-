@@ -21,6 +21,9 @@ export class MeshBuilder {
     this.boneArr = [];
     this.pbr = [0.6, 0, 0];
     this.bone = 0;
+    // Optional shared frame {ref: {xf}}: xf = {ox, oz, c, s} places local (x, z) at
+    // (ox + x*c + z*s, oz - x*s + z*c), i.e. a rotation about +y by atan2(s, c).
+    this.ref = opts.ref || null;
   }
 
   get empty() {
@@ -28,8 +31,14 @@ export class MeshBuilder {
   }
 
   _vert(p, n, u, v, c) {
-    this.pos.push(p[0], p[1], p[2]);
-    this.nor.push(n[0], n[1], n[2]);
+    const f = this.ref && this.ref.xf;
+    if (f) {
+      this.pos.push(f.ox + p[0] * f.c + p[2] * f.s, p[1], f.oz - p[0] * f.s + p[2] * f.c);
+      this.nor.push(n[0] * f.c + n[2] * f.s, n[1], -n[0] * f.s + n[2] * f.c);
+    } else {
+      this.pos.push(p[0], p[1], p[2]);
+      this.nor.push(n[0], n[1], n[2]);
+    }
     this.uv.push(u, v);
     this.col.push(c.r, c.g, c.b);
     if (this.usePbr) this.pbrArr.push(this.pbr[0], this.pbr[1], this.pbr[2]);
@@ -46,6 +55,12 @@ export class MeshBuilder {
     this._vert(a, n, u0, v0, col);
     this._vert(c, n, u1, v1, col);
     this._vert(d, n, u0, v1, col);
+  }
+
+  // Triangle with an explicit UV per corner.
+  tri(a, b, c, n, ua, ub, uc, color) {
+    const col = color instanceof THREE.Color ? color : _c.set(color ?? 0xffffff);
+    this._vert(a, n, ua[0], ua[1], col); this._vert(b, n, ub[0], ub[1], col); this._vert(c, n, uc[0], uc[1], col);
   }
 
   // Quad with an explicit UV per corner.
@@ -93,11 +108,17 @@ export class MeshBuilder {
     const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
     const col = color instanceof THREE.Color ? color.clone() : new THREE.Color(color ?? 0xffffff);
     _m3.getNormalMatrix(matrix);
+    const f = this.ref && this.ref.xf;
     for (let k = 0; k < p.count; k++) {
       _v.fromBufferAttribute(p, k).applyMatrix4(matrix);
       _n.fromBufferAttribute(n, k).applyMatrix3(_m3).normalize();
-      this.pos.push(_v.x, _v.y, _v.z);
-      this.nor.push(_n.x, _n.y, _n.z);
+      if (f) {
+        this.pos.push(f.ox + _v.x * f.c + _v.z * f.s, _v.y, f.oz - _v.x * f.s + _v.z * f.c);
+        this.nor.push(_n.x * f.c + _n.z * f.s, _n.y, -_n.x * f.s + _n.z * f.c);
+      } else {
+        this.pos.push(_v.x, _v.y, _v.z);
+        this.nor.push(_n.x, _n.y, _n.z);
+      }
       if (uv) this.uv.push(uv.getX(k), uv.getY(k));
       else this.uv.push(0, 0);
       this.col.push(col.r, col.g, col.b);
@@ -188,12 +209,28 @@ export function makePbrMaterial(opts = {}) {
   return mat;
 }
 
+// A local coordinate frame: origin (ox, oz) and rotation `ang` about +y (three.js convention,
+// so local +x maps to (cos, -sin) and local +z to (sin, cos)).
+export function makeFrame(ox, oz, ang) {
+  return { ox, oz, c: Math.cos(ang), s: Math.sin(ang), ang };
+}
+export function frameToWorld(f, x, z) {
+  return f ? [f.ox + x * f.c + z * f.s, f.oz - x * f.s + z * f.c] : [x, z];
+}
+export function worldToFrame(f, x, z) {
+  const dx = x - f.ox, dz = z - f.oz;
+  return [dx * f.c - dz * f.s, dx * f.s + dz * f.c];
+}
+
 export class BuilderSet {
   constructor() {
     this.map = new Map();
+    this.ref = { xf: null }; // shared by every builder in the set
   }
+  get xf() { return this.ref.xf; }
+  set xf(f) { this.ref.xf = f; }
   get(key) {
-    if (!this.map.has(key)) this.map.set(key, new MeshBuilder());
+    if (!this.map.has(key)) this.map.set(key, new MeshBuilder({ ref: this.ref }));
     return this.map.get(key);
   }
   // chunk: split large builders into square cells of this size so meshes can be frustum-culled.

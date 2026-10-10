@@ -1,21 +1,20 @@
 // DOM heads-up display: minimap, district toasts, speedometer, prompts, subtitles, big map.
-import { WORLD_MIN, WORLD_MAX } from '../config.js';
 
 const ZONE_COLOURS = {
   park: '#5d8a46', lake: '#5d8a46', landmark: '#b8ad98', gov: '#a8a090', residential: '#bfb29a',
   commercial: '#c9b9a0', market: '#d0b48c', towers: '#b0b8c0', mixed: '#c4b8a4', industrial: '#a8a4a0',
 };
 const MAP_SCALE = 0.5; // minimap texture pixels per metre
-const METRO_COLOURS = ['#8a3cc0', '#2aa04a'];
 
 const $ = (id) => document.getElementById(id);
 
 export class HUD {
-  constructor(layout, pois, { metroLines = [], railway = null } = {}) {
+  constructor(layout, pois, { metro = [], rails = [] } = {}) {
     this.layout = layout;
     this.pois = pois;
-    this.metroLines = metroLines;
-    this.railway = railway;
+    this.metro = metro;
+    this.rails = rails;
+    this.W = layout.world;
     // District label positions for the big map.
     const acc = new Map();
     for (const b of layout.blocks) {
@@ -49,35 +48,59 @@ export class HUD {
   }
 
   renderMap(scale) {
-    const size = (WORLD_MAX - WORLD_MIN) * scale;
+    const Wd = this.W;
     const c = document.createElement('canvas');
-    c.width = c.height = size;
+    c.width = Math.ceil((Wd.maxX - Wd.minX) * scale);
+    c.height = Math.ceil((Wd.maxZ - Wd.minZ) * scale);
     const ctx = c.getContext('2d');
-    const X = (x) => (x - WORLD_MIN) * scale;
-    ctx.fillStyle = '#6a6460';
-    ctx.fillRect(0, 0, size, size);
-    for (const b of this.layout.blocks) {
-      const o = b.outer;
+    const X = (x) => (x - Wd.minX) * scale, Z = (z) => (z - Wd.minZ) * scale;
+    const poly = (P) => { ctx.beginPath(); P.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.closePath(); };
+    const line = (P) => { ctx.beginPath(); P.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.stroke(); };
+    ctx.fillStyle = '#3a3a3c';
+    ctx.fillRect(0, 0, c.width, c.height);
+    for (const b of [...this.layout.blocks, ...this.layout.islands]) {
       ctx.fillStyle = '#9a9690';
-      ctx.fillRect(X(o.minX), X(o.minZ), (o.maxX - o.minX) * scale, (o.maxZ - o.minZ) * scale);
-      const i = b.inner;
+      poly(b.poly); ctx.fill();
+      if (!b.innerPoly || b.island) continue;
       ctx.fillStyle = ZONE_COLOURS[b.zone] || '#c4b8a4';
-      ctx.fillRect(X(i.minX), X(i.minZ), (i.maxX - i.minX) * scale, (i.maxZ - i.minZ) * scale);
+      poly(b.innerPoly); ctx.fill();
       if (b.zone === 'lake') {
+        const cx = b.cx, cz = b.cz;
         ctx.fillStyle = '#4a86a8';
-        ctx.fillRect(X(i.minX + 9), X(i.minZ + 9), (i.maxX - i.minX - 18) * scale, (i.maxZ - i.minZ - 18) * scale);
+        poly(b.innerPoly.map(([x, z]) => [cx + (x - cx) * 0.85, cz + (z - cz) * 0.85])); ctx.fill();
       }
     }
-    ctx.fillStyle = '#3a3a3c';
-    for (const r of this.layout.roads) {
-      if (r.axis === 'x') ctx.fillRect(X(r.pos - r.width / 2), 0, r.width * scale, size);
-      else ctx.fillRect(0, X(r.pos - r.width / 2), size, r.width * scale);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    // Railway: brown with sleepers.
+    for (const r of this.rails) {
+      ctx.strokeStyle = '#5a3a2a'; ctx.lineWidth = 4; ctx.setLineDash([]); line(r.pts);
+      ctx.strokeStyle = '#c8b090'; ctx.lineWidth = 2; ctx.setLineDash([3, 5]); line(r.pts);
     }
-    // Metro lines and the railway.
-    this.metroLines?.forEach((m, k) => { ctx.fillStyle = METRO_COLOURS[k % 2]; ctx.fillRect(X(m.from), X(m.pos) - 2, (m.to - m.from) * scale, 4); });
-    if (this.railway) { ctx.fillStyle = '#5a3a2a'; ctx.fillRect(X(this.railway.from), X(this.railway.z) - 2, (this.railway.to - this.railway.from) * scale, 4); }
+    ctx.setLineDash([]);
+    // Metro: solid where elevated, dashed underground; station dots.
+    for (const m of this.metro) {
+      const col = '#' + m.color.toString(16).padStart(6, '0');
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 4;
+      const st = m.stations;
+      for (let i = 0; i < st.length - 1; i++) {
+        ctx.setLineDash(st[i].underground && st[i + 1].underground ? [6, 4] : []);
+        line([[st[i].x, st[i].z], [st[i + 1].x, st[i + 1].z]]);
+      }
+      ctx.setLineDash([]);
+      for (const s of st) {
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = col; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(X(s.x), Z(s.z), 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+    }
     ctx.fillStyle = '#2a5a9a';
-    for (const u of this.layout.underpasses) ctx.fillRect(X(u.minX), X(u.minZ), (u.maxX - u.minX) * scale, (u.maxZ - u.minZ) * scale);
+    for (const u of this.layout.underpasses) {
+      const px = -u.uz, pz = u.ux;
+      poly([[u.cx - u.ux * u.half - px * u.hw, u.cz - u.uz * u.half - pz * u.hw], [u.cx + u.ux * u.half - px * u.hw, u.cz + u.uz * u.half - pz * u.hw],
+        [u.cx + u.ux * u.half + px * u.hw, u.cz + u.uz * u.half + pz * u.hw], [u.cx - u.ux * u.half + px * u.hw, u.cz - u.uz * u.half + pz * u.hw]]);
+      ctx.fill();
+    }
     return c;
   }
 
@@ -245,7 +268,7 @@ export class HUD {
     ctx.rotate(camYaw);
     ctx.scale(scale, scale);
     ctx.scale(1 / MAP_SCALE, 1 / MAP_SCALE);
-    ctx.translate(-(p.x - WORLD_MIN) * MAP_SCALE, -(p.z - WORLD_MIN) * MAP_SCALE);
+    ctx.translate(-(p.x - this.W.minX) * MAP_SCALE, -(p.z - this.W.minZ) * MAP_SCALE);
     ctx.drawImage(this.mapCanvas, 0, 0);
     ctx.restore();
     // Markers.
@@ -285,28 +308,32 @@ export class HUD {
   drawBigMap(p, markers) {
     const c = this.el.map.querySelector('canvas');
     const ctx = c.getContext('2d');
-    const S = c.width / (WORLD_MAX - WORLD_MIN);
-    ctx.drawImage(this.mapCanvas, 0, 0, c.width, c.height);
-    const X = (v) => (v - WORLD_MIN) * S;
+    const Wd = this.W;
+    const S = Math.min(c.width / (Wd.maxX - Wd.minX), c.height / (Wd.maxZ - Wd.minZ));
+    const ox = (c.width - (Wd.maxX - Wd.minX) * S) / 2, oz = (c.height - (Wd.maxZ - Wd.minZ) * S) / 2;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(this.mapCanvas, ox, oz, (Wd.maxX - Wd.minX) * S, (Wd.maxZ - Wd.minZ) * S);
+    const X = (v) => ox + (v - Wd.minX) * S, Zm = (v) => oz + (v - Wd.minZ) * S;
     ctx.textAlign = 'center';
     ctx.font = 'bold 15px "Oswald", sans-serif';
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.fillStyle = '#fff';
-    for (const d of this.districtLabels) { ctx.strokeText(d.name.toUpperCase(), X(d.x), X(d.z)); ctx.fillText(d.name.toUpperCase(), X(d.x), X(d.z)); }
+    for (const d of this.districtLabels) { ctx.strokeText(d.name.toUpperCase(), X(d.x), Zm(d.z)); ctx.fillText(d.name.toUpperCase(), X(d.x), Zm(d.z)); }
     ctx.fillStyle = '#ffe9a8';
     ctx.font = 'bold 11px sans-serif';
-    for (const l of this.pois.landmarks) { if (!l) continue; ctx.strokeText('◆ ' + l.name, X(l.x), X(l.z) + 14); ctx.fillText('◆ ' + l.name, X(l.x), X(l.z) + 14); }
+    for (const l of this.pois.landmarks) { if (!l) continue; ctx.strokeText('◆ ' + l.name, X(l.x), Zm(l.z) + 14); ctx.fillText('◆ ' + l.name, X(l.x), Zm(l.z) + 14); }
     ctx.fillStyle = '#9fd8ff';
-    for (const f of this.pois.fuel || []) { ctx.strokeText('⛽ ' + f.name, X(f.x), X(f.z)); ctx.fillText('⛽ ' + f.name, X(f.x), X(f.z)); }
+    for (const f of this.pois.fuel || []) { ctx.strokeText('⛽ ' + f.name, X(f.x), Zm(f.z)); ctx.fillText('⛽ ' + f.name, X(f.x), Zm(f.z)); }
     ctx.lineWidth = 1;
     for (const m of markers) {
       ctx.fillStyle = m.color || '#ffd400';
-      ctx.beginPath(); ctx.arc(X(m.x), X(m.z), 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(X(m.x), Zm(m.z), 7, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#000'; ctx.stroke();
     }
     ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(X(p.x), X(p.z), 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(X(p.x), Zm(p.z), 6, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#e02020'; ctx.lineWidth = 3; ctx.stroke(); ctx.lineWidth = 1;
   }
 }

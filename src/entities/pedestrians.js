@@ -7,38 +7,47 @@ import { MeshBuilder, BuilderSet } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 import { mulberry32 } from '../world/textures.js';
 import { SIDEWALK_W, CURB_H, LINES } from '../config.js';
+import { insetPolygon, polyArea } from '../world/roadnet.js';
 
 const rng = mulberry32(99);
 const rand = (a = 0, b = 1) => a + (b - a) * rng();
 const pickLine = (list) => list[Math.floor(rng() * list.length)];
 
+// A walking loop around a block, half a footpath in from the kerb.
 function loopFor(block) {
-  const o = block.outer, m = SIDEWALK_W * 0.5;
-  const r = { minX: o.minX + m, maxX: o.maxX - m, minZ: o.minZ + m, maxZ: o.maxZ - m };
-  const w = r.maxX - r.minX, d = r.maxZ - r.minZ;
-  return { ...r, w, d, len: 2 * (w + d), cx: (r.minX + r.maxX) / 2, cz: (r.minZ + r.maxZ) / 2, zone: block.zone };
+  const pts = insetPolygon(block.poly, block.poly.map(() => SIDEWALK_W * 0.5));
+  if (!pts) return null;
+  const sgn = Math.sign(polyArea(pts));
+  const segs = [];
+  let len = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, z1] = pts[i], [x2, z2] = pts[(i + 1) % pts.length];
+    const l = Math.hypot(x2 - x1, z2 - z1);
+    if (l < 1e-3) continue;
+    const ux = (x2 - x1) / l, uz = (z2 - z1) / l;
+    segs.push({ x: x1, z: z1, ux, uz, nx: uz * sgn, nz: -ux * sgn, l, t0: len });
+    len += l;
+  }
+  return { segs, len, cx: block.cx, cz: block.cz, zone: block.zone };
 }
 
+// Point at distance t round the loop, `lat` metres out towards the road.
 function loopPoint(L, t, lat) {
   t = ((t % L.len) + L.len) % L.len;
-  if (t < L.w) return { x: L.minX + t, z: L.minZ - lat };
-  t -= L.w;
-  if (t < L.d) return { x: L.maxX + lat, z: L.minZ + t };
-  t -= L.d;
-  if (t < L.w) return { x: L.maxX - t, z: L.maxZ + lat };
-  t -= L.w;
-  return { x: L.minX - lat, z: L.maxZ - t };
+  let s = L.segs[L.segs.length - 1];
+  for (const q of L.segs) { if (t < q.t0 + q.l) { s = q; break; } }
+  const d = t - s.t0;
+  return { x: s.x + s.ux * d + s.nx * lat, z: s.z + s.uz * d + s.nz * lat };
 }
 
 function nearestT(L, x, z) {
-  const c = [
-    [Math.max(0, Math.min(L.w, x - L.minX)), Math.abs(z - L.minZ)],
-    [L.w + Math.max(0, Math.min(L.d, z - L.minZ)), Math.abs(x - L.maxX)],
-    [L.w + L.d + Math.max(0, Math.min(L.w, L.maxX - x)), Math.abs(z - L.maxZ)],
-    [2 * L.w + L.d + Math.max(0, Math.min(L.d, L.maxZ - z)), Math.abs(x - L.minX)],
-  ];
-  c.sort((a, b) => a[1] - b[1]);
-  return c[0][0];
+  let best = 0, bd = Infinity;
+  for (const s of L.segs) {
+    const d = Math.max(0, Math.min(s.l, (x - s.x) * s.ux + (z - s.z) * s.uz));
+    const e = Math.hypot(s.x + s.ux * d - x, s.z + s.uz * d - z);
+    if (e < bd) { bd = e; best = s.t0 + d; }
+  }
+  return best;
 }
 
 const turnTo = (h, target, k) => {
@@ -58,7 +67,7 @@ export class StreetLife {
     this.cows = [];
     this.pool = [];
     this.walkerTarget = 110;
-    this.loops = layout.blocks.filter((b) => !b.edge && b.zone !== 'lake').map(loopFor);
+    this.loops = layout.blocks.filter((b) => b.zone !== 'lake').map(loopFor).filter(Boolean);
     this.crowdNodes = new Map();
     this.stalls = [];
     this.buildChaiStalls();
@@ -119,16 +128,16 @@ export class StreetLife {
 
   spawnCow(focus) {
     for (let tries = 0; tries < 10; tries++) {
-      const roads = this.layout.roads;
-      const r = roads[Math.floor(rng() * roads.length)];
-      const along = (r.axis === 'x' ? focus.z : focus.x) + rand(-300, 300);
-      const lat = (r.width / 2 - 1.2) * (rng() < 0.5 ? -1 : 1);
-      const x = r.axis === 'x' ? r.pos + lat : along, z = r.axis === 'x' ? along : r.pos + lat;
+      const h = this.layout.edgeAt(focus.x + rand(-300, 300), focus.z + rand(-300, 300));
+      if (!h) continue;
+      const e = h.e, ux = (e.b.x - e.a.x) / e.len, uz = (e.b.z - e.a.z) / e.len;
+      const t = rand(0.25, 0.75) * e.len, lat = (e.r.width / 2 - 1.2) * (rng() < 0.5 ? -1 : 1);
+      const x = e.a.x + ux * t - uz * lat, z = e.a.z + uz * t + ux * lat;
       const d = Math.hypot(x - focus.x, z - focus.z);
       if (d < 90 || d > 330 || this.layout.underpassAt(x, z) || this.layout.flyoverAt(x, z)) continue;
       const group = makeCow();
       group.position.set(x, 0, z);
-      group.rotation.y = r.axis === 'x' ? 0 : Math.PI / 2;
+      group.rotation.y = Math.atan2(ux, uz);
       this.scene.add(group);
       this.cows.push({ group, x, z, y: 0, h: group.rotation.y, r: 1.0, timer: rand(2, 10), moving: false, isCow: true });
       return;
@@ -235,10 +244,11 @@ export class StreetLife {
     for (const n of near) {
       if (this.crowdNodes.has(n)) continue;
       const g = { node: n, peds: [] };
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      for (let ci = 0; ci < n.corners.length; ci++) {
+        if (n.corners[ci].gap > Math.PI * 0.9) continue;
         const count = 3 + Math.floor(rng() * 4);
         for (let k = 0; k < count; k++) {
-          const p = this.newPed(this.takeHuman(), { kind: 'crowd', state: 'wait', group: g, node: n, sx, sz, impatience: rng() });
+          const p = this.newPed(this.takeHuman(), { kind: 'crowd', state: 'wait', group: g, node: n, ci, impatience: rng() });
           this.placeAtCorner(p);
           g.peds.push(p);
         }
@@ -247,27 +257,34 @@ export class StreetLife {
     }
   }
 
-  cornerPos(n, sx, sz, spill = 0) {
-    // Impatient people spill off the kerb onto the carriageway.
-    return { x: n.x + sx * (n.hx + 1.6 - spill) + rand(-1.2, 1.2), z: n.z + sz * (n.hz + 1.6 - spill) + rand(-1.2, 1.2) };
+  cornerPos(n, ci, spill = 0) {
+    // On the footpath behind the kerb corner; impatient people spill off it onto the carriageway.
+    const c = n.corners[ci];
+    const dx = c.x - n.x, dz = c.z - n.z, l = Math.hypot(dx, dz) || 1;
+    const d = 2.2 - spill;
+    return { x: c.x + (dx / l) * d + rand(-1.0, 1.0), z: c.z + (dz / l) * d + rand(-1.0, 1.0) };
   }
 
   placeAtCorner(p) {
     const spill = p.impatience > 0.75 ? rand(0.8, 2.0) : 0;
-    const c = this.cornerPos(p.node, p.sx, p.sz, spill);
+    const c = this.cornerPos(p.node, p.ci, spill);
     p.x = c.x; p.z = c.z;
     p.h.group.rotation.y = Math.atan2(p.node.x - p.x, p.node.z - p.z) + rand(-0.6, 0.6);
     p.crossed = false;
   }
 
-  startCrossing(p, overX) {
-    const n = p.node;
-    const zebraZ = n.z + p.sz * (n.hz + 2.1), zebraX = n.x + p.sx * (n.hx + 2.1);
-    const pts = overX
-      ? [{ x: n.x + p.sx * (n.hx + 0.3), z: zebraZ }, { x: n.x - p.sx * (n.hx + 0.3), z: zebraZ }]
-      : [{ x: zebraX, z: n.z + p.sz * (n.hz + 0.3) }, { x: zebraX, z: n.z - p.sz * (n.hz + 0.3) }];
-    if (overX) p.sx = -p.sx; else p.sz = -p.sz;
-    const end = this.cornerPos(n, p.sx, p.sz);
+  // Cross one of the two roads either side of this corner, along its zebra.
+  startCrossing(p, forward) {
+    const n = p.node, k = n.corners.length;
+    const c = n.corners[p.ci];
+    const h = n.adj[forward ? c.b : c.a];
+    const cut = n.cut.get(h.e.id) || 0;
+    const px = -h.u.z, pz = h.u.x, s = forward ? -1 : 1;
+    const Z = (side) => ({ x: n.x + h.u.x * (cut + 2.1) + px * (h.w + 0.3) * side, z: n.z + h.u.z * (cut + 2.1) + pz * (h.w + 0.3) * side });
+    const pts = [Z(s), Z(-s)];
+    p.ci = forward ? (p.ci + 1) % k : (p.ci - 1 + k) % k;
+    if (n.corners[p.ci].gap > Math.PI * 0.9) p.ci = forward ? (p.ci + 1) % k : (p.ci - 1 + k) % k;
+    const end = this.cornerPos(n, p.ci);
     p.route = [...pts, end];
     p.state = 'cross';
   }

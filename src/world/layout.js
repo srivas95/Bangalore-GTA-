@@ -1,217 +1,449 @@
-// Derived map data: road geometry, city blocks, the traffic graph, underpasses, flyovers and spatial queries.
-import {
-  X_ROADS, Z_ROADS, BLOCKS, JUNCTIONS, RAILWAY, UNDERPASSES, UNDERPASS, FLYOVERS, defaultBlockInfo,
-  LANE_W, SIDEWALK_W, CURB_H, WORLD_MIN, WORLD_MAX,
-} from '../config.js';
-
-export function roadWidth(r) {
-  return r.lanes * 2 * LANE_W + (r.median || 0);
-}
+// Derived map data on the real road network: junctions (with corner geometry), directed traffic
+// edges, polygon city blocks, underpasses, flyovers, the railway, and spatial queries.
+import { buildRoadNet, insetPolygon, simplifyLoop, polyArea, pointInPoly, LANE_W, SIDEWALK_W } from './roadnet.js';
+import * as MD from './mapdata.js';
+import { CURB_H, UNDERPASS } from '../config.js';
 
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const RASTER = 4;
 
 export class Layout {
   constructor() {
-    this.xRoads = X_ROADS.map((r, i) => ({ ...r, axis: 'x', index: i, width: roadWidth(r) }));
-    this.zRoads = Z_ROADS.map((r, i) => ({ ...r, axis: 'z', index: i, width: roadWidth(r) }));
-    this.roads = [...this.xRoads, ...this.zRoads];
-    this.buildBlocks();
+    let seed = 1203;
+    this.rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    this.world = MD.WORLD;
+    const avoid = [...MD.PARKS.map((p) => p.poly), ...MD.LAKES.map((l) => l.poly)];
+    const net = buildRoadNet({ world: this.world, arterials: MD.ARTERIALS, avoid, rng: this.rng, spacing: 150 });
+    this.net = net;
+    this.roads = net.roads.filter((r) => !r.boundary);
+    this.buildGraph(net);
+    this.buildBlocks(net);
     this.buildFeatures();
-    this.buildGraph();
+    this.buildIndex();
   }
 
-  findRoad(name) {
-    return this.roads.find((r) => r.names.some((n) => n[1] === name));
-  }
+  findRoad(name) { return this.roads.find((r) => r.name === name); }
+  roadName(r) { return r.name; }
+  laneOffset(road, lane) { return (road.median || 0) / 2 + (lane + 0.5) * LANE_W; }
 
-  // Display name of a road at a coordinate along it.
-  roadName(r, x, z) {
-    const along = r.axis === 'x' ? z : x;
-    for (const [upTo, name] of r.names) if (along < upTo) return name;
-    return r.names[r.names.length - 1][1];
-  }
-
-  buildBlocks() {
-    const xs = this.xRoads, zs = this.zRoads;
-    this.blocks = [];
-    this.blockGrid = [];
-    const ni = xs.length + 1, nj = zs.length + 1;
-    this.xEdges = [WORLD_MIN, ...xs.map((r) => r.pos), WORLD_MAX];
-    this.zEdges = [WORLD_MIN, ...zs.map((r) => r.pos), WORLD_MAX];
-    for (let i = 0; i < ni; i++) {
-      this.blockGrid[i] = [];
-      for (let j = 0; j < nj; j++) {
-        const outer = {
-          minX: i === 0 ? WORLD_MIN : xs[i - 1].pos + xs[i - 1].width / 2,
-          maxX: i === ni - 1 ? WORLD_MAX : xs[i].pos - xs[i].width / 2,
-          minZ: j === 0 ? WORLD_MIN : zs[j - 1].pos + zs[j - 1].width / 2,
-          maxZ: j === nj - 1 ? WORLD_MAX : zs[j].pos - zs[j].width / 2,
-        };
-        const inner = {
-          minX: outer.minX + (i === 0 ? 0 : SIDEWALK_W),
-          maxX: outer.maxX - (i === ni - 1 ? 0 : SIDEWALK_W),
-          minZ: outer.minZ + (j === 0 ? 0 : SIDEWALK_W),
-          maxZ: outer.maxZ - (j === nj - 1 ? 0 : SIDEWALK_W),
-        };
-        const cx = (outer.minX + outer.maxX) / 2, cz = (outer.minZ + outer.maxZ) / 2;
-        const edge = i === 0 || j === 0 || i === ni - 1 || j === nj - 1;
-        let info = defaultBlockInfo(cx, cz);
-        const o = BLOCKS.find((b) => b.at[0] > outer.minX && b.at[0] < outer.maxX && b.at[1] > outer.minZ && b.at[1] < outer.maxZ);
-        if (o) info = { ...info, ...o };
-        if (edge && !o) info = { ...info, zone: info.zone === 'park' ? 'park' : info.zone === 'industrial' ? 'industrial' : 'mixed' };
-        const block = { i, j, outer, inner, edge, cx, cz, ...info };
-        this.blocks.push(block);
-        this.blockGrid[i][j] = block;
+  // ---------- junctions and traffic edges ----------
+  buildGraph(net) {
+    this.nodes = net.nodes;
+    for (const n of this.nodes) {
+      n.adj = n.adj.filter((h) => !h.e.r.boundary).map((h) => {
+        const dx = h.to.x - n.x, dz = h.to.z - n.z, l = Math.hypot(dx, dz) || 1;
+        return { ...h, u: { x: dx / l, z: dz / l }, w: h.e.r.width / 2 };
+      });
+      n.out = [];
+      n.cut = new Map();
+      n.corners = [];
+    }
+    this.nodes = this.nodes.filter((n) => n.adj.length > 0);
+    this.nodes.forEach((n, i) => { n.id = i; });
+    // Corner points between neighbouring roads, and how far back each road must stop.
+    for (const n of this.nodes) {
+      const k = n.adj.length;
+      const need = new Array(k).fill(0);
+      for (let i = 0; i < k; i++) {
+        const A = n.adj[i], Bh = n.adj[(i + 1) % k];
+        if (k === 1) break;
+        let gap = Math.atan2(Bh.u.z, Bh.u.x) - Math.atan2(A.u.z, A.u.x);
+        while (gap <= 0) gap += Math.PI * 2;
+        const pa = { x: -A.u.z, z: A.u.x }, pb = { x: Bh.u.z, z: -Bh.u.x }; // kerb sides facing each other
+        let s = 0, t = 0, cx, cz;
+        if (gap < Math.PI * 0.94 || k === 2) {
+          // Solve n + uA s + pa wA = n + uB t + pb wB.
+          const rx = pb.x * Bh.w - pa.x * A.w, rz = pb.z * Bh.w - pa.z * A.w;
+          const det = A.u.x * -Bh.u.z - A.u.z * -Bh.u.x;
+          if (Math.abs(det) > 0.05) {
+            s = (rx * -Bh.u.z - rz * -Bh.u.x) / det;
+            t = (A.u.x * rz - A.u.z * rx) / det;
+          }
+        }
+        s = Math.max(0, Math.min(60, s)); t = Math.max(0, Math.min(60, t));
+        cx = n.x + A.u.x * s + pa.x * A.w; cz = n.z + A.u.z * s + pa.z * A.w;
+        if (gap >= Math.PI * 0.94 && k > 2) { cx = n.x + pa.x * A.w; cz = n.z + pa.z * A.w; }
+        n.corners.push({ x: cx, z: cz, a: i, b: (i + 1) % k, gap, s, t });
+        need[i] = Math.max(need[i], s); need[(i + 1) % k] = Math.max(need[(i + 1) % k], t);
       }
+      // A gentle bend with two roads is a "through" node: the carriageways just meet.
+      let straight = false;
+      if (k === 2) {
+        const d = Math.acos(Math.max(-1, Math.min(1, n.adj[0].u.x * n.adj[1].u.x + n.adj[0].u.z * n.adj[1].u.z)));
+        straight = d > Math.PI - 0.45 && Math.abs(n.adj[0].w - n.adj[1].w) < 0.1;
+      }
+      n.through = straight || k === 1;
+      n.adj.forEach((h, i) => {
+        const cut = n.through ? 0 : Math.min(need[i] + 1.5, h.e.len * 0.42);
+        n.cut.set(h.e.id, Math.max(n.through ? 0 : Math.min(h.e.len * 0.42, Math.max(...n.adj.map((q) => q.w)) * 0.8), cut));
+      });
+      // Signals where arterials meet (a side street joining an arterial just merges).
+      const arts = n.adj.filter((h) => !h.e.r.grid);
+      n.signal = !n.through && k >= 3 && (new Set(arts.map((h) => h.e.r.name)).size >= 2 || arts.length >= 3);
+    }
+    for (const [name, lat, lon] of MD.JUNCTION_NAMES) {
+      const [x, z] = MD.geo(lat, lon);
+      let best = null, bd = 70;
+      for (const n of this.nodes) { const d = Math.hypot(n.x - x, n.z - z); if (d < bd && !n.through) { bd = d; best = n; } }
+      if (best) { best.name = name; if (best.adj.length >= 3) best.signal = true; }
+    }
+    // Directed edges for traffic.
+    this.edges = [];
+    for (const e of net.edges) {
+      if (e.r.boundary || !this.nodes.includes(e.a) || !this.nodes.includes(e.b)) continue;
+      const mk = (from, to) => {
+        const dx = to.x - from.x, dz = to.z - from.z, l = Math.hypot(dx, dz) || 1;
+        const d = { id: this.edges.length, from, to, road: e.r, und: e, dir: { x: dx / l, z: dz / l }, len: l, cutFrom: from.cut.get(e.id) || 0, cutTo: to.cut.get(e.id) || 0 };
+        this.edges.push(d);
+        from.out.push(d);
+        return d;
+      };
+      const ab = mk(e.a, e.b), ba = mk(e.b, e.a);
+      ab.rev = ba; ba.rev = ab;
+      e.dirs = [ab, ba];
+    }
+    this.undirected = net.edges.filter((e) => e.dirs);
+  }
+
+  // The kerb corner points where edge `e` meets node `n`: [left, right] seen leaving the node.
+  edgeEnd(n, e) {
+    const i = n.adj.findIndex((h) => h.e === e);
+    const h = n.adj[i];
+    const cut = n.cut.get(e.id) || 0;
+    const p = { x: -h.u.z, z: h.u.x };
+    if (n.through && n.adj.length === 2) {
+      const cA = n.corners[i], cB = n.corners[(i - 1 + n.adj.length) % n.adj.length];
+      return [[cA.x, cA.z], [cB.x, cB.z]];
+    }
+    return [[n.x + h.u.x * cut + p.x * h.w, n.z + h.u.z * cut + p.z * h.w], [n.x + h.u.x * cut - p.x * h.w, n.z + h.u.z * cut - p.z * h.w]];
+  }
+
+  // ---------- city blocks ----------
+  buildBlocks(net) {
+    const areas = net.faces.map((f) => polyArea(f.map((h) => [h.node.x, h.node.z])));
+    let outer = 0;
+    areas.forEach((a, i) => { if (Math.abs(a) > Math.abs(areas[outer])) outer = i; });
+    const sign = -Math.sign(areas[outer]);
+    this.blocks = [];
+    this.islands = [];
+    const W = this.world;
+    net.faces.forEach((f, i) => {
+      if (i === outer || Math.sign(areas[i]) !== sign) return;
+      const pts = simplifyLoop(f);
+      const poly = pts.map((p) => [p.x, p.z]);
+      const out = insetPolygon(poly, pts.map((p) => p.w / 2));
+      if (!out) return;
+      const inner = insetPolygon(out, pts.map((p) => (p.w ? SIDEWALK_W : 0)));
+      let cx = 0, cz = 0;
+      for (const [x, z] of out) { cx += x; cz += z; }
+      cx /= out.length; cz /= out.length;
+      const xs = out.map((p) => p[0]), zs = out.map((p) => p[1]);
+      const bbox = { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
+      const block = {
+        id: this.blocks.length, poly: out, innerPoly: inner, edgeWidths: pts.map((p) => p.w), roadPoly: poly,
+        cx, cz, bbox, area: Math.abs(polyArea(out)),
+        edge: pts.some((p) => p.w === 0) || bbox.minX < W.minX + 1 || bbox.maxX > W.maxX - 1 || bbox.minZ < W.minZ + 1 || bbox.maxZ > W.maxZ - 1,
+      };
+      if (!inner || block.area < 600) { block.island = true; this.islands.push(block); return; }
+      Object.assign(block, this.blockInfo(block));
+      // Axis-aligned rectangle inside the block, for landmarks and other square layouts.
+      block.inner = this.innerRect(inner, cx, cz);
+      block.outer = bbox;
+      this.blocks.push(block);
+    });
+    this.assignSpecials();
+  }
+
+  // Landmarks go in the block at their real location, or the nearest one big enough to hold them.
+  assignSpecials() {
+    const NEED = { vidhanaSoudha: [104, 84], highCourt: [80, 40], stadium: [60, 60], iskcon: [74, 60], wtc: [66, 46], ibcPlatinumCity: [100, 100],
+      forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60] };
+    const fits = (b, s) => { const [nw, nd] = NEED[s.landmark] || [30, 30]; return !b.special && b.zone !== 'park' && b.zone !== 'lake' && b.inner.maxX - b.inner.minX >= nw && b.inner.maxZ - b.inner.minZ >= nd; };
+    const put = (b, s) => { const { at, ...rest } = s; Object.assign(b, rest, { special: true }); };
+    // First the ones whose own block can hold them, then the rest go to the nearest that can.
+    const rest = [];
+    for (const s of MD.SPECIAL_BLOCKS) {
+      const b = this.blocks.find((q) => pointInPoly(s.at[0], s.at[1], q.poly));
+      if (b && fits(b, s)) put(b, s); else rest.push(s);
+    }
+    for (const s of rest) {
+      let best = null, bd = 380;
+      for (const b of this.blocks) {
+        if (!fits(b, s)) continue;
+        const d = Math.hypot(b.cx - s.at[0], b.cz - s.at[1]);
+        if (d < bd) { bd = d; best = b; }
+      }
+      if (best) put(best, s);
     }
   }
 
-  buildFeatures() {
-    // Underpasses: carriageway dips under a railway or bridge deck.
-    this.underpasses = [];
-    const addUnderpass = (road, at, type, name) => {
-      const hw = road.width / 2;
-      const u = { road, at, type, name, half: UNDERPASS.half, depth: UNDERPASS.depth, flat: UNDERPASS.flat, waterLevel: -UNDERPASS.depth - 0.5 };
-      if (road.axis === 'x') Object.assign(u, { minX: road.pos - hw, maxX: road.pos + hw, minZ: at - u.half, maxZ: at + u.half });
-      else Object.assign(u, { minX: at - u.half, maxX: at + u.half, minZ: road.pos - hw, maxZ: road.pos + hw });
-      this.underpasses.push(u);
-    };
-    for (const r of this.xRoads) if (r.pos > RAILWAY.from && r.pos < RAILWAY.to) addUnderpass(r, RAILWAY.z, 'rail', `${this.roadName(r, r.pos, RAILWAY.z)} Railway Underpass`);
-    for (const u of UNDERPASSES) { const r = this.findRoad(u.road); if (r) addUnderpass(r, u.at, 'road', u.name); }
-
-    this.flyovers = FLYOVERS.map((f) => {
-      const road = this.findRoad(f.road);
-      const hw = (road.median || 0) / 2 + LANE_W; // inner lane each way
-      const fo = { ...f, road, hw };
-      if (road.axis === 'x') Object.assign(fo, { minX: road.pos - hw, maxX: road.pos + hw, minZ: f.at - f.half, maxZ: f.at + f.half });
-      else Object.assign(fo, { minX: f.at - f.half, maxX: f.at + f.half, minZ: road.pos - hw, maxZ: road.pos + hw });
-      return fo;
-    });
+  blockInfo(b) {
+    for (const p of MD.PARKS) if (pointInPoly(b.cx, b.cz, p.poly)) return { zone: 'park', district: p.name, park: p };
+    for (const l of MD.LAKES) if (pointInPoly(b.cx, b.cz, l.poly)) return { zone: 'lake', district: l.name, lakeName: l.name, lake: l };
+    let best = MD.DISTRICTS[0], bd = Infinity;
+    for (const d of MD.DISTRICTS) { const dd = Math.hypot(d.x - b.cx, d.z - b.cz); if (dd < bd) { bd = dd; best = d; } }
+    return { zone: best.zone, district: best.name, pubs: !!best.pubs };
   }
 
-  // Road surface height inside an underpass, as a function of distance along the road.
+  innerRect(poly, cx, cz) {
+    const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]);
+    const hw0 = (Math.max(...xs) - Math.min(...xs)) / 2, hd0 = (Math.max(...zs) - Math.min(...zs)) / 2;
+    const ok = (k) => {
+      const hw = hw0 * k, hd = hd0 * k;
+      for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [1, 0], [0, 1], [-1, 0]]) if (!pointInPoly(cx + sx * hw, cz + sz * hd, poly)) return false;
+      return true;
+    };
+    let lo = 0, hi = 1;
+    for (let it = 0; it < 14; it++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
+    return { minX: cx - hw0 * lo, maxX: cx + hw0 * lo, minZ: cz - hd0 * lo, maxZ: cz + hd0 * lo };
+  }
+
+  // ---------- underpasses, flyovers, railway ----------
+  buildFeatures() {
+    this.underpasses = [];
+    this.levelCrossings = [];
+    this.rails = MD.RAIL_LINES.map((l) => ({ ...l }));
+    const addUnderpass = (e, t, type, name) => {
+      const ax = e.a.x, az = e.a.z;
+      const dx = (e.b.x - ax) / e.len, dz = (e.b.z - az) / e.len;
+      const at = t * e.len;
+      const room = Math.min(at - (e.a.cut?.get(e.id) || 0), e.len - at - (e.b.cut?.get(e.id) || 0));
+      const half = Math.min(UNDERPASS.half, room - 4);
+      if (half < 32) return null;
+      const u = { edge: e, road: e.r, type, name, at, half, depth: UNDERPASS.depth, flat: UNDERPASS.flat, waterLevel: -UNDERPASS.depth - 0.5,
+        cx: ax + dx * at, cz: az + dz * at, ux: dx, uz: dz, hw: e.r.width / 2 };
+      (e.underpasses || (e.underpasses = [])).push(u);
+      this.underpasses.push(u);
+      return u;
+    };
+    // Where roads cross the railway: an underpass if there's room, else a level crossing.
+    for (const rail of this.rails) {
+      for (let i = 0; i < rail.pts.length - 1; i++) {
+        const [p, q] = [rail.pts[i], rail.pts[i + 1]];
+        for (const e of this.undirected) {
+          const r = segX([e.a.x, e.a.z], [e.b.x, e.b.z], p, q);
+          if (!r) continue;
+          const u = addUnderpass(e, r[0], 'rail', `${e.r.name} Railway Underpass`);
+          if (u) { u.railDir = { x: q[0] - p[0], z: q[1] - p[1] }; continue; }
+          this.levelCrossings.push({ edge: e, x: e.a.x + (e.b.x - e.a.x) * r[0], z: e.a.z + (e.b.z - e.a.z) * r[0], rail });
+        }
+      }
+    }
+    for (const ru of MD.ROAD_UNDERPASSES) {
+      let best = null, bd = 140;
+      for (const e of this.undirected) {
+        if (e.r.name !== ru.road) continue;
+        const t = projT(ru.near[0], ru.near[1], e);
+        const d = Math.hypot(e.a.x + (e.b.x - e.a.x) * t - ru.near[0], e.a.z + (e.b.z - e.a.z) * t - ru.near[1]);
+        if (d < bd && !e.underpasses) { bd = d; best = { e, t: Math.max(0.3, Math.min(0.7, t)) }; }
+      }
+      if (best) addUnderpass(best.e, best.t, 'road', ru.name);
+    }
+    this.flyovers = [];
+    for (const fs of MD.FLYOVER_SITES) {
+      let node = null, bd = 80;
+      for (const n of this.nodes) { const d = Math.hypot(n.x - fs.at[0], n.z - fs.at[1]); if (d < bd && n.adj.length >= 3) { bd = d; node = n; } }
+      if (!node) continue;
+      const along = node.adj.filter((h) => h.e.r.name === fs.road);
+      if (along.length < 2) continue;
+      // Two straight arms, one along each approach, so the deck follows a road that bends here.
+      const arms = along.slice(0, 2).map((h) => ({ ux: h.u.x, uz: h.u.z, half: Math.min(fs.half, h.e.len - 18) }));
+      if (arms.some((a) => a.half < 60)) continue;
+      const road = along[0].e.r;
+      const f = { name: fs.name, node, road, arms, cx: node.x, cz: node.z, half: Math.max(...arms.map((a) => a.half)), height: fs.height, flat: 0.45, hw: (road.median || 0) / 2 + LANE_W };
+      this.flyovers.push(f);
+      for (const h of along) for (const d of h.e.dirs) d.flyover = f;
+    }
+  }
+
+  // Road surface height inside an underpass, as a function of distance along its road.
   dip(u, along) {
-    const t = Math.abs(along - u.at) / u.half;
+    const t = Math.abs(along) / u.half;
     return -u.depth * (1 - smooth(u.flat, 1, t));
   }
 
-  deckHeight(f, along) {
-    const t = Math.abs(along - f.at) / f.half;
+  deckHeight(f, along, arm = f.arms[0]) {
+    const t = Math.abs(along) / arm.half;
     return f.height * (1 - smooth(f.flat, 1, t));
   }
 
+  local(o, x, z) {
+    const dx = x - o.cx, dz = z - o.cz;
+    return { along: dx * o.ux + dz * o.uz, lat: -dx * o.uz + dz * o.ux };
+  }
+
   underpassAt(x, z) {
-    for (const u of this.underpasses) if (x > u.minX && x < u.maxX && z > u.minZ && z < u.maxZ) return u;
+    for (const u of this.underpasses) {
+      if (Math.abs(x - u.cx) > u.half + 12 || Math.abs(z - u.cz) > u.half + 12) continue;
+      const l = this.local(u, x, z);
+      if (Math.abs(l.along) < u.half && Math.abs(l.lat) < u.hw) return u;
+    }
     return null;
   }
 
+  // {f, arm, along} if (x, z) is under/over a flyover deck.
   flyoverAt(x, z) {
-    for (const f of this.flyovers) if (x > f.minX && x < f.maxX && z > f.minZ && z < f.maxZ) return f;
+    for (const f of this.flyovers) {
+      if (Math.abs(x - f.cx) > f.half + 12 || Math.abs(z - f.cz) > f.half + 12) continue;
+      const dx = x - f.cx, dz = z - f.cz;
+      for (const arm of f.arms) {
+        const along = dx * arm.ux + dz * arm.uz, lat = -dx * arm.uz + dz * arm.ux;
+        if (along > -f.hw && along < arm.half && Math.abs(lat) < f.hw) return { f, arm, along: Math.max(0, along) };
+      }
+    }
     return null;
   }
 
-  // Intersections are graph nodes; directed edges run between neighbouring intersections.
-  buildGraph() {
-    this.nodes = [];
-    const nz = this.zRoads.length;
-    this.nodeIndex = (xi, zj) => xi * nz + zj;
-    for (let xi = 0; xi < this.xRoads.length; xi++) {
-      for (let zj = 0; zj < nz; zj++) {
-        const xr = this.xRoads[xi], zr = this.zRoads[zj];
-        const key = `${xr.pos},${zr.pos}`;
-        const name = JUNCTIONS[key] || null;
-        this.nodes.push({
-          id: this.nodeIndex(xi, zj), xi, zj, x: xr.pos, z: zr.pos, out: [], name,
-          signal: !!name || (xr.lanes >= 2 && zr.lanes >= 2),
-          hx: xr.width / 2, hz: zr.width / 2,
-        });
+  // ---------- spatial index ----------
+  buildIndex() {
+    const W = this.world;
+    this.rw = Math.ceil((W.maxX - W.minX) / RASTER); this.rh = Math.ceil((W.maxZ - W.minZ) / RASTER);
+    this.raster = new Int32Array(this.rw * this.rh).fill(-1);
+    const all = [...this.blocks, ...this.islands];
+    this.allBlocks = all;
+    all.forEach((b, idx) => {
+      const p = b.poly;
+      const z0 = Math.max(0, Math.floor((Math.min(...p.map((q) => q[1])) - W.minZ) / RASTER));
+      const z1 = Math.min(this.rh - 1, Math.floor((Math.max(...p.map((q) => q[1])) - W.minZ) / RASTER));
+      for (let j = z0; j <= z1; j++) {
+        const z = W.minZ + (j + 0.5) * RASTER;
+        const xsI = [];
+        for (let i = 0; i < p.length; i++) {
+          const [xa, za] = p[i], [xb, zb] = p[(i + 1) % p.length];
+          if ((za > z) !== (zb > z)) xsI.push(xa + ((z - za) / (zb - za)) * (xb - xa));
+        }
+        xsI.sort((a, c) => a - c);
+        for (let k = 0; k + 1 < xsI.length; k += 2) {
+          const i0 = Math.max(0, Math.ceil((xsI[k] - W.minX) / RASTER - 0.5)), i1 = Math.min(this.rw - 1, Math.floor((xsI[k + 1] - W.minX) / RASTER - 0.5));
+          for (let i = i0; i <= i1; i++) this.raster[j * this.rw + i] = idx;
+        }
       }
+    });
+    // Edges by cell for "which road am I on".
+    this.EC = 40;
+    this.edgeCells = new Map();
+    for (const e of this.undirected) {
+      const n = Math.ceil(e.len / 10);
+      const keys = new Set();
+      for (let k = 0; k <= n; k++) {
+        const x = e.a.x + ((e.b.x - e.a.x) * k) / n, z = e.a.z + ((e.b.z - e.a.z) * k) / n;
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) keys.add((Math.floor(x / this.EC) + dx) + ',' + (Math.floor(z / this.EC) + dz));
+      }
+      for (const key of keys) { if (!this.edgeCells.has(key)) this.edgeCells.set(key, []); this.edgeCells.get(key).push(e); }
     }
-    this.edges = [];
-    const link = (a, b, road) => {
-      const dx = Math.sign(b.x - a.x), dz = Math.sign(b.z - a.z);
-      const e = { id: this.edges.length, from: a, to: b, road, dir: { x: dx, z: dz } };
-      for (const f of this.flyovers) {
-        if (f.road !== road) continue;
-        const at = road.axis === 'x' ? [a.z, b.z] : [a.x, b.x];
-        if (at.includes(f.at)) e.flyover = f;
-      }
-      this.edges.push(e);
-      a.out.push(e);
-    };
-    for (const n of this.nodes) {
-      const { xi, zj } = n;
-      if (xi + 1 < this.xRoads.length) {
-        const m = this.nodes[this.nodeIndex(xi + 1, zj)];
-        link(n, m, this.zRoads[zj]); link(m, n, this.zRoads[zj]);
-      }
-      if (zj + 1 < nz) {
-        const m = this.nodes[this.nodeIndex(xi, zj + 1)];
-        link(n, m, this.xRoads[xi]); link(m, n, this.xRoads[xi]);
-      }
-    }
+    this.NC = 80;
+    this.nodeCells = new Map();
+    for (const n of this.nodes) { const key = Math.floor(n.x / this.NC) + ',' + Math.floor(n.z / this.NC); if (!this.nodeCells.has(key)) this.nodeCells.set(key, []); this.nodeCells.get(key).push(n); }
   }
 
-  crossHalfWidth(node, road) {
-    return road.axis === 'z' ? node.hx : node.hz;
+  blockIndexAt(x, z) {
+    const W = this.world;
+    const i = Math.floor((x - W.minX) / RASTER), j = Math.floor((z - W.minZ) / RASTER);
+    if (i < 0 || j < 0 || i >= this.rw || j >= this.rh) return -1;
+    return this.raster[j * this.rw + i];
   }
 
-  laneOffset(road, lane) {
-    return (road.median || 0) / 2 + (lane + 0.5) * LANE_W;
-  }
-
-  intervalIndex(edges, v) {
-    let lo = 0, hi = edges.length - 2;
-    while (lo < hi) {
-      const mid = (lo + hi + 1) >> 1;
-      if (v >= edges[mid]) lo = mid; else hi = mid - 1;
+  // Exact: is (x, z) on a footpath/block (rather than the road)?
+  blockContaining(x, z) {
+    const W = this.world;
+    const i = Math.floor((x - W.minX) / RASTER), j = Math.floor((z - W.minZ) / RASTER);
+    const seen = [];
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= this.rw || jj >= this.rh) continue;
+      const idx = this.raster[jj * this.rw + ii];
+      if (idx < 0 || seen.includes(idx)) continue;
+      seen.push(idx);
+      if (di === 0 && dj === 0 && this.allBlocks[idx] && interiorCell(this, ii, jj, idx)) return this.allBlocks[idx];
+      if (pointInPoly(x, z, this.allBlocks[idx].poly)) return this.allBlocks[idx];
     }
-    return lo;
+    return null;
   }
 
   blockAt(x, z) {
-    return this.blockGrid[this.intervalIndex(this.xEdges, x)][this.intervalIndex(this.zEdges, z)];
-  }
-
-  nearestNode(x, z) {
-    let xi = 0, zj = 0, bx = Infinity, bz = Infinity;
-    this.xRoads.forEach((r, i) => { const d = Math.abs(r.pos - x); if (d < bx) { bx = d; xi = i; } });
-    this.zRoads.forEach((r, j) => { const d = Math.abs(r.pos - z); if (d < bz) { bz = d; zj = j; } });
-    return this.nodes[this.nodeIndex(xi, zj)];
-  }
-
-  roadAt(x, z) {
-    let best = null;
-    const i = this.intervalIndex(this.xEdges, x), j = this.intervalIndex(this.zEdges, z);
-    for (const r of [this.xRoads[i - 1], this.xRoads[i], this.zRoads[j - 1], this.zRoads[j]]) {
-      if (!r) continue;
-      const d = r.axis === 'x' ? Math.abs(x - r.pos) : Math.abs(z - r.pos);
-      if (d <= r.width / 2 + 0.5 && (!best || r.width > best.width)) best = r;
+    const b = this.blockContaining(x, z);
+    if (b && !b.island) return b;
+    let best = this.blocks[0], bd = Infinity;
+    const idx = this.blockIndexAt(x, z);
+    if (idx >= 0 && !this.allBlocks[idx].island) return this.allBlocks[idx];
+    for (const q of this.blocks) {
+      const d = Math.abs(q.cx - x) + Math.abs(q.cz - z);
+      if (d < bd) { bd = d; best = q; }
     }
     return best;
   }
 
+  edgeAt(x, z) {
+    const list = this.edgeCells.get(Math.floor(x / this.EC) + ',' + Math.floor(z / this.EC));
+    if (!list) return null;
+    let best = null, bd = Infinity;
+    for (const e of list) {
+      const t = projT(x, z, e);
+      const px = e.a.x + (e.b.x - e.a.x) * t, pz = e.a.z + (e.b.z - e.a.z) * t;
+      const d = Math.hypot(px - x, pz - z);
+      if (d < bd) { bd = d; best = { e, t, d }; }
+    }
+    return best;
+  }
+
+  roadAt(x, z) {
+    const h = this.edgeAt(x, z);
+    return h && h.d <= h.e.r.width / 2 + 0.5 ? h.e.r : null;
+  }
+
+  nearestNode(x, z) {
+    const cx = Math.floor(x / this.NC), cz = Math.floor(z / this.NC);
+    let best = null, bd = Infinity;
+    for (let r = 0; r < 6 && !best; r++) {
+      for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+        for (const n of this.nodeCells.get((cx + dx) + ',' + (cz + dz)) || []) { const d = Math.hypot(n.x - x, n.z - z); if (d < bd) { bd = d; best = n; } }
+      }
+      if (best && r === 0) { /* check the first ring too */ r++; for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (const n of this.nodeCells.get((cx + dx) + ',' + (cz + dz)) || []) { const d = Math.hypot(n.x - x, n.z - z); if (d < bd) { bd = d; best = n; } } }
+    }
+    return best || this.nodes[0];
+  }
+
   junctionNear(x, z, radius = 30) {
     const n = this.nearestNode(x, z);
-    return n.name && Math.abs(n.x - x) < radius && Math.abs(n.z - z) < radius ? n.name : null;
+    return n && n.name && Math.hypot(n.x - x, n.z - z) < radius ? n.name : null;
   }
 
   // Surface height. Pass the current height `y` to choose between levels on a flyover.
   groundHeight(x, z, y) {
-    const b = this.blockAt(x, z);
-    const o = b.outer;
-    let g = x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ ? CURB_H : 0;
-    if (g === 0) {
-      const u = this.underpassAt(x, z);
-      if (u) g = this.dip(u, u.road.axis === 'x' ? z : x);
-      if (y !== undefined) {
-        const f = this.flyoverAt(x, z);
-        if (f) {
-          const h = this.deckHeight(f, f.road.axis === 'x' ? z : x);
-          if (h > 0.02 && y > h - 1.6) g = Math.max(g, h);
-        }
+    if (this.blockContaining(x, z)) return CURB_H;
+    let g = 0;
+    const u = this.underpasses.length ? this.underpassAt(x, z) : null;
+    if (u) g = this.dip(u, this.local(u, x, z).along);
+    if (y !== undefined && this.flyovers.length) {
+      const hit = this.flyoverAt(x, z);
+      if (hit) {
+        const h = this.deckHeight(hit.f, hit.along, hit.arm);
+        if (h > 0.02 && y > h - 1.6) g = Math.max(g, h);
       }
     }
     return g;
   }
 }
+
+// A raster cell whose four corners all lie in the same block is safely inside it.
+function interiorCell(L, i, j, idx) {
+  const at = (ii, jj) => (ii < 0 || jj < 0 || ii >= L.rw || jj >= L.rh ? -1 : L.raster[jj * L.rw + ii]);
+  return at(i - 1, j) === idx && at(i + 1, j) === idx && at(i, j - 1) === idx && at(i, j + 1) === idx;
+}
+
+function projT(x, z, e) {
+  const abx = e.b.x - e.a.x, abz = e.b.z - e.a.z, l2 = abx * abx + abz * abz || 1;
+  return Math.max(0, Math.min(1, ((x - e.a.x) * abx + (z - e.a.z) * abz) / l2));
+}
+
+function segX(a, b, c, d) {
+  const r = [b[0] - a[0], b[1] - a[1]], s = [d[0] - c[0], d[1] - c[1]];
+  const den = r[0] * s[1] - r[1] * s[0];
+  if (Math.abs(den) < 1e-9) return null;
+  const qp = [c[0] - a[0], c[1] - a[1]];
+  const t = (qp[0] * s[1] - qp[1] * s[0]) / den, u = (qp[0] * r[1] - qp[1] * r[0]) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? [t, u] : null;
+}
+
+export { LANE_W, SIDEWALK_W };

@@ -257,33 +257,37 @@ function ibcPlatinumCity(ctx, block) {
   return { name: 'IBC Platinum City', x: i.maxX + 4, z: cz };
 }
 
-// Yeshwanthpur Junction railway station: platforms along the line and a station building.
-function yeshwanthpurStation(ctx, block, railZ) {
+// Kempegowda Bus Station, Majestic: rows of platform canopies over bus bays, a terminal block
+// with the BMTC/KSRTC enquiry counters and the big bilingual name board.
+function busStand(ctx, block) {
   const { B, colliders, signs, plaza } = ctx;
   const i = block.inner;
-  const { cx } = centre(block);
-  plaza(block, 0xd8d0c0);
-  const stone = B.get('stone'), her = B.get('heritage'), roof = B.get('roof'), metal = B.get('metal');
-  const pl = i.maxX - i.minX - 6;
-  for (const s of [-1, 1]) {
-    const pz = railZ + s * 7;
-    stone.box(cx, 0.15, pz, pl, 0.75, 4, 0xc8bca8);
-    stone.box(cx, 0.9, pz - s * 1.85, pl, 0.02, 0.3, 0xf2c200); // yellow platform edge
-    for (let x = i.minX + 8; x < i.maxX - 6; x += 12) put(metal, G.cyl8, x, 3.5, pz, 0x5a6a7a, 0, 0.12, 5.2, 0.12);
-    metal.box(cx, 6, pz, pl, 0.15, 5, 0x8a9aaa);
-    colliders.addCentered(cx, pz, pl, 4, 0.9, 'platform');
+  const { cx, cz, w, d } = centre(block);
+  plaza(block, 0xc8c2b8);
+  const stone = B.get('stone'), metal = B.get('metal'), her = B.get('plaster'), roof = B.get('roof');
+  const bw = Math.min(w - 8, 150);
+  // Terminal building along the north side.
+  const tz = i.minZ + 9;
+  her.box(cx, 0.15, tz, bw, 8, 12, 0xe8e0d0, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
+  stone.box(cx, 8.15, tz, bw + 1, 0.6, 13, 0x9a2a2a);
+  colliders.addCentered(cx, tz, bw, 12, 9, 'building');
+  signs.push({ key: 'kbs', text: ['ಕೆಂಪೇಗೌಡ ಬಸ್ ನಿಲ್ದಾಣ', 'KEMPEGOWDA BUS STATION · MAJESTIC'], x: cx, y: 10.3, z: tz + 6.1, w: 26, h: 3.2, face: 's', bg: '#9a2a2a', fg: '#fff6d8' });
+  signs.push({ key: 'kbsN', text: ['ಕೆಂಪೇಗೌಡ ಬಸ್ ನಿಲ್ದಾಣ', 'KEMPEGOWDA BUS STATION'], x: cx, y: 10.3, z: tz - 6.1, w: 22, h: 3, face: 'n', bg: '#9a2a2a', fg: '#fff6d8' });
+  // Platform islands with canopies, bays between them.
+  const rows = Math.max(1, Math.floor((d - 24) / 16));
+  for (let r = 0; r < rows; r++) {
+    const pz = tz + 16 + r * 16;
+    if (pz > i.maxZ - 6) break;
+    stone.box(cx, 0.15, pz, bw - 10, 0.35, 3, 0xd0c8b8);
+    for (let x = cx - bw / 2 + 8; x <= cx + bw / 2 - 8; x += 10) {
+      put(metal, G.cyl8, x, 2.6, pz, 0x6a7a8a, 0, 0.18, 5, 0.18);
+      colliders.addCentered(x, pz, 0.5, 0.5, 5, 'pole');
+    }
+    metal.box(cx, 5.1, pz, bw - 8, 0.25, 7, 0x8a9aa8);
+    stone.box(cx, 5.35, pz, bw - 8, 0.12, 7.2, 0xc0182a, { top: false });
+    signs.push({ key: 'kbsP' + r, text: [`PLATFORM ${r * 2 + 1}–${r * 2 + 2}`, 'ವೇದಿಕೆ'], x: cx - bw / 2 + 6, y: 4.2, z: pz + 0.4, w: 3.2, h: 0.9, face: 's', bg: '#1a3a6a', fg: '#fff' });
   }
-  // Station building on the north side, facing Yeshwanthpur Station Road.
-  const bz = i.minZ + 14;
-  her.box(cx, 0.15, bz, 70, 9, 16, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
-  stone.box(cx, 9.15, bz, 72, 1, 18, 0xa8302a);
-  her.box(cx, 0.15, bz, 18, 14, 18, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof });
-  put(stone, G.cone4, cx, 16.5, bz, 0xa8302a, Math.PI / 4, 13, 5, 13);
-  colliders.addCentered(cx, bz, 72, 18, 15, 'building');
-  // Indian Railways station boards are yellow with black lettering.
-  signs.push({ key: 'ypr1', text: ['ಯಶವಂತಪುರ ಜಂಕ್ಷನ್', 'YESHWANTHPUR JN.'], x: cx, y: 11.5, z: bz - 9.05, w: 16, h: 3.2, face: 'n', bg: '#f2c200', fg: '#111' });
-  for (const s of [-1, 1]) signs.push({ key: 'ypr2', text: ['ಯಶವಂತಪುರ', 'YESHWANTHPUR'], x: cx + 25, y: 3, z: railZ + s * 8.6, w: 5, h: 1.4, face: s < 0 ? 'n' : 's', bg: '#f2c200', fg: '#111' });
-  return { name: 'Yeshwanthpur Junction', x: cx, z: i.minZ - 2 };
+  return { name: 'Kempegowda Bus Station', x: cx, z: tz + 12 };
 }
 
 // ISKCON temple on its hillock at Rajajinagar: tall gold-and-glass tower over a stepped plinth.
@@ -380,5 +384,5 @@ function silkBoardOffice(ctx, block) {
 
 export const LANDMARKS = {
   vidhanaSoudha, highCourt, library, bandstand, stadium, cathedral, skyTower, statue,
-  ibcPlatinumCity, yeshwanthpurStation, iskcon, wtc, glassHouse, forumMall, silkBoardOffice,
+  ibcPlatinumCity, busStand, iskcon, wtc, glassHouse, forumMall, silkBoardOffice,
 };

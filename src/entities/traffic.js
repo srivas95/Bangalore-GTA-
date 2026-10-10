@@ -157,8 +157,8 @@ export class Traffic {
     const L = this.layout;
     const off = L.laneOffset(e.road, lane);
     const lx = e.dir.z, lz = -e.dir.x;
-    const a = L.crossHalfWidth(e.from, e.road) + 1.5;
-    const b = L.crossHalfWidth(e.to, e.road) + 1.5;
+    const a = Math.min(e.cutFrom + 1.5, e.len * 0.45);
+    const b = Math.min(e.cutTo + 1.5, e.len * 0.45);
     const p0 = { x: e.from.x + e.dir.x * a + lx * off, z: e.from.z + e.dir.z * a + lz * off };
     const p1 = { x: e.to.x - e.dir.x * b + lx * off, z: e.to.z - e.dir.z * b + lz * off };
     return makePath([p0, p1]);
@@ -168,9 +168,15 @@ export class Traffic {
     const start = from.points[from.points.length - 1];
     const next = this.edgePath(e2, lane2);
     const end = next.points[0];
-    let cx, cz;
-    if (Math.abs(d1.x * e2.dir.x + d1.z * e2.dir.z) > 0.5) { cx = (start.x + end.x) / 2; cz = (start.z + end.z) / 2; }
-    else if (d1.x !== 0) { cx = end.x; cz = start.z; } else { cx = start.x; cz = end.z; }
+    // Control point where the two lanes' lines meet (or halfway, for a near-straight run).
+    let cx = (start.x + end.x) / 2, cz = (start.z + end.z) / 2;
+    const det = d1.x * -e2.dir.z - d1.z * -e2.dir.x;
+    if (Math.abs(det) > 0.25) {
+      const rx = end.x - start.x, rz = end.z - start.z;
+      const t = (rx * -e2.dir.z - rz * -e2.dir.x) / det;
+      const gap = Math.hypot(rx, rz);
+      if (t > 0 && t < gap * 1.5) { cx = start.x + d1.x * t; cz = start.z + d1.z * t; }
+    }
     const pts = [];
     for (let k = 0; k <= 8; k++) {
       const t = k / 8, u = 1 - t;
@@ -183,7 +189,8 @@ export class Traffic {
     const node = a.edge.to;
     let opts = node.out.filter((e) => e.to !== a.edge.from);
     if (!opts.length) opts = node.out;
-    const straight = opts.find((e) => e.dir.x === a.edge.dir.x && e.dir.z === a.edge.dir.z);
+    let straight = null, bd = 0.85;
+    for (const e of opts) { const d = e.dir.x * a.edge.dir.x + e.dir.z * a.edge.dir.z; if (d > bd) { bd = d; straight = e; } }
     // On the flyover lane you can only go straight over the junction.
     if (a.edge.flyover && a.lane === 0 && straight && straight.flyover) return straight;
     if (straight && rng() < 0.45) return straight;
@@ -202,7 +209,7 @@ export class Traffic {
       return;
     }
     const e2 = this.chooseNext(a);
-    const straight = e2.dir.x === a.edge.dir.x && e2.dir.z === a.edge.dir.z;
+    const straight = e2.dir.x * a.edge.dir.x + e2.dir.z * a.edge.dir.z > 0.85;
     const lane2 = straight && e2.road.lanes === a.edge.road.lanes ? a.lane : this.chooseLane(e2, a.v.type, !straight);
     const { turn, next } = this.turnPath(a.path, a.edge.dir, e2, lane2);
     a.edge = e2;
@@ -360,11 +367,11 @@ export class Traffic {
       a.waitingSignal = false;
       // Signals.
       if (!a.turning && a.edge.to.signal && !(a.edge.flyover && a.lane === 0)) {
-        const st = sig.state(a.edge.to, a.edge.road.axis);
+        const st = sig.state(a.edge.to, a.edge.und.id);
         if (st !== 'green') {
           const creep = two ? 2.4 : a.erratic ? 1.2 : 0;
           const d = a.path.length + creep - a.s - (two ? 0 : 1.0);
-          const jump = a.jumper && (st === 'amber' || sig.redAge(a.edge.to, a.edge.road.axis) < 2.5 + a.impatience * 2);
+          const jump = a.jumper && (st === 'amber' || sig.redAge(a.edge.to, a.edge.und.id) < 2.5 + a.impatience * 2);
           const committed = st === 'amber' && d < a.speed * 1.1;
           if (!jump && !committed && d < look + 10) {
             target = Math.min(target, Math.max(0, (d - 0.3) * 1.2));

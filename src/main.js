@@ -22,22 +22,8 @@ import { Particles } from './systems/particles.js';
 import { Pickups, WEAPONS } from './systems/weapons.js';
 import { Gangs } from './entities/gangs.js';
 import { HUD } from './ui/hud.js';
-import { LINES, CURB_H, METRO_LINES, RAILWAY } from './config.js';
-
-// Where you wake up after being busted or wasted.
-const POLICE_STATIONS = [
-  { name: 'Cubbon Park Police Station', x: -300, z: -112 },
-  { name: 'Yeshwanthpur Police Station', x: -1120, z: -1052 },
-  { name: 'Indiranagar Police Station', x: 610, z: 147 },
-  { name: 'Koramangala Police Station', x: 760, z: 828 },
-  { name: 'Peenya Police Station', x: -1460, z: -1532 },
-];
-const HOSPITALS = [
-  { name: 'Bowring Hospital', x: 200, z: -112 },
-  { name: "St. John's Hospital", x: 1040, z: 968 },
-  { name: 'ESI Hospital, Rajajinagar', x: -980, z: -572 },
-  { name: 'Victoria Hospital', x: -330, z: 410 },
-];
+import { LINES, CURB_H } from './config.js';
+import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, geo } from './world/mapdata.js';
 
 async function init() {
   // Wait for the Kannada font so the canvas-painted signs render the script.
@@ -75,7 +61,21 @@ async function init() {
   composer.addPass(new OutputPass());
   let useBloom = true;
 
-  const spawn = { x: 22, z: 10.8 };
+  // Points on a footpath near a place, and kerbside spots along the nearest road.
+  const footpathNear = (x, z) => {
+    for (let r = 0; r < 120; r += 2) {
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+        const b = layout.blockContaining(px, pz);
+        if (b && !b.island && !colliders.pointBlocked(px, pz, 1) && !colliders.resolveCircle(px, pz, 1.2, CURB_H)) return { x: px, z: pz };
+      }
+    }
+    return { x, z };
+  };
+  // Where you wake up after being busted or wasted.
+  const POLICE_STATIONS = PS.map((p) => ({ ...p, ...footpathNear(p.x, p.z) }));
+  const HOSPITALS = HS.map((p) => ({ ...p, ...footpathNear(p.x, p.z) }));
+  const spawn = footpathNear(SPAWN[0], SPAWN[1]);
   const player = new Player(scene, spawn.x, spawn.z);
   player.heading = Math.PI;
   player.y = CURB_H;
@@ -91,25 +91,41 @@ async function init() {
     free.push(v);
     return v;
   };
-  park('scooter', 27, 11.2, -Math.PI / 2, { color: 0xb01c22 });
-  park('bike', 30, 11.2, -Math.PI / 2);
-  park('auto', 35, 11.0, -Math.PI / 2);
-  park('hatch', 44, 6.2, -Math.PI / 2, { color: 0xf2f2f2 });
+  // Footpath parking: a spot `t` (0..1) along edge k of a block, 2 m in from the kerb.
+  const kerbSpot = (b, k, t, inset = 2.2) => {
+    const P = b.poly, [ax, az] = P[k % P.length], [bx, bz] = P[(k + 1) % P.length];
+    const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+    const dx = b.cx - x, dz = b.cz - z, l = Math.hypot(dx, dz) || 1;
+    return { x: x + (dx / l) * inset, z: z + (dz / l) * inset, heading: Math.atan2(bx - ax, bz - az) };
+  };
+  {
+    // A scooter, a bike and an auto waiting at the start.
+    const h = layout.edgeAt(spawn.x, spawn.z);
+    const ux = h ? (h.e.b.x - h.e.a.x) / h.e.len : 1, uz = h ? (h.e.b.z - h.e.a.z) / h.e.len : 0;
+    const heading = Math.atan2(ux, uz);
+    [['scooter', 3, { color: 0xb01c22 }], ['bike', 6], ['auto', 10]].forEach(([type, d, o]) => {
+      const p = footpathNear(spawn.x + ux * d, spawn.z + uz * d);
+      park(type, p.x, p.z, heading, o);
+    });
+  }
   const types = ['scooter', 'scooter', 'bike', 'auto', 'hatch', 'sedan', 'taxi', 'suv', 'delivery'];
   for (const b of layout.blocks) {
-    if (b.edge || b.zone === 'lake' || b.zone === 'park' || b.zone === 'industrial') continue;
-    const cbd = Math.abs(b.cx) < 460 && Math.abs(b.cz) < 460;
-    if (Math.random() > (cbd ? 0.35 : 0.07)) continue;
-    const o = b.outer;
-    park(types[Math.floor(Math.random() * types.length)], o.minX + 10 + Math.random() * (o.maxX - o.minX - 20), o.minZ + 2.4, Math.PI / 2);
+    if (b.edge || b.zone === 'lake' || b.zone === 'park' || b.zone === 'industrial' || b.zone === 'landmark') continue;
+    const cbd = Math.hypot(b.cx - 300, b.cz) < 650;
+    if (Math.random() > (cbd ? 0.3 : 0.06)) continue;
+    const k = Math.floor(Math.random() * b.poly.length);
+    if (!b.edgeWidths[k]) continue;
+    const p = kerbSpot(b, k, 0.3 + Math.random() * 0.4);
+    if (colliders.pointBlocked(p.x, p.z, 1)) continue;
+    park(types[Math.floor(Math.random() * types.length)], p.x, p.z, p.heading);
   }
-  city.pois.industrial.filter((_, k) => k % 4 === 0).slice(0, 14).forEach((p) => park(Math.random() < 0.6 ? 'lorry' : 'miniTruck', p.x, p.z, p.face === 'n' || p.face === 's' ? Math.PI / 2 : 0));
+  city.pois.industrial.filter((_, k) => k % 4 === 0).slice(0, 14).forEach((p) => park(Math.random() < 0.6 ? 'lorry' : 'miniTruck', p.x, p.z, p.heading));
 
   const input = new Input(renderer.domElement);
   const rig = new CameraRig(camera);
   rig.yaw = 0;
   const audio = new Audio();
-  const hud = new HUD(layout, city.pois, { metroLines: METRO_LINES, railway: RAILWAY });
+  const hud = new HUD(layout, city.pois, { metro: metro.routes, rails: city.rail.lines });
   const missions = new Missions(scene, layout, city.pois, hud, audio);
   const police = new Police(scene, layout, colliders, hud, audio);
   env.onThunder = (delay) => audio.thunder(delay, 0.6 + Math.random() * 0.4);
@@ -203,7 +219,7 @@ async function init() {
   // Weapons lying around: bats in the parks, blades in the markets, machetes in the
   // industrial yards, and a couple of kattas if you know where to look.
   {
-    const corner = (b, k) => { const o = b.outer; const c = [[o.minX + 1.6, o.minZ + 1.6], [o.maxX - 1.6, o.minZ + 1.6], [o.maxX - 1.6, o.maxZ - 1.6], [o.minX + 1.6, o.maxZ - 1.6]][k % 4]; return c; };
+    const corner = (b, k) => { const p = kerbSpot(b, k, 0.04, 1.8); return [p.x, p.z]; };
     let n = 0, ind = 0, mk = 0;
     for (const b of layout.blocks) {
       if (b.edge) continue;
@@ -217,7 +233,8 @@ async function init() {
       }
     }
     // One revolver, at the back of the Yeshwanthpur APMC yard.
-    pickups.add('revolver', -1006, -1166, CURB_H, { respawn: 300 });
+    const apmc = footpathNear(...geo(13.0305, 77.5345));
+    pickups.add('revolver', apmc.x, apmc.z, CURB_H, { respawn: 300 });
   }
 
   // Rowdies hang about the markets and yards after dark, and don't like being bothered.
@@ -232,9 +249,9 @@ async function init() {
     const blocks = layout.blocks.filter((b) => (b.zone === 'market' || b.zone === 'industrial' || (night && b.zone === 'mixed')) && Math.hypot(b.cx - world.focus.x, b.cz - world.focus.z) < 220 && Math.hypot(b.cx - world.focus.x, b.cz - world.focus.z) > 70);
     if (!blocks.length) return;
     const b = blocks[Math.floor(Math.random() * blocks.length)];
-    const o = b.outer, x = o.minX + 2, z = o.minZ + 2 + Math.random() * (o.maxZ - o.minZ - 4);
+    const p = kerbSpot(b, Math.floor(Math.random() * b.poly.length), 0.2 + Math.random() * 0.6, 2.5);
     const n = 2 + Math.floor(Math.random() * 2);
-    for (let k = 0; k < n; k++) gangs.spawn(x + Math.random() * 1.5, z + k * 1.2, { weapon: Math.random() < 0.08 ? 'katta' : undefined, name: 'Rowdy' });
+    for (let k = 0; k < n; k++) gangs.spawn(p.x + Math.random() * 1.5, p.z + k * 1.2, { weapon: Math.random() < 0.08 ? 'katta' : undefined, name: 'Rowdy' });
   };
 
   // ---------- Busted / wasted ----------
@@ -261,10 +278,10 @@ async function init() {
     screenT = 4;
     player.dead = true;
   };
-  world.hitByTrain = () => {
+  world.hitByTrain = (t, nx = 1, nz = 0) => {
     if (player.vehicle || player.knock > 0) return;
-    player.damage(70, player.x - 1, player.z, world);
-    player.knock = 2; player.kz = 8 * Math.sign(player.z - RAILWAY.z || 1); player.kx = 0;
+    player.damage(70, player.x - nx, player.z - nz, world);
+    player.knock = 2; player.kx = nx * 8; player.kz = nz * 8;
     hud.say('Indian Railways always wins.', 3);
   };
   const respawn = () => {
@@ -295,7 +312,7 @@ async function init() {
     if (!started) {
       started = true;
       startBtn.textContent = 'Resume';
-      hud.toast('MG Road', 'Bengaluru');
+      hud.toast('Majestic', 'Bengaluru');
       hud.lastDistrict = layout.blockAt(player.x, player.z).district;
       setTimeout(() => hud.say('Tip: grab the red scooter (F). Gigs ping your phone. The monsoon comes when it wants (or press K).', 7), 2500);
     }
@@ -392,7 +409,7 @@ async function init() {
     signals.update(dt, world.focus);
     traffic.update(dt, world);
     streetLife.update(dt, world);
-    metro.update(dt);
+    metro.update(dt, world);
     city.rail.update(dt, world);
     city.update(dt, elapsed, camera);
     particles.update(dt, camera, renderer);

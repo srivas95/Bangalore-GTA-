@@ -1,12 +1,17 @@
-// Builds the static city: ground, footpaths, buildings, trees, props and landmarks.
-// Roads, underpasses, the flyover and the railway live in infrastructure.js.
+// Builds the static city on the real road network: ground, kerbed footpaths around polygon
+// blocks, buildings on lots that face their road, trees, lamps, props and landmarks.
+// Roads, underpasses, flyovers and the railway live in infrastructure.js / railway.js.
 import * as THREE from 'three';
-import { BuilderSet, sharedUniforms } from './meshBuilder.js';
+import { BuilderSet, sharedUniforms, makeFrame, frameToWorld } from './meshBuilder.js';
 import * as T from './textures.js';
 import { LANDMARKS, put } from './landmarks.js';
 import { buildInfrastructure } from './infrastructure.js';
+import { fillPoly, polyWalls, rectCorners, rectsOverlap } from './geom.js';
+import { pointInPoly, polyArea, insetPolygon } from './roadnet.js';
+import { HOTEL_SITES } from './mapdata.js';
+import { metroRoutes } from './metro.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { CURB_H, WORLD_MIN, WORLD_MAX, SHOP_SIGNS, RAILWAY, FUEL_BRANDS, HOTELS } from '../config.js';
+import { CURB_H, SHOP_SIGNS, FUEL_BRANDS } from '../config.js';
 
 const rng = T.mulberry32(20240607);
 const rand = (a = 0, b = 1) => a + (b - a) * rng();
@@ -17,6 +22,7 @@ const BRIGHTS = [0xf4a6a6, 0x9fd3c7, 0xf7dc6f, 0xaed6f1, 0xd7bde2, 0xf5cba7, 0xa
 const FLOOR_H = 3.2;
 const SHOP_H = 4;
 const CHUNK = 320;
+const FACE_ROT = { s: 0, n: Math.PI, e: Math.PI / 2, w: -Math.PI / 2 };
 
 export function buildCity(scene, layout, colliders, renderer) {
   T.resetRandom(7);
@@ -28,7 +34,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   const lamps = [];
   const tanks = [];
   const signs = [];
-  const pois = { food: [], homes: [], landmarks: [], parking: [], industrial: [] };
+  const pois = { food: [], homes: [], landmarks: [], parking: [], industrial: [], fuel: [] };
   const signCount = T.SIGN_COLS * T.SIGN_ROWS;
   const pools = { general: [], pub: [], industrial: [] };
   for (let k = 0; k < signCount; k++) {
@@ -76,26 +82,32 @@ export function buildCity(scene, layout, colliders, renderer) {
   const roadMats = new Set([mats.junction, mats.zebra]);
   const wetMats = [mats.sidewalk, mats.plaza];
 
-  // ---------- Ground (only outside the city: inside, blocks and roads cover everything) ----------
-  const gb = new BuilderSet();
-  const pad = 1600, g = gb.get('ground');
-  const A = WORLD_MIN - pad, Z = WORLD_MAX + pad;
-  const gy = -0.05, uv = (x, z) => [x / 8, -z / 8];
-  g.rect(A, Z, A, WORLD_MIN, gy, 0xffffff, uv);
-  g.rect(A, Z, WORLD_MAX, Z, gy, 0xffffff, uv);
-  g.rect(A, WORLD_MIN, WORLD_MIN, WORLD_MAX, gy, 0xffffff, uv);
-  g.rect(WORLD_MAX, Z, WORLD_MIN, WORLD_MAX, gy, 0xffffff, uv);
-  gb.buildAll({ ground: mats.ground }, group, { ground: { castShadow: false } });
+  // ---------- Frames: buildings are authored in a lot's local frame ----------
+  const W = (x, z) => frameToWorld(B.xf, x, z);
+  const col = () => colliders.framed(B.xf);
+  const sign = (sg) => {
+    const [x, z] = W(sg.x, sg.z);
+    signs.push({ ...sg, x, z, rotY: FACE_ROT[sg.face] + (B.xf ? B.xf.ang : 0) });
+  };
+  const treeAt = (x, z, s, t, extra) => { const [wx, wz] = W(x, z); trees.push({ x: wx, z: wz, s, t, ...extra }); };
+
+  // ---------- Ground: soil everywhere, with holes where roads dip into underpasses ----------
+  {
+    const gb = new BuilderSet();
+    const Wd = layout.world, pad = 1600;
+    const outer = [[Wd.minX - pad, Wd.minZ - pad], [Wd.maxX + pad, Wd.minZ - pad], [Wd.maxX + pad, Wd.maxZ + pad], [Wd.minX - pad, Wd.maxZ + pad]];
+    const holes = layout.underpasses.map((u) => {
+      const px = -u.uz, pz = u.ux, a = u.half, w = u.hw + 0.3;
+      return [[u.cx - u.ux * a - px * w, u.cz - u.uz * a - pz * w], [u.cx + u.ux * a - px * w, u.cz + u.uz * a - pz * w],
+        [u.cx + u.ux * a + px * w, u.cz + u.uz * a + pz * w], [u.cx - u.ux * a + px * w, u.cz - u.uz * a + pz * w]];
+    });
+    fillPoly(gb.get('ground'), outer, -0.05, 0xffffff, (x, z) => [x / 8, -z / 8], holes);
+    gb.buildAll({ ground: mats.ground }, group, { ground: { castShadow: false } });
+  }
 
   // ---------- Helpers shared with landmarks ----------
-  const lawn = (block, color = 0xffffff) => {
-    const i = block.inner;
-    B.get('grass').rect(i.minX, i.maxX, i.minZ, i.maxZ, CURB_H + 0.01, color, (x, z) => [x / 6, -z / 6]);
-  };
-  const plaza = (block, color = 0xffffff) => {
-    const i = block.inner;
-    B.get('plaza').rect(i.minX, i.maxX, i.minZ, i.maxZ, CURB_H + 0.01, color, (x, z) => [x / 5, -z / 5]);
-  };
+  const lawn = (block, color = 0xffffff) => fillPoly(B.get('grass'), block.innerPoly || rectPoly(block.inner), CURB_H + 0.01, color, (x, z) => [x / 6, -z / 6]);
+  const plaza = (block, color = 0xffffff) => fillPoly(B.get('plaza'), block.innerPoly || rectPoly(block.inner), CURB_H + 0.01, color, (x, z) => [x / 5, -z / 5]);
   // Scatter trees: in a ring around (cx, cz), or around a block's margins if `block` is given.
   const scatterTrees = (cx, cz, radius, n, block) => {
     if (block) {
@@ -112,30 +124,40 @@ export function buildCity(scene, layout, colliders, renderer) {
       trees.push({ x: cx + Math.cos(a) * radius, z: cz + Math.sin(a) * radius, s: rand(0.7, 1.0), t: k % 3 === 0 ? 1 : 0 });
     }
   };
-  const ctx = { B, colliders, signs, lawn, plaza, pois, trees: scatterTrees, layout, mats, tex, group, roadMats };
+  const ctx = { B, colliders, signs, sign, lawn, plaza, pois, trees: scatterTrees, layout, mats, tex, group, roadMats };
 
-  // ---------- Roads, underpasses, flyover, railway ----------
+  // ---------- Roads, underpasses, flyovers, railway ----------
   const infra = buildInfrastructure(ctx);
+  const railPts = layout.rails.map((r) => r.pts);
+  // Keep the railway corridor clear, and the ground under metro viaducts and stations.
+  const metroSegs = [];
+  for (const line of metroRoutes()) {
+    for (const seg of line.elevated) metroSegs.push({ pts: seg, r: 5.5 });
+    for (const st of line.stations) {
+      if (st.underground) continue;
+      // Same orientation as the station box (see metro.js).
+      const a = line.path.at(st.s - 5), b = line.path.at(st.s + 5);
+      const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1;
+      metroSegs.push({ pts: [[st.x - (dx / l) * 38, st.z - (dz / l) * 38], [st.x + (dx / l) * 38, st.z + (dz / l) * 38]], r: 13 });
+    }
+  }
+  const nearRail = (x, z, d) => railPts.some((pts) => distToPolyline(x, z, pts) < d) || metroSegs.some((m) => distToPolyline(x, z, m.pts) < m.r + d - 9);
+
+  // Park landmarks go to the largest blocks of each park.
+  for (const p of new Set(layout.blocks.filter((b) => b.park).map((b) => b.park))) {
+    const bl = layout.blocks.filter((b) => b.park === p).sort((a, b) => b.area - a.area);
+    (p.landmarks || []).forEach((lm, k) => { if (bl[k]) bl[k].landmark = lm; });
+  }
 
   // ---------- Blocks ----------
-  const railZ = RAILWAY.z;
-  for (const block of layout.blocks) {
-    const o = block.outer;
-    B.get('sidewalk').box((o.minX + o.maxX) / 2, 0, (o.minZ + o.maxZ) / 2, o.maxX - o.minX, CURB_H, o.maxZ - o.minZ,
-      0xd0ccc4, { tileW: 2, tileH: 2, topTile: 2.2, topColor: 0xffffff });
+  const sw = B.get('sidewalk');
+  for (const block of [...layout.blocks, ...layout.islands]) {
+    fillPoly(sw, block.poly, CURB_H, 0xffffff, (x, z) => [x / 2.2, -z / 2.2]);
+    polyWalls(sw, block.poly, 0, CURB_H, 0xd0ccc4, { tile: 2 });
+    if (block.island) { if (block.innerPoly) lawn(block, 0xa8b878); continue; }
     avenueTrees(block);
     streetLamps(block);
-    const crossesRail = railZ > o.minZ && railZ < o.maxZ && block.inner.maxX > RAILWAY.from && block.inner.minX < RAILWAY.to;
-    if (block.landmark === 'yeshwanthpurStation') { pois.landmarks.push(LANDMARKS.yeshwanthpurStation(ctx, block, railZ)); continue; }
-    if (crossesRail) {
-      // Build on either side of the tracks.
-      const i = block.inner;
-      for (const sub of [{ ...i, maxZ: railZ - 9 }, { ...i, minZ: railZ + 9 }]) {
-        if (sub.maxZ - sub.minZ < 20) continue;
-        buildZone({ ...block, inner: sub, landmark: null });
-      }
-      continue;
-    }
+    block.placed = [];
     buildZone(block);
   }
 
@@ -143,7 +165,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     switch (block.zone) {
       case 'park': buildPark(block); break;
       case 'lake': buildLake(block); break;
-      case 'landmark': pois.landmarks.push(LANDMARKS[block.landmark](ctx, block)); break;
+      case 'landmark': pois.landmarks.push(LANDMARKS[block.landmark](ctx, block)); reserveInner(block); break;
       case 'towers': buildTowers(block); break;
       case 'gov': buildGov(block); break;
       case 'residential': buildResidential(block); break;
@@ -154,35 +176,95 @@ export function buildCity(scene, layout, colliders, renderer) {
     }
   }
 
-  // ---------- Building helpers ----------
-  function lotsAround(inner, frontage, depth, sides = 'nsew') {
+  function reserveInner(block, pad = 0) {
+    const i = block.inner;
+    block.placed.push([[i.minX - pad, i.minZ - pad], [i.maxX + pad, i.minZ - pad], [i.maxX + pad, i.maxZ + pad], [i.minX - pad, i.maxZ + pad]]);
+  }
+  function reserveRect(block, cx, cz, w, d) {
+    block.placed.push([[cx - w / 2, cz - d / 2], [cx + w / 2, cz - d / 2], [cx + w / 2, cz + d / 2], [cx - w / 2, cz + d / 2]]);
+  }
+
+  // ---------- Lots: rectangles along each inner edge, in that edge's frame ----------
+  // Local frame per edge: +x along the edge, +z out towards the road. A lot spans
+  // x in [minX, maxX], z in [-depth, 0] and faces 's' (its maxZ side is the road frontage).
+  function edgeFrames(block, P = block.innerPoly, ring = 0) {
+    const n = P.length, sgn = Math.sign(polyArea(P));
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const [x1, z1] = P[i], [x2, z2] = P[(i + 1) % n];
+      const dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz);
+      if (len < 6) continue;
+      const nx = (dz / len) * sgn, nz = (-dx / len) * sgn; // outward
+      const f = makeFrame(x1, z1, Math.atan2(nx, nz));
+      const a = dx * f.c - dz * f.s; // local x of the far end (±len)
+      const w = ring ? 0 : block.edgeWidths[i];
+      out.push({ f, a0: Math.min(0, a), a1: Math.max(0, a), len, road: w > 0, w, i });
+    }
+    return out;
+  }
+
+  function fits(block, f, minX, maxX, minZ, maxZ) {
+    const P = block.innerPoly;
+    const pts = [[minX, minZ], [maxX, minZ], [maxX, maxZ - 0.3], [minX, maxZ - 0.3], [(minX + maxX) / 2, minZ]].map(([x, z]) => frameToWorld(f, x, z));
+    for (const [x, z] of pts) if (!pointInPoly(x, z, P)) return null;
+    const corners = pts.slice(0, 4);
+    for (const q of block.placed) if (rectsOverlap(corners, q)) return null;
+    const cx = (pts[0][0] + pts[2][0]) / 2, cz = (pts[0][1] + pts[2][1]) / 2;
+    const r = Math.hypot(maxX - minX, maxZ - minZ) / 2;
+    if (nearRail(cx, cz, r + 9)) return null;
+    return corners;
+  }
+
+  // Lots along the block's frontage, then rings further in (facing internal lanes) so that
+  // big blocks don't end up hollow.
+  function lotsAlong(block, frontage, depth, { gapChance = 0.2, rings = 3 } = {}) {
     const lots = [];
-    const W = inner.maxX - inner.minX, D = inner.maxZ - inner.minZ;
-    const maxD = Math.min(depth[1], D / 2 - 1, W / 2 - 1);
-    if (maxD < 4) return lots;
-    const dN = sides.includes('n') ? Math.min(rand(...depth), maxD) : 0;
-    const dS = sides.includes('s') ? Math.min(rand(...depth), maxD) : 0;
-    const run = (a0, a1, make) => {
-      let a = a0;
-      while (a < a1 - 4) {
-        let f = rand(...frontage);
-        if (a1 - (a + f) < frontage[0]) f = a1 - a;
-        make(a, Math.min(a + f, a1));
-        a += f + (rng() < 0.2 ? rand(0.5, 2) : 0);
+    if (!block.innerPoly) return lots;
+    const frames = edgeFrames(block);
+    for (let k = 1; k <= rings; k++) {
+      const P = insetPolygon(block.innerPoly, block.innerPoly.map(() => k * (depth[1] + 7)));
+      if (!P || Math.abs(polyArea(P)) < 900) break;
+      frames.push(...edgeFrames(block, P, k));
+    }
+    for (const E of frames) {
+      let a = E.a0 + 0.5;
+      while (a < E.a1 - frontage[0]) {
+        let fw = rand(...frontage);
+        if (E.a1 - (a + fw) < frontage[0] * 0.8) fw = E.a1 - a - 0.5;
+        if (fw < frontage[0] * 0.7) break;
+        let d = rand(...depth), ok = null;
+        for (let tries = 0; tries < 2 && !ok; tries++, d *= 0.65) ok = d >= 4 && fits(block, E.f, a, a + fw, -d, 0);
+        if (!ok) { a += 2; continue; }
+        block.placed.push(ok);
+        lots.push({ f: E.f, minX: a, maxX: a + fw, minZ: -d, maxZ: 0, face: 's', road: E.road, roadW: E.w });
+        a += fw + (rng() < gapChance ? rand(0.5, 2) : 0);
       }
-    };
-    if (dN) run(inner.minX, inner.maxX, (a, b) => lots.push({ minX: a, maxX: b, minZ: inner.minZ, maxZ: inner.minZ + dN * rand(0.75, 1), face: 'n' }));
-    if (dS) run(inner.minX, inner.maxX, (a, b) => lots.push({ minX: a, maxX: b, minZ: inner.maxZ - dS * rand(0.75, 1), maxZ: inner.maxZ, face: 's' }));
-    const z0 = inner.minZ + dN + 1, z1 = inner.maxZ - dS - 1;
-    const dW = Math.min(rand(...depth), maxD), dE = Math.min(rand(...depth), maxD);
-    if (sides.includes('w')) run(z0, z1, (a, b) => lots.push({ minX: inner.minX, maxX: inner.minX + dW * rand(0.75, 1), minZ: a, maxZ: b, face: 'w' }));
-    if (sides.includes('e')) run(z0, z1, (a, b) => lots.push({ minX: inner.maxX - dE * rand(0.75, 1), maxX: inner.maxX, minZ: a, maxZ: b, face: 'e' }));
+    }
     return lots;
   }
 
+  // A rectangle in the middle of the block, aligned with its longest edge.
+  function centreLot(block, margin, maxSize = 80) {
+    if (!block.innerPoly) return null;
+    const E = edgeFrames(block).sort((p, q) => q.len - p.len)[0];
+    if (!E) return null;
+    let cx = 0, cz = 0;
+    for (const [x, z] of block.innerPoly) { cx += x; cz += z; }
+    cx /= block.innerPoly.length; cz /= block.innerPoly.length;
+    if (!pointInPoly(cx, cz, block.innerPoly)) return null;
+    const f = makeFrame(cx, cz, E.f.ang);
+    let hw = Math.min(maxSize, (block.inner.maxX - block.inner.minX) / 2 - margin), hd = Math.min(maxSize, (block.inner.maxZ - block.inner.minZ) / 2 - margin);
+    for (let k = 0; k < 6 && hw > 5 && hd > 5; k++, hw *= 0.8, hd *= 0.8) {
+      const ok = fits(block, f, -hw, hw, -hd, hd + 0.3);
+      if (ok) { block.placed.push(ok); return { f, minX: -hw, maxX: hw, minZ: -hd, maxZ: hd, face: 's' }; }
+    }
+    return null;
+  }
+
+  // ---------- Building helpers (local frame coordinates) ----------
   function building(lot, { style = 'plaster', floors = 3, shop = false, tint = 0xffffff, block }) {
     const w = lot.maxX - lot.minX, d = lot.maxZ - lot.minZ;
-    if (w < 3 || d < 3) return;
+    if (w < 3 || d < 3) return CURB_H;
     const cx = (lot.minX + lot.maxX) / 2, cz = (lot.minZ + lot.maxZ) / 2;
     let y = CURB_H;
     const roofB = B.get('roof');
@@ -204,15 +286,16 @@ export function buildCity(scene, layout, colliders, renderer) {
       st.box(lot.maxX - p / 2, top, cz, p, ph, d - 2 * p, tint);
       // Black Sintex water tanks and the stair headroom: a Bengaluru skyline staple.
       const n = rng() < 0.8 ? 1 + Math.floor(rand(0, 2.5)) : 0;
-      for (let k = 0; k < n; k++) tanks.push([rand(lot.minX + 1.2, lot.maxX - 1.2), top, rand(lot.minZ + 1.2, lot.maxZ - 1.2), rand(0.8, 1.1)]);
+      for (let k = 0; k < n; k++) { const [x, z] = W(rand(lot.minX + 1.2, lot.maxX - 1.2), rand(lot.minZ + 1.2, lot.maxZ - 1.2)); tanks.push([x, top, z, rand(0.8, 1.1)]); }
       if (rng() < 0.5 && w > 6 && d > 6) {
         B.get('plaster').box(cx + rand(-w / 4, w / 4), top, cz + rand(-d / 4, d / 4), 3, 2.6, 3, tint, { tileW: T.FACADE_TILE.w, tileH: T.FACADE_TILE.h, topBuilder: roofB, topTile: 10 });
       }
     }
-    colliders.add(lot.minX, lot.maxX, lot.minZ, lot.maxZ, top + 1, 'building');
+    col().add(lot.minX, lot.maxX, lot.minZ, lot.maxZ, top + 1, 'building');
     return top;
   }
 
+  // Quad on a lot face, a0..a1 along it (lots face 's' in their frame; landmarks may use any face).
   function faceQuad(builder, face, lot, a0, a1, y0, y1, off, uv, color) {
     switch (face) {
       case 'n': { const z = lot.minZ - off; builder.quad([a1, y0, z], [a0, y0, z], [a0, y1, z], [a1, y1, z], [0, 0, -1], uv, color); break; }
@@ -222,14 +305,10 @@ export function buildCity(scene, layout, colliders, renderer) {
     }
   }
 
+  // World point in front of a lot (dist > 0: towards the road).
   function frontPoint(lot, dist) {
-    const cx = (lot.minX + lot.maxX) / 2, cz = (lot.minZ + lot.maxZ) / 2;
-    switch (lot.face) {
-      case 'n': return { x: cx, z: lot.minZ - dist };
-      case 's': return { x: cx, z: lot.maxZ + dist };
-      case 'e': return { x: lot.maxX + dist, z: cz };
-      default: return { x: lot.minX - dist, z: cz };
-    }
+    const [x, z] = W((lot.minX + lot.maxX) / 2, lot.maxZ + dist);
+    return { x, z };
   }
 
   function nextSign(block) {
@@ -243,67 +322,56 @@ export function buildCity(scene, layout, colliders, renderer) {
   }
 
   function addSign(lot, y, block) {
-    const along = lot.face === 'n' || lot.face === 's';
-    const a0 = along ? lot.minX : lot.minZ, a1 = along ? lot.maxX : lot.maxZ;
-    const len = Math.min(a1 - a0 - 0.8, 6);
+    const len = Math.min(lot.maxX - lot.minX - 0.8, 6);
     if (len < 2) return;
-    const mid = (a0 + a1) / 2;
+    const mid = (lot.minX + lot.maxX) / 2;
     const k = nextSign(block);
-    faceQuad(B.get('signs'), lot.face, lot, mid - len / 2, mid + len / 2, y, y + len / 4, 0.32, T.signUV(k), 0xffffff);
-    const sign = SHOP_SIGNS[k % SHOP_SIGNS.length];
-    if (sign.food) {
+    faceQuad(B.get('signs'), 's', lot, mid - len / 2, mid + len / 2, y, y + len / 4, 0.32, T.signUV(k), 0xffffff);
+    const s = SHOP_SIGNS[k % SHOP_SIGNS.length];
+    if (s.food) {
       const p = frontPoint(lot, 2.2);
-      pois.food.push({ name: sign.en, x: p.x, z: p.z, district: block.district });
+      pois.food.push({ name: s.en, x: p.x, z: p.z, district: block.district });
     }
   }
 
   function hotelFor(block) {
-    const o = block.outer;
-    return HOTELS.find((h) => h.at[0] > o.minX && h.at[0] < o.maxX && h.at[1] > o.minZ && h.at[1] < o.maxZ);
+    return HOTEL_SITES.find((h) => !h.used && pointInPoly(h.at[0], h.at[1], block.poly));
   }
 
   // A hotel tower (or a mall) with its name lit up on all four sides of the crown.
   function brandedTower(lot, h, block) {
+    h.used = true;
     const top = building(lot, { style: h.style || (h.mall ? 'plaster' : 'glass'), floors: h.floors, tint: h.tint, block });
     const w = lot.maxX - lot.minX, d = lot.maxZ - lot.minZ;
     const cx = (lot.minX + lot.maxX) / 2, cz = (lot.minZ + lot.maxZ) / 2;
     const sh = h.mall ? 3.6 : 4.2, y = top + (h.mall ? -sh / 2 - 0.6 : sh / 2 + 0.6);
     const key = `brand_${h.name}`;
     B.get('stone').box(cx, top, cz, w * 0.8, h.mall ? 0.4 : sh + 1.2, d * 0.8, 0x2a2a2a);
-    const sw = Math.min(Math.min(w, d) * 0.78, sh * 6);
+    const sw2 = Math.min(Math.min(w, d) * 0.78, sh * 6);
     for (const [face, x, z, depth] of [['n', cx, lot.minZ - 0.06, d], ['s', cx, lot.maxZ + 0.06, d], ['e', lot.maxX + 0.06, cz, w], ['w', lot.minX - 0.06, cz, w]]) {
-      const inset = h.mall ? 0 : 0.1 * depth; // the crown is 80% of the footprint
+      const inset = h.mall ? 0 : 0.1 * depth;
       const px = face === 'e' ? x - inset : face === 'w' ? x + inset : x, pz = face === 's' ? z - inset : face === 'n' ? z + inset : z;
-      signs.push({ key, text: [h.name, h.sub], bg: h.bg, fg: h.fg, x: px, y, z: pz, w: sw, h: sh, face, fonts: [`bold ${h.mall ? 72 : 96}px "Oswald", Arial, sans-serif`, `${h.mall ? 34 : 40}px "Oswald", Arial, sans-serif`] });
+      sign({ key, text: [h.name, h.sub], bg: h.bg, fg: h.fg, x: px, y, z: pz, w: sw2, h: sh, face, fonts: [`bold ${h.mall ? 72 : 96}px "Oswald", Arial, sans-serif`, `${h.mall ? 34 : 40}px "Oswald", Arial, sans-serif`] });
     }
-    pois.landmarks.push({ name: h.label, x: cx, z: cz });
+    const [wx, wz] = W(cx, cz);
+    pois.landmarks.push({ name: h.label, x: wx, z: wz });
   }
 
   // Fuel stations: a branded canopy over two pump islands, a kiosk at the back and a totem sign.
   function fuelStation(lot, block) {
-    if (!lot.face || (block.edge && isWorldEdge(block, lot.face))) return false;
-    const along = lot.face === 'n' || lot.face === 's';
-    const a0 = along ? lot.minX : lot.minZ, a1 = along ? lot.maxX : lot.maxZ;
-    const D = along ? lot.maxZ - lot.minZ : lot.maxX - lot.minX;
+    if (!lot.road) return false;
+    const a0 = lot.minX, a1 = lot.maxX, D = lot.maxZ - lot.minZ;
     if (a1 - a0 < 14 || D < 12 || rng() > 0.12) return false;
-    const cx0 = (lot.minX + lot.maxX) / 2, cz0 = (lot.minZ + lot.maxZ) / 2;
+    const [cx0, cz0] = W((a0 + a1) / 2, (lot.minZ + lot.maxZ) / 2);
     if (stations.some((s) => Math.hypot(s.x - cx0, s.z - cz0) < 800)) return false;
     stations.push({ x: cx0, z: cz0 });
     const brand = FUEL_BRANDS[[0, 1, 0, 2][fuelIdx++ % 4]];
-    // Local frame: a along the frontage, d inward from the road edge.
-    const M = (a, d) => {
-      switch (lot.face) {
-        case 'n': return [a, lot.minZ + d];
-        case 's': return [a, lot.maxZ - d];
-        case 'e': return [lot.maxX - d, a];
-        default: return [lot.minX + d, a];
-      }
-    };
-    const box = (b, a, d, la, ld, y, h, col, opts) => { const [x, z] = M(a, d); b.box(x, y, z, along ? la : ld, h, along ? ld : la, col, opts); };
+    // a along the frontage, d inward from the road edge.
+    const M = (a, d) => [a, lot.maxZ - d];
+    const box = (b, a, d, la, ld, y, h, c, opts) => { const [x, z] = M(a, d); b.box(x, y, z, la, h, ld, c, opts); };
     const st = B.get('stone');
     const am = (a0 + a1) / 2;
     box(st, am, D / 2, a1 - a0, D, CURB_H, 0.03, 0xb4b0a8);
-    // Canopy.
     const ca = Math.min(a1 - a0 - 3, 16), cd = Math.min(D * 0.55, 9), cdm = 1.5 + cd / 2;
     box(st, am, cdm, ca, cd, 5.0, 0.35, 0xf2f2f2);
     box(st, am, cdm, ca + 0.15, cd + 0.15, 5.3, 0.55, brand.canopy);
@@ -312,9 +380,8 @@ export function buildCity(scene, layout, colliders, renderer) {
       const a = am + sa * (ca / 2 - 1.2), d = cdm + sd * (cd / 2 - 1.2);
       box(st, a, d, 0.4, 0.4, CURB_H, 5.0, 0xe8e8e8);
       const [x, z] = M(a, d);
-      colliders.addCentered(x, z, 0.5, 0.5, 5, 'pole');
+      col().addCentered(x, z, 0.5, 0.5, 5, 'pole');
     }
-    // Pump islands.
     for (const sa of [-1, 1]) {
       const a = am + sa * ca * 0.22;
       box(st, a, cdm, 1.1, 3.2, CURB_H, 0.2, 0xd8d4cc);
@@ -323,285 +390,270 @@ export function buildCity(scene, layout, colliders, renderer) {
         box(st, a, cdm + sd, 0.52, 0.72, CURB_H + 1.45, 0.25, 0xffffff, { top: false });
       }
       const [x, z] = M(a, cdm);
-      colliders.addCentered(x, z, along ? 1.1 : 3.2, along ? 3.2 : 1.1, 1.9, 'pole');
+      col().addCentered(x, z, 1.1, 3.2, 1.9, 'pole');
     }
-    // Kiosk at the back.
     const kd = Math.min(5, D - cd - 2);
-    if (kd > 2.5) {
-      const [k0x, k0z] = M(am - 4.5, D - kd), [k1x, k1z] = M(am + 4.5, D);
-      building({ minX: Math.min(k0x, k1x), maxX: Math.max(k0x, k1x), minZ: Math.min(k0z, k1z), maxZ: Math.max(k0z, k1z), face: lot.face }, { style: 'plaster', floors: 1, tint: 0xf6f6f6, block });
-    }
-    // Branding: the canopy fascia facing the road, and a totem by the kerb.
+    if (kd > 2.5) building({ minX: am - 4.5, maxX: am + 4.5, minZ: lot.maxZ - D, maxZ: lot.maxZ - D + kd, face: 's' }, { style: 'plaster', floors: 1, tint: 0xf6f6f6, block });
     const [fx, fz] = M(am, 1.5 - 0.1);
-    signs.push({ key: `fuel_${brand.key}_fascia`, text: [brand.name], bg: brand.bg, fg: brand.fg, x: fx, y: 5.37, z: fz, w: 4, h: 0.5, face: lot.face, font: 'bold 92px "Oswald", Arial, sans-serif' });
+    sign({ key: `fuel_${brand.key}_fascia`, text: [brand.name], bg: brand.bg, fg: brand.fg, x: fx, y: 5.37, z: fz, w: 4, h: 0.5, face: 's', font: 'bold 92px "Oswald", Arial, sans-serif' });
     const ta = a1 - 1.2;
     box(st, ta, 0.8, 0.3, 0.3, CURB_H, 4.2, 0x888888);
     box(st, ta, 0.8, 1.7, 0.25, CURB_H + 3.2, 3.0, 0x222222);
     const [tx, tz] = M(ta, 0.8 - 0.14);
-    signs.push({ key: `fuel_${brand.key}_totem`, text: [brand.name, brand.full, 'PETROL · DIESEL'], bg: brand.bg, fg: brand.fg, x: tx, y: CURB_H + 4.7, z: tz, w: 1.6, h: 2.8, face: lot.face, fonts: ['bold 300px "Oswald", Arial, sans-serif', 'bold 84px "Noto Sans Kannada", "Oswald", sans-serif', 'bold 84px "Oswald", Arial, sans-serif'] });
+    sign({ key: `fuel_${brand.key}_totem`, text: [brand.name, brand.full, 'PETROL · DIESEL'], bg: brand.bg, fg: brand.fg, x: tx, y: CURB_H + 4.7, z: tz, w: 1.6, h: 2.8, face: 's', fonts: ['bold 300px "Oswald", Arial, sans-serif', 'bold 84px "Noto Sans Kannada", "Oswald", sans-serif', 'bold 84px "Oswald", Arial, sans-serif'] });
     const [px, pz] = M(ta, 0.8);
-    colliders.addCentered(px, pz, 0.6, 0.6, 7, 'pole');
-    const [qx, qz] = M(am, -2);
-    pois.fuel = pois.fuel || [];
-    pois.fuel.push({ name: brand.name, x: qx, z: qz, face: lot.face });
+    col().addCentered(px, pz, 0.6, 0.6, 7, 'pole');
+    const [qx, qz] = W(...M(am, -2));
+    pois.fuel.push({ name: brand.name, x: qx, z: qz });
     return true;
   }
 
-  function buildStreetBlock(block, o) {
-    const lots = lotsAround(block.inner, o.frontage, o.depth, o.sides || 'nsew');
-    for (const lot of lots) {
-      const shop = rng() < o.shop && lot.face && !(block.edge && isWorldEdge(block, lot.face));
-      if (block.zone !== 'market' && fuelStation(lot, block)) continue;
-      building(lot, { style: pick(o.styles), floors: Math.round(rand(...o.floors)), shop, tint: pick(o.tints), block });
-    }
-    const i = block.inner;
-    const inset = o.depth[1] + 3;
-    if (i.maxX - i.minX > inset * 2 + 10 && i.maxZ - i.minZ > inset * 2 + 10) {
-      const cx = (i.minX + i.maxX) / 2, cz = (i.minZ + i.maxZ) / 2;
-      const hw = (i.maxX - i.minX) / 2 - inset, hd = (i.maxZ - i.minZ) / 2 - inset;
-      const hotel = hotelFor(block);
-      if (hotel) brandedTower({ minX: cx - hw, maxX: cx + hw, minZ: cz - hd, maxZ: cz + hd }, hotel, block);
-      else if (rng() < 0.6) building({ minX: cx - hw, maxX: cx + hw, minZ: cz - hd, maxZ: cz + hd }, { style: pick(o.styles), floors: Math.round(rand(o.floors[0] + 1, o.floors[1] + 3)), tint: pick(o.tints), block });
-      else for (let k = 0; k < 6; k++) trees.push({ x: cx + rand(-hw, hw), z: cz + rand(-hd, hd), s: rand(0.8, 1.2), t: 0 });
-    }
+  // Runs `fn` for each lot with the builders in that lot's frame.
+  function eachLot(lots, fn) {
+    for (const lot of lots) { B.xf = lot.f; fn(lot); B.xf = null; }
   }
 
-  function isWorldEdge(block, face) {
-    return (face === 'n' && block.j === 0) || (face === 's' && block.j === layout.zRoads.length) ||
-      (face === 'w' && block.i === 0) || (face === 'e' && block.i === layout.xRoads.length);
+  function buildStreetBlock(block, o) {
+    const lots = lotsAlong(block, o.frontage, o.depth);
+    eachLot(lots, (lot) => {
+      const shop = rng() < o.shop && lot.road;
+      if (block.zone !== 'market' && fuelStation(lot, block)) return;
+      building(lot, { style: pick(o.styles), floors: Math.round(rand(...o.floors)), shop, tint: pick(o.tints), block });
+    });
+    const hotel = hotelFor(block);
+    const c = centreLot(block, o.depth[1] + 3, hotel ? 22 : 40);
+    if (!c) return;
+    eachLot([c], (lot) => {
+      if (hotel) brandedTower(lot, hotel, block);
+      else if (rng() < 0.6) building(lot, { style: pick(o.styles), floors: Math.round(rand(o.floors[0] + 1, o.floors[1] + 3)), tint: pick(o.tints), block });
+      else for (let k = 0; k < 6; k++) treeAt(rand(lot.minX, lot.maxX), rand(lot.minZ, lot.maxZ), rand(0.8, 1.2), 0);
+    });
   }
 
   function buildCommercial(block) {
-    if (block.landmark === 'cathedral') {
-      buildStreetBlock(block, { frontage: [9, 16], depth: [12, 16], floors: [2, 5], shop: 0.8, tints: PASTELS, styles: ['plaster', 'apartment'], sides: 'se' });
-      const i = block.inner;
-      lawn({ inner: { minX: i.minX, maxX: i.maxX - 20, minZ: i.minZ, maxZ: i.maxZ - 20 } });
-      pois.landmarks.push(LANDMARKS.cathedral(ctx, i.minX + 50, i.minZ + 40));
-      return;
-    }
     plaza(block, 0xe8e4dc);
+    if (block.landmark === 'cathedral') {
+      const { cx, cz } = mid(block);
+      reserveRect(block, cx - 2, cz, 44, 24);
+      pois.landmarks.push(LANDMARKS.cathedral(ctx, cx, cz));
+    }
     buildStreetBlock(block, { frontage: [8, 15], depth: [12, 18], floors: block.pubs ? [2, 5] : [2, 6], shop: 0.9, tints: block.pubs ? BRIGHTS.concat(PASTELS) : PASTELS, styles: ['plaster', 'apartment', 'plaster'] });
   }
 
   function buildTowers(block) {
     plaza(block, 0xf0ece4);
-    const i = block.inner;
-    const cx = (i.minX + i.maxX) / 2, cz = (i.minZ + i.maxZ) / 2;
-    if (block.landmark === 'skyTower') {
-      pois.landmarks.push(LANDMARKS.skyTower(ctx, cx + 20, cz + 15));
-      building({ minX: i.minX + 6, maxX: i.minX + 34, minZ: i.minZ + 6, maxZ: i.minZ + 34, face: 'n' }, { style: 'glass', floors: 18, shop: false, tint: 0xd0e0ff, block });
-      building({ minX: i.minX + 6, maxX: i.minX + 40, minZ: i.maxZ - 26, maxZ: i.maxZ - 4, face: 's' }, { style: 'plaster', floors: 6, shop: true, tint: 0xf4efe6, block });
-      return;
-    }
-    if (block.landmark === 'wtc') {
-      pois.landmarks.push(LANDMARKS.wtc(ctx, cx, cz + 10));
-      const mall = hotelFor(block);
-      if (mall) brandedTower({ minX: i.minX + 4, maxX: i.minX + 46, minZ: i.minZ + 4, maxZ: i.minZ + 34 }, mall, block);
-      else building({ minX: i.minX + 4, maxX: i.minX + 30, minZ: i.minZ + 4, maxZ: i.minZ + 30, face: 'n' }, { style: 'glass', floors: 12, tint: 0xd8e4f0, block });
-      return;
-    }
-    const cells = [[0.25, 0.25], [0.72, 0.3], [0.3, 0.75], [0.72, 0.75]];
+    const { cx, cz } = mid(block);
+    if (block.landmark === 'skyTower') { reserveRect(block, cx, cz, 34, 34); pois.landmarks.push(LANDMARKS.skyTower(ctx, cx, cz)); }
+    if (block.landmark === 'wtc') { reserveRect(block, cx, cz, 64, 44); pois.landmarks.push(LANDMARKS.wtc(ctx, cx, cz)); }
     const hotel = hotelFor(block);
-    for (const [fx, fz] of cells) {
-      const x = i.minX + (i.maxX - i.minX) * fx, z = i.minZ + (i.maxZ - i.minZ) * fz;
-      const s = rand(12, 18);
-      if (hotel && fx === 0.25) { brandedTower({ minX: x - 15, maxX: x + 15, minZ: z - 12, maxZ: z + 12 }, hotel, block); continue; }
-      building({ minX: x - s, maxX: x + s, minZ: z - s * 0.8, maxZ: z + s * 0.8 }, { style: 'glass', floors: Math.round(rand(10, 26)), tint: pick([0xd0e0ff, 0xe0f0e8, 0xf0e8d8, 0xc8d8f0]), block });
+    const lots = lotsAlong(block, [22, 36], [18, 28], { gapChance: 0.6 });
+    let first = true;
+    eachLot(lots, (lot) => {
+      if (hotel && first && lot.maxX - lot.minX > 20) { first = false; brandedTower(lot, hotel, block); return; }
+      if (rng() < 0.15) { treeAt((lot.minX + lot.maxX) / 2, (lot.minZ + lot.maxZ) / 2, 1.2, 0); return; }
+      building(lot, { style: rng() < 0.75 ? 'glass' : 'apartment', floors: Math.round(rand(8, 24)), shop: rng() < 0.3, tint: pick([0xd0e0ff, 0xe0f0e8, 0xf0e8d8, 0xc8d8f0]), block });
+    });
+    if (!block.landmark) {
+      const c = centreLot(block, 30, 24);
+      if (c) eachLot([c], (lot) => building(lot, { style: 'glass', floors: Math.round(rand(14, 30)), tint: pick([0xd0e0ff, 0xc8d8f0]), block }));
     }
   }
 
   function buildGov(block) {
     lawn(block);
-    const lots = lotsAround(block.inner, [22, 40], [16, 22]);
-    for (const lot of lots) {
-      if (rng() < 0.25) { trees.push({ x: (lot.minX + lot.maxX) / 2, z: (lot.minZ + lot.maxZ) / 2, s: 1.3, t: 0 }); continue; }
-      const sb = 4;
-      const l = { ...lot };
-      if (l.face === 'n') l.minZ += sb; if (l.face === 's') l.maxZ -= sb; if (l.face === 'e') l.maxX -= sb; if (l.face === 'w') l.minX += sb;
-      building(l, { style: rng() < 0.7 ? 'heritage' : 'plaster', floors: Math.round(rand(2, 4)), tint: pick([0xf2ead8, 0xe8dcc8, 0xf5f0e6, 0xd9b8a0]), block });
-    }
-    const i = block.inner;
-    for (let k = 0; k < 14; k++) trees.push({ x: rand(i.minX + 25, i.maxX - 25), z: rand(i.minZ + 25, i.maxZ - 25), s: rand(1, 1.5), t: 0 });
+    const lots = lotsAlong(block, [22, 40], [16, 22]);
+    eachLot(lots, (lot) => {
+      if (rng() < 0.25) { treeAt((lot.minX + lot.maxX) / 2, (lot.minZ + lot.maxZ) / 2, 1.3, 0); return; }
+      building({ ...lot, maxZ: lot.maxZ - 4 }, { style: rng() < 0.7 ? 'heritage' : 'plaster', floors: Math.round(rand(2, 4)), tint: pick([0xf2ead8, 0xe8dcc8, 0xf5f0e6, 0xd9b8a0]), block });
+    });
+    scatterInBlock(block, 14, 0, 25);
   }
 
   function compoundWall(lot, colour, gateFrac = 0.7, gateHalf = 1.5, h = 1.3) {
     const st = B.get('stone');
-    const along = lot.face === 'n' || lot.face === 's';
-    const wz = lot.face === 'n' ? lot.minZ + 0.15 : lot.face === 's' ? lot.maxZ - 0.15 : null;
-    const wx = lot.face === 'w' ? lot.minX + 0.15 : lot.face === 'e' ? lot.maxX - 0.15 : null;
-    const a0 = along ? lot.minX : lot.minZ, a1 = along ? lot.maxX : lot.maxZ;
+    const wz = lot.maxZ - 0.15;
+    const a0 = lot.minX, a1 = lot.maxX;
     const gate = a0 + (a1 - a0) * gateFrac;
     for (const [s0, s1] of [[a0, gate - gateHalf], [gate + gateHalf, a1]]) {
       if (s1 - s0 < 0.5) continue;
       const m = (s0 + s1) / 2, len = s1 - s0;
-      if (along) { st.box(m, CURB_H, wz, len, h, 0.3, colour); colliders.addCentered(m, wz, len, 0.3, h + 0.2, 'wall'); }
-      else { st.box(wx, CURB_H, m, 0.3, h, len, colour); colliders.addCentered(wx, m, 0.3, len, h + 0.2, 'wall'); }
+      st.box(m, CURB_H, wz, len, h, 0.3, colour);
+      col().addCentered(m, wz, len, 0.3, h + 0.2, 'wall');
     }
     return gate;
   }
 
   function buildResidential(block) {
     lawn(block, 0xb8b090);
-    const lots = lotsAround(block.inner, [10, 15], [12, 16]);
-    for (const lot of lots) {
-      const sb = 3;
-      const l = { ...lot };
-      if (lot.face === 'n') l.minZ += sb; if (lot.face === 's') l.maxZ -= sb; if (lot.face === 'e') l.maxX -= sb; if (lot.face === 'w') l.minX += sb;
+    const lots = lotsAlong(block, [10, 15], [12, 16]);
+    eachLot(lots, (lot) => {
       compoundWall(lot, pick([0xe8e0d0, 0xd8c8b0, 0xf0e8e0]));
-      building(l, { style: rng() < 0.6 ? 'plaster' : 'apartment', floors: Math.round(rand(1, 3.4)), tint: pick(PASTELS), block });
-      if (rng() < 0.5) {
-        const p = frontPoint(lot, -1.5);
-        trees.push({ x: p.x + rand(-2, 2), z: p.z + rand(-1, 1), s: rand(0.5, 0.8), t: rng() < 0.3 ? 1 : 2 });
-      }
+      building({ ...lot, maxZ: lot.maxZ - 3 }, { style: rng() < 0.6 ? 'plaster' : 'apartment', floors: Math.round(rand(1, 3.4)), tint: pick(PASTELS), block });
+      if (rng() < 0.5) treeAt((lot.minX + lot.maxX) / 2 + rand(-2, 2), lot.maxZ - 1.5, rand(0.5, 0.8), rng() < 0.3 ? 1 : 2);
       const door = frontPoint(lot, 2.2);
       pois.homes.push({ name: `#${Math.floor(rand(1, 999))}, ${block.district}`, x: door.x, z: door.z, district: block.district });
-    }
+    });
+    const c = centreLot(block, 20, 30);
+    if (c) eachLot([c], (lot) => {
+      if (rng() < 0.5) building(lot, { style: 'apartment', floors: Math.round(rand(3, 6)), tint: pick(PASTELS), block });
+      else for (let k = 0; k < 5; k++) treeAt(rand(lot.minX, lot.maxX), rand(lot.minZ, lot.maxZ), rand(0.8, 1.3), 0);
+    });
   }
 
   // Peenya: factory sheds with sawtooth roofs, chimneys, compound walls and painted name boards.
   function buildIndustrial(block) {
     plaza(block, 0xb8b0a0);
-    const lots = lotsAround(block.inner, [26, 44], [26, 40]);
+    const lots = lotsAlong(block, [26, 44], [26, 40]);
     const metal = B.get('sheet'), st = B.get('stone');
-    for (const lot of lots) {
-      const sb = 6;
-      const l = { ...lot };
-      if (lot.face === 'n') l.minZ += sb; if (lot.face === 's') l.maxZ -= sb; if (lot.face === 'e') l.maxX -= sb; if (lot.face === 'w') l.minX += sb;
+    eachLot(lots, (lot) => {
       const gateA = compoundWall(lot, pick([0xc8c0b0, 0xa8b0b8, 0xd8d0c0]), 0.5, 3.5, 2.2);
+      const l = { ...lot, maxZ: lot.maxZ - 6 };
       const w = l.maxX - l.minX, d = l.maxZ - l.minZ;
-      if (w < 8 || d < 8) continue;
+      if (w < 8 || d < 8) return;
       const cx = (l.minX + l.maxX) / 2, cz = (l.minZ + l.maxZ) / 2;
       const H = rand(7, 10);
       const tint = pick([0xd8dce0, 0xc8d0d8, 0xe0d8c8, 0xb8c8d8]);
       B.get('plaster').box(cx, CURB_H, cz, w, H, d, tint, { tileW: 14, tileH: 12.8, top: false });
       st.box(cx, CURB_H + 2.2, cz, w + 0.04, 0.6, d + 0.04, pick([0x2a5a9a, 0x9a2a2a, 0x2a7a4a]), { top: false });
-      // Sawtooth roof: teeth run along x, repeating along z.
       const teeth = Math.max(2, Math.round(d / 6)), td = d / teeth;
       for (let k = 0; k < teeth; k++) {
         const z0 = l.minZ + k * td;
         put(metal, BOXG, cx, CURB_H + H + 1.2, z0 + td / 2, 0x8a9098, 0, w, 0.08, Math.hypot(td, 2.4), Math.atan2(2.4, td));
         B.get('glass').box(cx, CURB_H + H, z0 + td - 0.05, w, 2.4, 0.1, 0x8aa0b0, { top: false, tileW: 8, tileH: 12.8 });
       }
-      colliders.add(l.minX, l.maxX, l.minZ, l.maxZ, CURB_H + H + 2.4, 'building');
+      col().add(l.minX, l.maxX, l.minZ, l.maxZ, CURB_H + H + 2.4, 'building');
       if (rng() < 0.3) {
         const chx = l.minX + 3, chz = l.minZ + 3;
         for (let k = 0; k < 6; k++) put(st, CHIMNEY, chx, CURB_H + k * 4 + 2, chz, k % 2 ? 0xd02020 : 0xf0f0f0, 0, 1.0 - k * 0.06, 4, 1.0 - k * 0.06);
-        colliders.addCentered(chx, chz, 2.2, 2.2, 25, 'pole');
+        col().addCentered(chx, chz, 2.2, 2.2, 25, 'pole');
       }
-      // Name board over the gate.
-      const fake = { ...lot };
-      const along = lot.face === 'n' || lot.face === 's';
       const k = nextSign(block);
-      const a = gateA;
-      if (along) { fake.minX = a - 3; fake.maxX = a + 3; } else { fake.minZ = a - 3; fake.maxZ = a + 3; }
-      faceQuad(B.get('signs'), lot.face, fake, along ? a - 3 : a - 3, along ? a + 3 : a + 3, CURB_H + 2.4, CURB_H + 3.9, -0.1, T.signUV(k), 0xffffff);
+      faceQuad(B.get('signs'), 's', lot, gateA - 3, gateA + 3, CURB_H + 2.4, CURB_H + 3.9, -0.1, T.signUV(k), 0xffffff);
       const pk = frontPoint(lot, -3);
-      pois.industrial.push({ x: pk.x, z: pk.z, face: lot.face });
+      pois.industrial.push({ x: pk.x, z: pk.z, heading: Math.atan2(lot.f.c, -lot.f.s) });
+    });
+  }
+
+  function mid(block) {
+    const i = block.inner;
+    return { cx: (i.minX + i.maxX) / 2, cz: (i.minZ + i.maxZ) / 2 };
+  }
+
+  // Trees scattered inside the block, away from reserved footprints.
+  function scatterInBlock(block, n, pinkChance = 0.15, margin = 3) {
+    const P = block.innerPoly, i = block.inner, bb = block.bbox;
+    let placed = 0;
+    for (let k = 0; k < n * 4 && placed < n; k++) {
+      const x = rand(bb.minX + margin, bb.maxX - margin), z = rand(bb.minZ + margin, bb.maxZ - margin);
+      if (!pointInPoly(x, z, P)) continue;
+      if (block.placed.some((q) => pointInPoly(x, z, q))) continue;
+      if (nearRail(x, z, 9)) continue;
+      void i;
+      trees.push({ x, z, s: rand(0.9, 1.6), t: rng() < pinkChance ? 1 : 0 });
+      placed++;
     }
   }
 
   function buildPark(block) {
     lawn(block);
-    const i = block.inner;
-    const cx = (i.minX + i.maxX) / 2, cz = (i.minZ + i.maxZ) / 2;
+    const { cx, cz } = mid(block);
+    // Footpaths from the middle out to each side.
     const path = B.get('plaza');
-    path.rect(cx - 2, cx + 2, i.minZ, i.maxZ, CURB_H + 0.02, 0xc8a080, (x, z) => [x / 4, -z / 4]);
-    path.rect(i.minX, i.maxX, cz - 2, cz + 2, CURB_H + 0.02, 0xc8a080, (x, z) => [x / 4, -z / 4]);
-    let clear = 0;
-    if (block.landmark === 'statue') LANDMARKS.statue(ctx, i.maxX - 10, i.maxZ - 10);
-    else if (block.landmark) { pois.landmarks.push(LANDMARKS[block.landmark](ctx, block)); clear = block.landmark === 'library' || block.landmark === 'glassHouse' ? 36 : 12; }
-    for (let k = 0; k < 70; k++) {
-      const x = rand(i.minX + 3, i.maxX - 3), z = rand(i.minZ + 3, i.maxZ - 3);
-      if (Math.abs(x - cx) < 4 || Math.abs(z - cz) < 4) continue;
-      if (clear && Math.abs(x - cx) < clear && Math.abs(z - cz) < clear * 0.6) continue;
-      trees.push({ x, z, s: rand(0.9, 1.6), t: rng() < 0.15 ? 1 : 0 });
+    if (block.innerPoly && pointInPoly(cx, cz, block.innerPoly)) {
+      for (const E of edgeFrames(block)) {
+        const [ex, ez] = frameToWorld(E.f, (E.a0 + E.a1) / 2, 0);
+        const dx = ex - cx, dz = ez - cz, l = Math.hypot(dx, dz);
+        if (l < 10) continue;
+        const f = makeFrame((cx + ex) / 2, (cz + ez) / 2, Math.atan2(dx, dz));
+        B.xf = f;
+        path.rect(-2, 2, -l / 2, l / 2, CURB_H + 0.02, 0xc8a080, (x, z) => [x / 4, -z / 4]);
+        B.xf = null;
+        block.placed.push(rectCorners((cx + ex) / 2, (cz + ez) / 2, dz / l, -dx / l, 3, l / 2));
+      }
     }
-    pois.parking.push({ x: cx + 6, z: i.maxZ + 2 });
+    if (block.landmark === 'statue') { LANDMARKS.statue(ctx, cx + 14, cz + 14); reserveRect(block, cx + 14, cz + 14, 10, 10); }
+    else if (block.landmark) { pois.landmarks.push(LANDMARKS[block.landmark](ctx, block)); reserveRect(block, cx, cz, 76, 40); }
+    scatterInBlock(block, Math.min(160, Math.round(block.area / 220)));
+    const [px, pz] = [block.poly[0][0], block.poly[0][1]];
+    pois.parking.push({ x: px, z: pz });
+    if (block.park && !block.park.labelled) { block.park.labelled = true; pois.landmarks.push({ name: block.park.name, x: cx, z: cz }); }
   }
 
   function buildLake(block) {
-    lawn(block);
-    const i = block.inner;
-    const m = 9;
-    const wMinX = i.minX + m, wMaxX = i.maxX - m, wMinZ = i.minZ + m, wMaxZ = i.maxZ - m;
-    B.get('plaza').rect(i.minX + 4, i.maxX - 4, i.minZ + 4, i.maxZ - 4, CURB_H + 0.02, 0xd8c0a0, (x, z) => [x / 4, -z / 4]);
-    B.get('stone').box((wMinX + wMaxX) / 2, -0.6, (wMinZ + wMaxZ) / 2, wMaxX - wMinX + 1, 0.85, wMaxZ - wMinZ + 1, 0x8a8478, { top: false });
-    const water = new THREE.Mesh(new THREE.PlaneGeometry(wMaxX - wMinX, wMaxZ - wMinZ), mats.water);
-    water.rotation.x = -Math.PI / 2;
-    water.position.set((wMinX + wMaxX) / 2, 0.05, (wMinZ + wMaxZ) / 2);
-    water.receiveShadow = true;
-    group.add(water);
-    colliders.add(wMinX, wMaxX, wMinZ, wMaxZ, 2, 'water');
-    const ix = (wMinX + wMaxX) / 2 + 10, iz = (wMinZ + wMaxZ) / 2 - 5;
-    put(B.get('stone'), new THREE.CylinderGeometry(1, 1.15, 1, 20), ix, 0, iz, 0x6a7a3a, 0, 9, 0.5, 7);
-    for (let k = 0; k < 6; k++) trees.push({ x: ix + rand(-6, 6), z: iz + rand(-4, 4), s: rand(0.8, 1.2), t: 0, noCollide: true });
-    for (let x = i.minX + 3; x < i.maxX - 3; x += 9) { trees.push({ x, z: i.minZ + 2.5, s: rand(0.9, 1.3), t: 0 }); trees.push({ x, z: i.maxZ - 2.5, s: rand(0.9, 1.3), t: 0 }); }
-    pois.landmarks.push({ name: block.lakeName || 'Lake', x: (wMinX + wMaxX) / 2, z: i.maxZ + 2 });
-  }
-
-  // Rain trees and gulmohars line nearly every Bengaluru street.
-  function nearRail(x, z) {
-    return Math.abs(z - railZ) < 10 && x > RAILWAY.from - 5 && x < RAILWAY.to + 5;
-  }
-  function avenueTrees(block) {
-    if (block.zone === 'lake') return;
-    const o = block.outer;
-    const cbd = Math.abs(block.cx) < 460 && Math.abs(block.cz) < 460;
-    const spacing = block.zone === 'commercial' || block.zone === 'market' || block.zone === 'industrial' ? 30 : cbd ? 16 : 22;
-    const inset = 1.0;
-    const sides = [];
-    if (block.j > 0) sides.push([o.minX, o.maxX, o.minZ + inset, 'x']);
-    if (block.j < layout.zRoads.length) sides.push([o.minX, o.maxX, o.maxZ - inset, 'x']);
-    if (block.i > 0) sides.push([o.minZ, o.maxZ, o.minX + inset, 'z']);
-    if (block.i < layout.xRoads.length) sides.push([o.minZ, o.maxZ, o.maxX - inset, 'z']);
-    for (const [a0, a1, c, ax] of sides) {
-      for (let a = a0 + 6 + rand(0, 4); a < a1 - 6; a += spacing + rand(-3, 3)) {
-        const t = rng() < 0.18 ? 1 : 0;
-        const p = ax === 'x' ? { x: a, z: c } : { x: c, z: a };
-        if (nearRail(p.x, p.z)) continue;
-        trees.push({ ...p, s: rand(0.8, 1.3), t });
+    const water = block.innerPoly && insetPolygon(block.innerPoly, block.innerPoly.map(() => 9));
+    if (!water) { buildPark(block); return; }
+    fillPoly(B.get('grass'), block.innerPoly, CURB_H + 0.01, 0xffffff, (x, z) => [x / 6, -z / 6], [water]);
+    polyWalls(B.get('stone'), water, -0.6, CURB_H + 0.02, 0x8a8478, { inward: true, tile: 2 });
+    fillPoly(B.get('stone'), water, -0.6, 0x5a5448);
+    const wb = new BuilderSet();
+    fillPoly(wb.get('water'), water, 0.05, 0xffffff, (x, z) => [x / 40, -z / 40]);
+    wb.buildAll({ water: mats.water }, group, { water: { castShadow: false } });
+    for (let i = 0; i < water.length; i++) {
+      const [ax, az] = water[i], [bx, bz] = water[(i + 1) % water.length];
+      colliders.addSegment(ax, az, bx, bz, 1.0, 2, 'water');
+    }
+    // Trees around the bund.
+    const P = block.innerPoly;
+    for (let i = 0; i < P.length; i++) {
+      const [ax, az] = P[i], [bx, bz] = P[(i + 1) % P.length], l = Math.hypot(bx - ax, bz - az);
+      for (let s = 6; s < l - 4; s += 10) {
+        const t = s / l, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+        const [wx, wz] = towards(x, z, block.cx, block.cz, 3.5);
+        trees.push({ x: wx, z: wz, s: rand(0.9, 1.3), t: 0 });
       }
     }
+    pois.landmarks.push({ name: block.lakeName || 'Lake', x: block.cx, z: block.cz });
+  }
+
+  function towards(x, z, cx, cz, d) {
+    const dx = cx - x, dz = cz - z, l = Math.hypot(dx, dz) || 1;
+    return [x + (dx / l) * d, z + (dz / l) * d];
+  }
+
+  // ---------- Street trees and lamps along the kerbs ----------
+  function kerbRuns(block, inset, fn) {
+    const P = block.poly, sgn = Math.sign(polyArea(P));
+    for (let i = 0; i < P.length; i++) {
+      const w = block.edgeWidths[i];
+      if (!w) continue;
+      const [x1, z1] = P[i], [x2, z2] = P[(i + 1) % P.length];
+      const dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz);
+      if (len < 16) continue;
+      const nx = (dz / len) * sgn, nz = (-dx / len) * sgn; // outward, towards the road
+      fn({ x1, z1, ux: dx / len, uz: dz / len, len, nx, nz, w, at: (s) => [x1 + (dx / len) * s - nx * inset, z1 + (dz / len) * s - nz * inset] });
+    }
+  }
+
+  function avenueTrees(block) {
+    if (block.zone === 'lake') return;
+    const cbd = Math.abs(block.cx - 300) < 500 && Math.abs(block.cz) < 450;
+    const base = block.zone === 'commercial' || block.zone === 'market' || block.zone === 'industrial' ? 30 : cbd ? 16 : 22;
+    kerbRuns(block, 1.0, (k) => {
+      const spacing = k.w > 14 ? base : base * 1.5; // side streets are sparser
+      for (let s = 7 + rand(0, 4); s < k.len - 7; s += spacing + rand(-3, 3)) {
+        const [x, z] = k.at(s);
+        if (nearRail(x, z, 10)) continue;
+        trees.push({ x, z, s: rand(0.8, 1.3), t: rng() < 0.18 ? 1 : 0 });
+      }
+    });
   }
 
   function streetLamps(block) {
-    const o = block.outer;
-    const sides = [];
-    if (block.j > 0) sides.push([o.minX, o.maxX, o.minZ + 0.4, 'x']);
-    if (block.i > 0) sides.push([o.minZ, o.maxZ, o.minX + 0.4, 'z']);
-    for (const [a0, a1, c, ax] of sides) {
-      for (let a = a0 + 12; a < a1 - 8; a += 34) {
-        const p = ax === 'x' ? [a, c, 0] : [c, a, Math.PI / 2];
-        if (nearRail(p[0], p[1])) continue;
-        lamps.push(p);
+    kerbRuns(block, 0.4, (k) => {
+      const spacing = k.w > 14 ? 36 : 58;
+      for (let s = 12 + rand(0, 10); s < k.len - 8; s += spacing) {
+        const [x, z] = k.at(s);
+        if (nearRail(x, z, 10)) continue;
+        lamps.push([x, z, k.nx, k.nz]);
       }
-    }
+    });
   }
-
-  // ---------- Road-end barricades and world bounds ----------
-  for (const r of layout.roads) {
-    for (const end of [WORLD_MIN + 2, WORLD_MAX - 2]) {
-      const st = B.get('stone');
-      for (let k = 0; k < Math.ceil(r.width / 2); k++) {
-        const off = -r.width / 2 + 1 + k * 2;
-        const col = k % 2 ? 0x222222 : 0xf2c200;
-        if (r.axis === 'x') st.box(r.pos + off, 0, end, 2, 1.2, 0.6, col); else st.box(end, 0, r.pos + off, 0.6, 1.2, 2, col);
-      }
-      if (r.axis === 'x') colliders.addCentered(r.pos, end, r.width, 1, 3, 'wall'); else colliders.addCentered(end, r.pos, 1, r.width, 3, 'wall');
-      signs.push({ key: 'metroWork', text: ['ROAD CLOSED · METRO WORK', 'ಮೆಟ್ರೋ ಕಾಮಗಾರಿ'], bg: '#f2c200', fg: '#111',
-        x: r.axis === 'x' ? r.pos : end + (end < 0 ? 0.31 : -0.31), z: r.axis === 'x' ? end + (end < 0 ? 0.31 : -0.31) : r.pos, y: 1.4, w: 6, h: 1.5,
-        face: r.axis === 'x' ? (end < 0 ? 's' : 'n') : (end < 0 ? 'e' : 'w') });
-    }
-  }
-  colliders.add(WORLD_MIN - 10, WORLD_MIN, WORLD_MIN - 10, WORLD_MAX + 10, 300, 'bound');
-  colliders.add(WORLD_MAX, WORLD_MAX + 10, WORLD_MIN - 10, WORLD_MAX + 10, 300, 'bound');
-  colliders.add(WORLD_MIN - 10, WORLD_MAX + 10, WORLD_MIN - 10, WORLD_MIN, 300, 'bound');
-  colliders.add(WORLD_MIN - 10, WORLD_MAX + 10, WORLD_MAX, WORLD_MAX + 10, 300, 'bound');
 
   // ---------- Bake merged meshes ----------
+  B.xf = null;
   B.buildAll(mats, group, {
     junction: { castShadow: false }, zebra: { castShadow: false }, grass: { castShadow: false }, plaza: { castShadow: false },
-    signs: { castShadow: false }, glow: { castShadow: false },
+    signs: { castShadow: false }, glow: { castShadow: false }, sidewalk: { castShadow: false },
   }, CHUNK);
   for (const m of group.children) if (m.name.startsWith('road_')) m.castShadow = false;
 
@@ -611,9 +663,18 @@ export function buildCity(scene, layout, colliders, renderer) {
   const textSignMats = buildTextSigns(group, signs);
   for (const m of textSignMats) nightMats.push([m, 0.05, 0.8]);
 
+  // Nothing beyond the fog is drawn: cull chunked meshes by distance every few frames.
+  const cullable = group.children.filter((m) => m.geometry && m.name !== 'ground' && !m.isInstancedMesh);
+  for (const m of cullable) { m.geometry.computeBoundingSphere(); m.userData.c = m.geometry.boundingSphere.center.clone(); m.userData.r = m.geometry.boundingSphere.radius; }
+  let cullT = 0;
   const update = (dt, t, camera) => {
     mats.water.normalMap.offset.set(t * 0.01, t * 0.006);
     treeLod(camera);
+    if (camera && (cullT -= dt) <= 0) {
+      cullT = 0.25;
+      const px = camera.position.x, pz = camera.position.z, far = (camera.far > 900 ? 900 : camera.far);
+      for (const m of cullable) m.visible = Math.hypot(m.userData.c.x - px, m.userData.c.z - pz) - m.userData.r < far;
+    }
   };
   // Drive night glow and rain wetness from the environment system.
   const setLighting = (night, wet) => {
@@ -625,6 +686,22 @@ export function buildCity(scene, layout, colliders, renderer) {
   };
   sharedUniforms.uWet.value = 0;
   return { group, pois, update, setLighting, materials: mats, lampPositions: lamps, rail: infra.rail };
+}
+
+function rectPoly(r) {
+  return [[r.minX, r.minZ], [r.maxX, r.minZ], [r.maxX, r.maxZ], [r.minX, r.maxZ]];
+}
+
+function distToPolyline(x, z, pts) {
+  let best = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+    if (Math.min(ax, bx) - 40 > x || Math.max(ax, bx) + 40 < x || Math.min(az, bz) - 40 > z || Math.max(az, bz) + 40 < z) continue;
+    const abx = bx - ax, abz = bz - az, l2 = abx * abx + abz * abz || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * abx + (z - az) * abz) / l2));
+    best = Math.min(best, Math.hypot(ax + abx * t - x, az + abz * t - z));
+  }
+  return best;
 }
 
 const BOXG = new THREE.BoxGeometry(1, 1, 1);
@@ -698,33 +775,40 @@ function buildInstancedTrees(group, trees, colliders) {
     il.castShadow = false;
     chunks.push({ ih, il, cx, cz });
   }
-  for (const { list } of trunkChunks.values()) {
+  const trunkMeshes = [];
+  for (const { list, cx, cz } of trunkChunks.values()) {
     const tm = new THREE.InstancedMesh(trunkGeo, trunkMat, list.length);
     list.forEach((mm, k) => tm.setMatrixAt(k, mm));
     tm.castShadow = true;
     tm.computeBoundingSphere();
     group.add(tm);
+    trunkMeshes.push({ mesh: tm, cx, cz });
   }
-  // Swap canopy detail by distance from the camera.
+  // Swap canopy detail by distance from the camera; nothing past the fog.
   return (camera) => {
     if (!camera) return;
     for (const ch of chunks) {
-      const near = Math.abs(ch.cx - camera.position.x) < CHUNK * 1.1 && Math.abs(ch.cz - camera.position.z) < CHUNK * 1.1;
-      ch.ih.visible = near; ch.il.visible = !near;
+      const dx = Math.abs(ch.cx - camera.position.x), dz = Math.abs(ch.cz - camera.position.z);
+      const near = dx < CHUNK * 1.1 && dz < CHUNK * 1.1;
+      const far = Math.hypot(dx, dz) > 900 + CHUNK * 0.7;
+      ch.ih.visible = near; ch.il.visible = !near && !far;
     }
+    for (const tc of trunkMeshes) tc.mesh.visible = Math.hypot(tc.cx - camera.position.x, tc.cz - camera.position.z) < 900 + CHUNK * 0.7;
   };
 }
 
+// Lamps: [x, z, armDirX, armDirZ] with the arm reaching out over the road.
 function buildLamps(group, lamps, colliders) {
   const b = new BuilderSet();
   const pole = b.get('metal');
   const head = b.get('glow');
   const cyl = new THREE.CylinderGeometry(0.08, 0.12, 1, 6);
-  for (const [x, z, rot] of lamps) {
+  for (const [x, z, ax, az] of lamps) {
     put(pole, cyl, x, 4.15, z, 0x6a6e72, 0, 1, 8, 1);
-    const dx = rot ? -1.6 : 0, dz = rot ? 0 : -1.6;
-    put(pole, cyl, x + dx / 2, 8.1, z + dz / 2, 0x6a6e72, 0, 0.7, 1.7, 0.7, rot ? 0 : Math.PI / 2, rot ? Math.PI / 2 : 0);
-    head.box(x + dx, 7.85, z + dz, 0.6, 0.15, 0.6, 0xfff2cc);
+    b.xf = makeFrame(x, z, Math.atan2(ax, az));
+    put(pole, cyl, 0, 8.1, 0.8, 0x6a6e72, 0, 0.7, 1.7, 0.7, Math.PI / 2, 0);
+    head.box(0, 7.85, 1.6, 0.6, 0.15, 0.6, 0xfff2cc);
+    b.xf = null;
     colliders.addCentered(x, z, 0.3, 0.3, 8, 'pole');
   }
   b.buildAll({ metal: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.6 }), glow: new THREE.MeshBasicMaterial({ vertexColors: true }) }, group, { glow: { castShadow: false } }, CHUNK);
@@ -732,13 +816,13 @@ function buildLamps(group, lamps, colliders) {
   const poolMat = new THREE.MeshBasicMaterial({ map: T.lightPoolTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false });
   const geo = new THREE.PlaneGeometry(1, 1);
   geo.rotateX(-Math.PI / 2);
-  const pools = new THREE.InstancedMesh(geo, poolMat, lamps.length);
+  const pools = new THREE.InstancedMesh(geo, poolMat, Math.max(1, lamps.length));
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(14, 1, 14), p = new THREE.Vector3();
-  lamps.forEach(([x, z, rot], k) => {
-    const dx = rot ? -3.5 : 0, dz = rot ? 0 : -3.5;
-    m.compose(p.set(x + dx, 0.2, z + dz), q, s);
+  lamps.forEach(([x, z, ax, az], k) => {
+    m.compose(p.set(x + ax * 3.5, 0.2, z + az * 3.5), q, s);
     pools.setMatrixAt(k, m);
   });
+  pools.count = lamps.length;
   pools.computeBoundingSphere();
   pools.renderOrder = 1;
   pools.visible = false;
@@ -768,7 +852,7 @@ function buildTextSigns(group, signs) {
     }
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(sg.w, sg.h), mat);
     mesh.position.set(sg.x, sg.y, sg.z);
-    mesh.rotation.y = { s: 0, n: Math.PI, e: Math.PI / 2, w: -Math.PI / 2 }[sg.face];
+    mesh.rotation.y = sg.rotY ?? FACE_ROT[sg.face];
     group.add(mesh);
   }
   return [...cache.values()];

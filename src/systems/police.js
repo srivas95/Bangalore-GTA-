@@ -83,8 +83,9 @@ export class Police {
       const n = ring[Math.floor(Math.random() * ring.length)];
       const e = n.out[Math.floor(Math.random() * n.out.length)];
       const off = L.laneOffset(e.road, 0);
-      const x = n.x + e.dir.x * (L.crossHalfWidth(n, e.road) + 8) + e.dir.z * off;
-      const z = n.z + e.dir.z * (L.crossHalfWidth(n, e.road) + 8) - e.dir.x * off;
+      if (e.len < e.cutFrom + 20) continue;
+      const x = n.x + e.dir.x * (e.cutFrom + 8) + e.dir.z * off;
+      const z = n.z + e.dir.z * (e.cutFrom + 8) - e.dir.x * off;
       const v = new Vehicle('hoysala', { x, z, heading: Math.atan2(e.dir.x, e.dir.z), pink: Math.random() < 0.2 });
       v.syncVisual(0, world);
       return this.addUnit(v);
