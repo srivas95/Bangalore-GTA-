@@ -22,6 +22,7 @@ import { Particles } from './systems/particles.js';
 import { Pickups, WEAPONS } from './systems/weapons.js';
 import { Gangs } from './entities/gangs.js';
 import { HUD } from './ui/hud.js';
+import { MetroRide } from './systems/metroRide.js';
 import { LINES, CURB_H } from './config.js';
 import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, geo } from './world/mapdata.js';
 
@@ -132,6 +133,7 @@ async function init() {
   const particles = new Particles(scene);
   const gangs = new Gangs(scene, layout, colliders);
   const pickups = new Pickups(scene);
+  const metroRide = new MetroRide(metro, hud, audio);
 
   const world = {
     layout, colliders, traffic, streetLife, audio, hud, camera, police, player, signals,
@@ -145,6 +147,8 @@ async function init() {
     particles, gangs, pickups,
     money: (n) => missions.addMoney(n),
     crime: (reason, x, z, stars) => police.crime(reason, x, z, stars, world),
+    camRig: rig,
+    skipClock: (s) => env.skip(s),
   };
 
   // ---------- Crashes and explosions ----------
@@ -284,6 +288,13 @@ async function init() {
     player.knock = 2; player.kx = nx * 8; player.kz = nz * 8;
     hud.say('Indian Railways always wins.', 3);
   };
+  // Repopulate the streets around a new location straight away (after a respawn or a metro ride).
+  world.reseed = () => {
+    const p = player.pos;
+    world.initialFill = true; elapsed = 0;
+    traffic.edgeTimer = 0;
+    for (const a of traffic.agents.slice()) if (Math.hypot(a.v.x - p.x, a.v.z - p.z) > traffic.radius) traffic.despawn(a);
+  };
   const respawn = () => {
     const p = nearestOf(pending.list, player.pos);
     if (player.vehicle) player.exitVehicle(world, true);
@@ -291,9 +302,7 @@ async function init() {
     police.reset();
     missions.job && missions.fail('You missed the job.');
     rig.first = true;
-    // Repopulate the streets around the new location straight away.
-    world.initialFill = true; elapsed = 0;
-    for (const a of traffic.agents.slice()) if (Math.hypot(a.v.x - p.x, a.v.z - p.z) > traffic.radius) traffic.despawn(a);
+    world.reseed();
     hud.hideScreen();
     hud.toast(p.name, 'Bengaluru');
     pending = null;
@@ -359,7 +368,7 @@ async function init() {
     if (input.hit('KeyM')) hud.toggleMap();
     if (input.hit('KeyR')) { radioOn = !radioOn; hud.say(radioOn ? 'Radio on' : 'Radio off', 1.2); }
     if (input.hit('KeyK')) { env.setRain(!env.raining); hud.say(env.raining ? 'Dark clouds roll in over Bengaluru…' : 'The rain eases off.', 2.5); }
-    if (input.hit('KeyT')) { env.timeScale = env.timeScale > 1 ? 1 : 30; hud.say(env.timeScale > 1 ? 'Time ×30' : 'Time normal', 1.5); }
+    if (input.hit('KeyT') && !metroRide.active) { env.timeScale = env.timeScale > 1 ? 1 : 30; hud.say(env.timeScale > 1 ? 'Time ×30' : 'Time normal', 1.5); }
     if (input.hit('KeyO')) setPerf(!perfMode);
 
     // Rush hour is real.
@@ -372,9 +381,14 @@ async function init() {
     for (const v of free) world.vehicles.push(v);
     for (const u of police.units) world.vehicles.push(u.v);
 
+    // Namma Metro: entrances on the street, and the ride itself.
+    const entrance = !player.vehicle && !pending && !metroRide.active ? metroRide.nearEntrance(player.pos) : null;
+    if (entrance && input.hit('KeyE')) { input.pressed.delete('KeyE'); metroRide.open(entrance, world); }
     if (pending) {
       screenT -= dt;
       if (screenT <= 0) respawn();
+    } else if (metroRide.active) {
+      metroRide.update(dt, input, world, missions, camera);
     } else {
       const wasIn = player.vehicle;
       player.update(dt, input, rig.yaw, world);
@@ -417,7 +431,9 @@ async function init() {
     missions.update(dt, input, player);
     audio.setRain(env.rain);
 
-    if (!player.vehicle && !pending) {
+    if (metroRide.active) hud.prompt('');
+    else if (entrance) hud.prompt(`E  Namma Metro · ${entrance.st.en}`);
+    else if (!player.vehicle && !pending) {
       let near = null;
       for (const v of world.vehicles) {
         const d = Math.hypot(v.x - player.x, v.z - player.z) - v.spec.length / 2;
@@ -426,7 +442,8 @@ async function init() {
       hud.prompt(near ? (near.v.driver === 'ai' || near.v.driver === 'police' ? `F  "Borrow" the ${near.v.spec.label}` : `F  Get in the ${near.v.spec.label}`) : '');
     } else hud.prompt(player.vehicle && player.vehicle.speed <= 8 ? (player.vehicle.spec.police ? 'F  Get out  ·  G  Siren' : 'F  Get out') : '');
 
-    if (!window.__freeCam) rig.update(dt, input, player, colliders);
+    if (!window.__freeCam && !metroRide.active) rig.update(dt, input, player, colliders);
+    if (!metroRide.active) metroRide.banner.classList.remove('show');
     audio.engine(player.vehicle);
     const markers = missions.markers.slice();
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
@@ -439,7 +456,7 @@ async function init() {
   tick();
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, composer };
+  window.__game = { metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, composer };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.

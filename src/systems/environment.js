@@ -137,6 +137,11 @@ export class Environment {
     this.scene.add(this.flood);
   }
 
+  // Jump the clock forward by `secs` of game time (fast travel).
+  skip(secs) {
+    this.hour = (this.hour + secs / (DAY_MINUTES * 60 / 24)) % 24;
+  }
+
   setRain(on) {
     this.rainTarget = on ? 0.75 + Math.random() * 0.25 : 0;
     this.weatherTimer = on ? 150 + Math.random() * 120 : 200 + Math.random() * 200;

@@ -9,40 +9,62 @@ import { Path } from './path.js';
 import { METRO } from './mapdata.js';
 
 export const DECK_Y = 9.5;
-export const UG_Y = -12; // underground platform level
+export const UG_Y = -12; // underground platform level (the Green Line runs a level deeper)
 const ST_HALF = 34;
 const TRACK = 2.2; // lateral offset of each track (left-hand running)
 const CAR = 20;
 const CARS = 3;
 export const TRAIN_LEN = CARS * CAR + (CARS - 1) * 0.6;
-const DWELL = 14;
+const DWELL = 11;
 
 // Route data without any geometry: shared with the city (to keep buildings clear of viaducts)
 // and the ride system.
 export function metroRoutes() {
   return METRO.map((line) => {
     const st0 = line.stations;
-    // Tail tracks beyond each terminus so a train can stop with its whole length at the platform.
-    const ext = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z, l = Math.hypot(dx, dz) || 1; return [a.x + (dx / l) * 70, a.z + (dz / l) * 70]; };
-    const pts = [ext(st0[0], st0[1]), ...st0.map((s) => [s.x, s.z]), ext(st0[st0.length - 1], st0[st0.length - 2])];
+    const n = st0.length;
+    // Each station sits on a straight run of track (real platforms are straight): the route
+    // passes through two points either side of it instead of bending at the station itself.
+    const pts = [], sAt = [];
+    const dirs = st0.map((s, i) => {
+      const a = st0[Math.max(0, i - 1)], b = st0[Math.min(n - 1, i + 1)];
+      const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1;
+      return { x: dx / l, z: dz / l };
+    });
+    const push = (x, z) => pts.push([x, z]);
+    const tail = 70;
+    push(st0[0].x - dirs[0].x * (ST_HALF + tail), st0[0].z - dirs[0].z * (ST_HALF + tail));
+    st0.forEach((s, i) => {
+      const gap = (j) => (j < 0 || j >= n ? Infinity : Math.hypot(st0[j].x - s.x, st0[j].z - s.z));
+      const L = Math.min(ST_HALF + 6, 0.35 * Math.min(gap(i - 1), gap(i + 1)));
+      sAt.push(pts.length);
+      push(s.x - dirs[i].x * L, s.z - dirs[i].z * L);
+      push(s.x + dirs[i].x * L, s.z + dirs[i].z * L);
+      dirs[i].L = L;
+    });
+    push(st0[n - 1].x + dirs[n - 1].x * (ST_HALF + tail), st0[n - 1].z + dirs[n - 1].z * (ST_HALF + tail));
     const path = new Path(pts);
-    const stations = st0.map((s, i) => ({ ...s, idx: i, s: path.cum[i + 1], line }));
+    const stations = st0.map((s, i) => ({ ...s, idx: i, s: path.cum[sAt[i]] + dirs[i].L, dir: { x: dirs[i].x, z: dirs[i].z }, line }));
     const ug = stations.map((s) => s.underground);
+    // Two lines cross at Majestic, one above the other.
+    const UG = line.short === 'green' ? UG_Y - 8 : UG_Y;
     // Track height along the route: deck height, or underground, ramping between.
     const yAt = (s) => {
-      if (s <= stations[0].s) return ug[0] ? UG_Y : DECK_Y;
+      if (s <= stations[0].s) return ug[0] ? UG : DECK_Y;
       const last = stations.length - 1;
-      if (s >= stations[last].s) return ug[last] ? UG_Y : DECK_Y;
+      if (s >= stations[last].s) return ug[last] ? UG : DECK_Y;
       let i = 0;
       while (i < last - 1 && stations[i + 1].s <= s) i++;
-      if (ug[i] === ug[i + 1]) return ug[i] ? UG_Y : DECK_Y;
+      if (ug[i] === ug[i + 1]) return ug[i] ? UG : DECK_Y;
       const t = (s - stations[i].s) / (stations[i + 1].s - stations[i].s || 1);
       const k = Math.min(1, Math.max(0, (t - 0.3) / 0.45)); // ramp in the middle of the run
-      return ug[i] ? UG_Y + (DECK_Y - UG_Y) * k : DECK_Y + (UG_Y - DECK_Y) * k;
+      return ug[i] ? UG + (DECK_Y - UG) * k : DECK_Y + (UG - DECK_Y) * k;
     };
     const elevated = [];
     for (let i = 0; i < stations.length - 1; i++) if (!ug[i] || !ug[i + 1]) elevated.push([[stations[i].x, stations[i].z], [stations[i + 1].x, stations[i + 1].z]]);
-    return { ...line, path, stations, yAt, elevated };
+    const route = { ...line, path, stations, yAt, elevated, ugY: UG };
+    for (const st of stations) st.line = route;
+    return route;
   });
 }
 
@@ -115,13 +137,9 @@ export function buildMetro(scene, layout, colliders) {
     }
     // ---------- Stations ----------
     for (const st of line.stations) {
-      if (st.done) continue;
-      // Interchange (Majestic) is shared by both lines: build it once, under the first.
-      const twin = routes.find((r) => r !== line && r.stations.some((q) => q.en === st.en));
-      if (twin) twin.stations.find((q) => q.en === st.en).done = true;
-      const a = P.at(Math.max(0, st.s - 5)), b = P.at(Math.min(P.length, st.s + 5));
-      const dx = b.x - a.x, dz = b.z - a.z, dl = Math.hypot(dx, dz) || 1;
-      st.dir = { x: dx / dl, z: dz / dl };
+      // Interchange (Majestic): each line has its own hall; the street entrances are shared.
+      const twin = routes.filter((r) => r !== line).map((r) => r.stations.find((q) => q.en === st.en)).find(Boolean);
+      if (twin) { st.interchange = true; twin.interchange = true; }
       const ang = Math.atan2(-st.dir.z, st.dir.x);
       const f = makeFrame(st.x, st.z, ang);
       const col = colliders.framed(f);
@@ -153,7 +171,7 @@ export function buildMetro(scene, layout, colliders) {
         for (const sd of [-1, 1]) for (const x of [-18, 18]) boards.push({ text: [st.kn, st.en], bg: '#1a1a1a', fg: '#ffffff', x, y: Y + 4.3, z: sd * 10.7, rot: sd < 0 ? 0 : Math.PI, w: 6, h: 1.2, f });
       } else {
         // Underground hall: platforms either side of the two tracks.
-        const Y = UG_Y;
+        const Y = line.ugY;
         st.platformY = Y + 1.6;
         con.box(0, Y - 0.6, 0, ST_HALF * 2 + 4, 0.6, 26, 0x9a9488);
         con.box(0, Y, 0, ST_HALF * 2 + 4, 1.45, 7.8, 0x6e665e);
@@ -165,12 +183,13 @@ export function buildMetro(scene, layout, colliders) {
           paint.box(0, Y + 1.6, sd * 12.55, ST_HALF * 2, 0.5, 0.1, line.color, { top: false });
         }
         for (const ex of [-1, 1]) con.box(ex * (ST_HALF + 2), Y, 0, 0.4, 6, 26, 0xd8d2c8);
-        con.box(0, Y + 6, 0, ST_HALF * 2 + 4, 0.4, 26, 0xc8c2b8);
+        con.box(0, Y + 6, 0, ST_HALF * 2 + 4, 0.4, 26, 0xc8c2b8, { bottom: true });
         for (let x = -ST_HALF + 3; x <= ST_HALF - 3; x += 6) for (const sd of [-1, 1]) glow.box(x, Y + 5.7, sd * 7, 3.6, 0.1, 0.4, 0xf8f4e8);
         for (const sd of [-1, 1]) for (const x of [-20, 0, 20]) boards.push({ text: [st.kn, st.en], bg: hex, x, y: Y + 3.6, z: sd * 12.5, rot: sd < 0 ? 0 : Math.PI, w: 7, h: 1.4, f });
       }
       B.xf = null;
       // Street entrances: the nearest footpath on either side of the station.
+      if (twin && twin.entrances) { st.entrances = twin.entrances; continue; }
       st.entrances = [];
       for (const sd of [-1, 1]) {
         for (let d = 8; d < 40; d += 2) {
@@ -194,15 +213,6 @@ export function buildMetro(scene, layout, colliders) {
       if (!st.entrances.length) st.entrances.push({ x: st.x, z: st.z });
     }
   }
-  // Interchange stations share entrances and geometry.
-  for (const line of routes) for (const st of line.stations) if (st.done) {
-    const twin = routes.find((r) => r !== line).stations.find((q) => q.en === st.en);
-    Object.assign(st, { entrances: twin.entrances, platformY: twin.platformY });
-    const a = line.path.at(Math.max(0, st.s - 5)), b = line.path.at(Math.min(line.path.length, st.s + 5));
-    const dl = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-    st.dir = { x: (b.x - a.x) / dl, z: (b.z - a.z) / dl };
-    st.interchange = true; twin.interchange = true;
-  }
   B.buildAll(mats, group);
   const boardMats = new Map();
   for (const bd of boards) {
@@ -219,7 +229,7 @@ export function buildMetro(scene, layout, colliders) {
   const cars = carGeometries(mats);
   const trains = [];
   for (const line of routes) {
-    const n = 2; // per direction
+    const n = 3; // per direction
     for (let k = 0; k < n; k++) {
       for (const dir of [1, -1]) {
         const s = dir > 0 ? (line.path.length * (k + 0.15)) / n : (line.path.length * (k + 0.65)) / n;
@@ -243,8 +253,8 @@ export function buildMetro(scene, layout, colliders) {
           if (d > 0.3 && d < nd) { nd = d; next = st; }
         }
         let target = t.cruise;
-        if (next && nd < 200) target = Math.min(target, Math.max(1.2, Math.sqrt(2 * 1.0 * nd)));
-        t.speed += Math.sign(target - t.speed) * Math.min(Math.abs(target - t.speed), 1.3 * dt);
+        if (next && nd < 260) target = Math.min(target, Math.max(1.2, Math.sqrt(2 * 1.8 * nd)));
+        t.speed += Math.sign(target - t.speed) * Math.min(Math.abs(target - t.speed), (target > t.speed ? 2.2 : 2.6) * dt);
         t.s += t.speed * t.dir * dt;
         t.at = null;
         if (next && (stopPoint(next, t.dir) - t.s) * t.dir < 0.4) {
@@ -321,5 +331,5 @@ function makeTrain(cars, group, line, dir, s) {
     list.push({ mesh, off: CAR / 2 + k * (CAR + 0.6) });
     group.add(mesh);
   }
-  return { line, cars: list, s, dir, speed: 0, cruise: 19 + Math.random() * 2, wait: 0, at: null, doors: false, reverse: false, x: 0, z: 0, y: 0 };
+  return { line, cars: list, s, dir, speed: 0, cruise: 22 + Math.random() * 2, wait: 0, at: null, doors: false, reverse: false, x: 0, z: 0, y: 0 };
 }
