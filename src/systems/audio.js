@@ -279,6 +279,21 @@ export class Audio {
     this.noiseBurst(0.5 * strength, 90, 4.0, 'lowpass', delay + 0.3);
   }
 
+  explosion(x, z, camera) {
+    if (!this.enabled) return;
+    const g = camera ? this.distGain(x, z, camera, 60) : 1;
+    this.noiseBurst(1.0 * g, 140, 2.6, 'lowpass');
+    this.noiseBurst(0.7 * g, 900, 0.5, 'lowpass');
+    this.noiseBurst(0.4 * g, 60, 3.5, 'lowpass', 0.1);
+  }
+
+  // Metal on metal.
+  crunch(strength = 0.5) {
+    if (!this.enabled) return;
+    this.noiseBurst(0.35 * strength, 1800, 0.18, 'bandpass');
+    this.noiseBurst(0.5 * strength, 220, 0.25, 'lowpass');
+  }
+
   splash() {
     if (!this.enabled) return;
     this.noiseBurst(0.25, 2500, 0.4, 'bandpass');

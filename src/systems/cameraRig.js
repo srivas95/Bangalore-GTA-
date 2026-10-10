@@ -30,15 +30,26 @@ export class CameraRig {
     if (v) {
       tx = v.x; tz = v.z; ty = v.y + (v.type === 'bus' ? 3.2 : v.spec.twoWheeler ? 1.4 : 1.6);
       baseDist = v.spec.cam;
-      // Swing behind the vehicle when moving and the mouse is idle.
-      if (this.idle > 1.2 && v.speed > 2) {
-        const behind = v.forwardSpeed >= 0 ? v.heading + Math.PI : v.heading;
-        let d = behind - this.yaw;
+      // Chase cam: swing in behind the car once the mouse is left alone. When the car slides,
+      // follow the direction of travel rather than the bonnet, so drifts read from the side.
+      if (this.idle > 0.9 && v.speed > 1.5) {
+        const travel = Math.atan2(v.vx, v.vz);
+        const along = v.forwardSpeed >= 0 ? 1 : -1;
+        let aim = along > 0 ? v.heading : v.heading + Math.PI;
+        if (v.speed > 6 && along > 0) {
+          let dv = travel - aim;
+          while (dv > Math.PI) dv -= Math.PI * 2;
+          while (dv < -Math.PI) dv += Math.PI * 2;
+          aim += dv * 0.55;
+        }
+        let d = aim + Math.PI - this.yaw;
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
-        this.yaw += d * Math.min(1, dt * 2.5);
-        this.pitch += (0.22 - this.pitch) * Math.min(1, dt * 1.5);
+        this.yaw += d * Math.min(1, dt * (2.2 + Math.min(3, v.speed / 10)));
+        this.pitch += (0.2 - this.pitch) * Math.min(1, dt * 1.5);
       }
+      // Look behind.
+      if (input.down('KeyC')) { this.lookBack = true; } else this.lookBack = false;
     } else {
       tx = player.x; tz = player.z; ty = player.y + 1.55;
       baseDist = 4.2;
@@ -52,7 +63,8 @@ export class CameraRig {
     this.first = false;
 
     const cp = Math.cos(this.pitch), spch = Math.sin(this.pitch);
-    const dirX = Math.sin(this.yaw) * cp, dirY = spch, dirZ = Math.cos(this.yaw) * cp;
+    const yaw = v && this.lookBack ? v.heading : this.yaw;
+    const dirX = Math.sin(yaw) * cp, dirY = spch, dirZ = Math.cos(yaw) * cp;
     // Shorten the boom if a building is in the way.
     let d = this.dist;
     for (let s = 0.5; s <= this.dist; s += 0.5) {

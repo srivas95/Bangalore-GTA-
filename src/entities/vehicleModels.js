@@ -7,6 +7,7 @@ import { MeshBuilder, buildSkinned, makePbrMaterial } from '../world/meshBuilder
 import { put } from '../world/landmarks.js';
 import { textTexture } from '../world/textures.js';
 import { decalAtlas, decalUV, BUS_LIVERIES, pickBusLivery } from './liveries.js';
+import { CAR_MODELS, TYPE_MODELS, buildCarShell } from './carBodies.js';
 
 // horn: profile key in systems/audio.js. stall: water depth (m) that floods the engine.
 export const VEHICLE_TYPES = {
@@ -113,12 +114,13 @@ class VB {
     group.rotation.order = 'YXZ';
     const mesh = buildSkinned(this.b, vehicleMaterial, this.bones);
     group.add(mesh);
+    let decalMesh = null;
     if (!this.decals.empty) {
-      const dm = this.decals.build(decalAtlas(), { castShadow: false });
-      group.add(dm);
+      decalMesh = this.decals.build(decalAtlas(), { castShadow: false });
+      group.add(decalMesh);
     }
     const wheels = this.wheels.map((w) => ({ steer: w.steerIdx >= 0 ? this.bones[w.steerIdx] : null, spin: this.bones[w.spinIdx], r: w.r }));
-    return { group, mesh, wheels, spec, body: group, ...extra };
+    return { group, mesh, decalMesh, wheels, spec, body: group, ...extra };
   }
 }
 
@@ -143,86 +145,100 @@ function plate(v, z, y, yellow, w = 0.5, face = 1) {
   v.add(G.box, P.matte, 0x222222, 0, y, z + face * 0.011, w * 0.8, 0.05, 0.005);
 }
 
-// Hatchbacks, sedans, cabs, SUVs and the Hoysala Ertiga share one parametric body.
+// Cars are real Indian models (carBodies.js): lofted shells plus lamps, grilles and trim.
+const C = (hex) => new THREE.Color(hex);
+const pickWeighted = (list, r) => { let t = list.reduce((s, [, w]) => s + w, 0) * r(); for (const [k, w] of list) if ((t -= w) <= 0) return k; return list[0][0]; };
+
 function buildCar(type, r, opts) {
-  const spec = VEHICLE_TYPES[type];
+  const key = opts.model ?? pickWeighted(TYPE_MODELS[type] || TYPE_MODELS.sedan, r);
+  const m = CAR_MODELS[key];
+  const spec = { ...VEHICLE_TYPES[type], length: m.L, width: m.W, wheelbase: m.WB, label: type === 'hoysala' ? 'Hoysala (Maruti Suzuki Ertiga)' : type === 'taxi' ? `${m.label} (cab)` : m.label };
   const v = new VB();
-  const L = spec.length, W = spec.width;
   const police = type === 'hoysala';
   const pink = police && opts.pink;
-  let colour = opts.color ?? (type === 'taxi' ? pick([0xf2f2f2, 0xf2f2f2, 0xd8d8d8, 0xf2c200], r) : pick(CAR_COLOURS, r));
+  const taxi = type === 'taxi';
+  let colour = opts.color ?? (taxi ? pick([0xf4f4f2, 0xf4f4f2, 0xf4f4f2, 0xd8d8d8], r) : pick(CAR_COLOURS, r));
   if (police) colour = pink ? 0xe86aa6 : 0xf6f6f4;
-  const mpv = police, suv = type === 'suv', hatch = type === 'hatch';
-  const y0 = suv ? 0.42 : 0.3;
-  const lowH = suv ? 0.82 : mpv ? 0.74 : 0.66;
-  const cabH = suv ? 0.72 : mpv ? 0.68 : 0.58;
-  // Lower body with a crease line.
-  v.add(G.rbox, P.paint, colour, 0, y0 + lowH / 2, 0, W, lowH, L);
-  v.add(G.box, P.matte, 0x111111, W / 2 + 0.002, y0 + lowH * 0.62, 0, 0.004, 0.015, L * 0.8);
-  v.add(G.box, P.matte, 0x111111, -W / 2 - 0.002, y0 + lowH * 0.62, 0, 0.004, 0.015, L * 0.8);
-  // Bonnet slope.
-  const bonnetL = hatch ? L * 0.26 : L * 0.28;
-  v.add(tapered(W * 0.98, 0.08, bonnetL, 0.96, 1, -0.05), P.paint, colour, 0, y0 + lowH + 0.02, L / 2 - bonnetL / 2 - 0.05);
-  // Cabin glasshouse.
-  const cabL = hatch ? L * 0.56 : mpv ? L * 0.62 : suv ? L * 0.6 : L * 0.46;
-  const cabZ = hatch ? -L * 0.12 : mpv ? -L * 0.1 : suv ? -L * 0.08 : -L * 0.04;
-  const glass = tapered(W * 0.94, cabH, cabL, suv ? 0.95 : 0.88, suv || mpv ? 0.84 : 0.7, suv || mpv ? -0.08 : -0.05);
-  v.add(glass, P.glass, 0x161c22, 0, y0 + lowH + cabH / 2 - 0.02, cabZ);
-  const roofL = cabL * (suv || mpv ? 0.84 : 0.68);
-  v.add(tapered(W * 0.9 * (suv ? 0.95 : 0.88), 0.07, roofL, 1, 1, 0), P.paint, colour, 0, y0 + lowH + cabH, cabZ - (suv || mpv ? 0.08 : 0.05));
-  // Pillars (A, B, C and D for MPVs).
-  const pillars = mpv || suv ? [-0.42, -0.12, 0.18, 0.42] : [-0.38, 0.0, 0.38];
+  const black = { colour: C(0x0e0f10), pbr: P.plastic };
+  const mats = { paint: { pbr: P.paint }, glass: { colour: C(0x141a20), pbr: P.glass }, black };
+  const prof = buildCarShell(v.b, m, C(colour), mats);
+  const { zf, zr, hw, top, bottom, zFA, zRA, zWs, roofY } = prof;
+  const W = m.W, L = m.L;
+  const yNose = top(zf - 0.12);
+  // Wheel wells, so you can't see daylight through the arches.
+  for (const zc of [zFA, zRA]) v.add(G.box, P.matte, 0x0a0a0a, 0, m.wr + 0.12, zc, W - 0.22, m.wr * 1.3, prof.archR * 1.9);
+  // Front: lamps, grille, intake, fog lamps.
+  const hx = hw(zf - 0.1) * 0.66;
   for (const s of [-1, 1]) {
-    for (const f of pillars) v.add(G.box, P.paint, police ? 0x111111 : colour, s * W * 0.445, y0 + lowH + cabH / 2, cabZ + f * cabL * 0.95, 0.04, cabH * 0.95, 0.07);
-    v.add(G.rbox, P.paint, colour, s * W * 0.52, y0 + lowH + 0.07, cabZ + cabL / 2 - 0.12, 0.12, 0.09, 0.17); // mirror
-    v.add(G.box, P.glass, 0x222a30, s * W * 0.575, y0 + lowH + 0.07, cabZ + cabL / 2 - 0.12, 0.005, 0.07, 0.13);
-    // Door seams and handles.
-    for (const dz of [cabZ + cabL * 0.32, cabZ - cabL * 0.02, cabZ - cabL * 0.36].slice(0, hatch ? 2 : 3)) {
-      v.add(G.box, P.matte, 0x111111, s * (W / 2 + 0.003), y0 + lowH * 0.55, dz, 0.004, lowH * 0.7, 0.012);
-      v.add(G.box, P.chrome, 0xc0c0c0, s * (W / 2 + 0.01), y0 + lowH * 0.78, dz - 0.18, 0.02, 0.025, 0.12);
+    if (m.lights === 'round') v.add(G.cyl, P.head, 0xfff6dc, s * hx, yNose - 0.1, zf - 0.03, 0.11, 0.08, 0.11, Math.PI / 2);
+    else {
+      const lh = m.lights === 'tall' ? 0.2 : m.lights === 'square' ? 0.13 : 0.1;
+      const lw = m.lights === 'square' ? W * 0.2 : W * 0.25;
+      v.add(G.box, P.head, 0xfff6dc, s * hx, yNose - lh / 2 - 0.03, zf - 0.11, lw, lh, 0.12, 0, 0, s * -0.32);
     }
+    v.add(G.box, P.tail, 0xff8a10, s * hw(zf - 0.2) * 0.98, yNose - 0.12, zf - 0.2, 0.02, 0.04, 0.1); // side indicator
+    v.add(G.cyl, P.head, 0xfff0d0, s * W * 0.33, 0.36, zf - 0.02, 0.05, 0.04, 0.05, Math.PI / 2); // fog lamp
   }
-  if (!hatch && !mpv && !suv) v.add(tapered(W * 0.97, 0.06, L * 0.2, 0.95, 1, 0.02), P.paint, colour, 0, y0 + lowH + 0.01, -L / 2 + L * 0.1 + 0.05); // boot
-  if (suv) { v.add(G.box, P.matte, 0x222222, 0, y0 + lowH + cabH + 0.09, cabZ, W * 0.8, 0.04, roofL * 0.9); v.add(G.rbox, P.matte, 0x222222, 0, y0 + lowH + 0.2, -L / 2 - 0.12, 0.5, 0.5, 0.18); }
-  // Bumpers, grille, lamps.
-  v.add(G.rbox, police ? P.paint : P.plastic, police ? colour : 0x1e1e1e, 0, y0 + 0.14, L / 2 - 0.04, W * 0.99, 0.26, 0.18);
-  if (police) {
-    // Ertiga face: gloss-black grille and a black lower intake in a body-colour bumper.
-    v.add(G.box, P.plastic, 0x111111, 0, y0 + 0.1, L / 2 + 0.055, W * 0.6, 0.12, 0.02);
-    for (const s of [-1, 1]) v.add(G.box, P.plastic, 0x111111, s * W * 0.36, y0 + 0.12, L / 2 + 0.05, 0.2, 0.1, 0.02); // fog-lamp housings
+  const gy = yNose - 0.16;
+  switch (m.grille) {
+    case 'hex': v.add(G.box, P.plastic, 0x0c0c0c, 0, gy, zf - 0.01, W * 0.4, 0.16, 0.06); v.add(G.box, P.chrome, 0xc0c0c0, 0, gy + 0.02, zf + 0.02, 0.14, 0.07, 0.01); break;
+    case 'chromeBar': v.add(G.box, P.plastic, 0x0c0c0c, 0, gy, zf - 0.01, W * 0.42, 0.15, 0.06); v.add(G.box, P.chrome, 0xd0d0d0, 0, gy + 0.05, zf + 0.025, W * 0.44, 0.03, 0.01); break;
+    case 'toyota': v.add(G.box, P.chrome, 0xc8c8c8, 0, gy + 0.05, zf, W * 0.3, 0.05, 0.03); v.add(G.box, P.plastic, 0x0c0c0c, 0, 0.42, zf - 0.01, W * 0.5, 0.16, 0.06); break;
+    case 'toyotaBig': v.add(G.box, P.chrome, 0x8a8a8a, 0, gy - 0.04, zf - 0.01, W * 0.5, 0.26, 0.06); for (let k = 0; k < 4; k++) v.add(G.box, P.chrome, 0xd8d8d8, 0, gy - 0.12 + k * 0.06, zf + 0.025, W * 0.48, 0.015, 0.01); break;
+    case 'cascade': v.add(G.box, P.plastic, 0x111111, 0, gy - 0.05, zf - 0.01, W * 0.48, 0.25, 0.06); break;
+    case 'mahindra': v.add(G.box, P.plastic, 0x111111, 0, gy, zf - 0.01, W * 0.42, 0.24, 0.06); for (let k = -3; k <= 3; k++) v.add(G.box, P.chrome, 0xd0d0d0, k * W * 0.055, gy, zf + 0.025, 0.025, 0.22, 0.01); break;
+    case 'tata': v.add(G.box, P.plastic, 0x0c0c0c, 0, gy, zf - 0.01, W * 0.44, 0.14, 0.06); v.add(G.box, P.chrome, 0xc0c0c0, 0, gy + 0.09, zf + 0.02, W * 0.6, 0.02, 0.01); break;
+    default: v.add(G.box, P.plastic, 0x111111, 0, gy, zf - 0.01, W * 0.3, 0.08, 0.05);
   }
-  v.add(G.rbox, P.plastic, 0x1e1e1e, 0, y0 + 0.14, -L / 2 + 0.04, W * 0.99, 0.26, 0.18);
-  v.add(G.rbox, P.chrome, police ? 0x0c0c0c : 0x2a2a2a, 0, y0 + lowH * 0.58, L / 2 + 0.005, W * (police ? 0.46 : 0.42), police ? 0.2 : 0.16, 0.03);
-  for (let k = 0; k < 3; k++) v.add(G.box, P.chrome, police ? 0x3a3a3a : 0x9a9a9a, 0, y0 + lowH * 0.52 + k * 0.045, L / 2 + 0.02, W * 0.38, 0.01, 0.01);
+  v.add(G.box, P.plastic, 0x0c0c0c, 0, 0.3, zf - 0.04, W * 0.6, 0.12, 0.08); // lower intake
+  v.add(G.box, P.plastic, 0x111111, 0, 0.24, zr + 0.05, W * 0.8, 0.08, 0.08); // rear diffuser strip
+  // Rear lamps: on the boot lid for sedans, tall in the tailgate pillars for SUVs and MPVs.
+  const yTail = top(zr + 0.15);
   for (const s of [-1, 1]) {
-    v.add(G.rbox, P.head, 0xfff6dc, s * W * 0.36, y0 + lowH * 0.66, L / 2 - 0.02, W * 0.22, 0.12, 0.07);
-    v.add(G.rbox, P.tail, 0xd01010, s * W * 0.38, y0 + lowH * 0.72, -L / 2 + 0.02, W * 0.18, 0.15, 0.07);
-    v.add(G.box, P.tail, 0xff8a10, s * W * 0.43, y0 + lowH * 0.5, L / 2 - 0.03, 0.12, 0.05, 0.05); // indicators
+    if (m.style === 'sedan') v.add(G.box, P.tail, 0xc81010, s * hw(zr + 0.1) * 0.68, yTail - 0.09, zr + 0.06, W * 0.26, 0.12, 0.1);
+    else if (m.style === 'hatch') v.add(G.box, P.tail, 0xc81010, s * hw(zr + 0.1) * 0.78, yTail - 0.02, zr + 0.08, 0.2, 0.22, 0.12);
+    else v.add(G.box, P.tail, 0xc81010, s * hw(zr + 0.1) * 0.82, yTail + 0.1, zr + 0.06, 0.16, 0.36, 0.1);
+    // Mirrors.
+    v.add(G.box, P.paint, police || m.blackPillars ? 0x111111 : colour, s * (hw(zWs - 0.12) + 0.09), m.belt + 0.08, zWs - 0.12, 0.16, 0.1, 0.12);
+    // Door shut lines and handles.
+    const doors = m.style === 'hatch' && m.L < 3.6 ? [zWs - 0.05, zWs - 1.05] : [zWs - 0.05, zWs - 1.0, zWs - 1.85];
+    for (const dz of doors) {
+      if (dz < zRA + prof.archR + 0.02 && dz !== doors[0]) continue;
+      v.add(G.box, P.matte, 0x111111, s * (hw(dz) + 0.004), (bottom(dz) + m.belt) / 2, dz, 0.004, m.belt - bottom(dz) - 0.06, 0.012);
+      v.add(G.box, P.chrome, police ? 0x222222 : 0xbdbdbd, s * (hw(dz - 0.2) + 0.01), m.belt - 0.09, dz - 0.2, 0.02, 0.03, 0.12);
+    }
+    // SUV cladding over the arches and along the sills.
+    if (m.cladding) {
+      v.add(G.box, P.plastic, 0x1a1a1a, s * (hw(0) + 0.005), 0.36, (zFA + zRA) / 2, 0.02, 0.1, zFA - zRA - prof.archR * 2);
+      for (const zc of [zFA, zRA]) v.add(G.cyl, P.plastic, 0x1a1a1a, s * (hw(zc) - 0.03), m.wr, zc, prof.archR + 0.05, 0.08, prof.archR + 0.05, 0, Math.PI / 2);
+    }
+    if (m.rails) v.add(G.box, P.chrome, 0x2a2a2a, s * (hw(0) * m.taper * 0.92), roofY + 0.04, (prof.zRoofEnd + prof.zWsTop) / 2, 0.04, 0.05, (prof.zWsTop - prof.zRoofEnd) * 0.9);
   }
-  plate(v, L / 2 + 0.06, y0 + 0.2, type === 'taxi', 0.5, 1);
-  plate(v, -L / 2 - 0.06, y0 + 0.32, type === 'taxi', 0.5, -1);
-  if (type === 'taxi') v.decal('cab', W / 2 + 0.012, y0 + lowH * 0.45, -0.2, 1.1, 0.27, 'L');
+  if (m.label.includes('Bolero')) v.add(G.cyl, P.rubber, 0x161616, 0, 0.8, zr - 0.1, 0.32, 0.2, 0.32, Math.PI / 2); // spare wheel on the tailgate
+  plate(v, zf + 0.01, 0.42, taxi, 0.5, 1);
+  plate(v, zr - 0.01, m.style === 'sedan' ? yTail - 0.25 : 0.55, taxi, 0.5, -1);
+  if (taxi) for (const s of [-1, 1]) v.decal('cab', s * (hw(-0.4) + 0.012), (bottom(-0.4) + m.belt) / 2 + 0.05, -0.4, 1.1, 0.27, s > 0 ? 'L' : 'R');
   if (police) {
-    // Hoysala livery (painted in liveries.js): blue swoosh over the front door and wheel, blue
-    // rear quarter, the 112 roundel, BENGALURU CITY POLICE / ಪೊಲೀಸ್, POLICE on the bonnet.
-    // The lower body is a scaled rounded box: its sides curve in over the last ~12% at each end.
-    const halfW = (z) => { const d = Math.min(0.12, Math.max(0, Math.abs(z) / L - 0.38)); return W * (0.38 + Math.sqrt(0.0144 - d * d)); };
-    v.decalWrap(pink ? 'pinkL' : 'hoysalaL', 'L', y0 + lowH / 2, lowH * 0.97, -L * 0.49, L * 0.49, halfW);
-    v.decalWrap(pink ? 'pinkR' : 'hoysalaR', 'R', y0 + lowH / 2, lowH * 0.97, -L * 0.49, L * 0.49, halfW);
-    v.decal('bonnet', 0, y0 + lowH + 0.066, L / 2 - bonnetL / 2 - 0.05, W * 0.62, bonnetL * 0.62, 'T');
-    v.decal(pink ? 'pinkText' : 'police', 0, y0 + lowH * 0.62, -L / 2 - 0.13, 1.3, 0.32, 'B');
-    // Light bar: red, white and blue lamps on a black base.
-    v.add(G.box, P.chrome, 0x222222, 0, y0 + lowH + cabH + 0.08, cabZ + 0.2, W * 0.78, 0.08, 0.3);
-    v.add(G.box, P.plastic, 0xe8e8f0, 0, y0 + lowH + cabH + 0.17, cabZ + 0.2, W * 0.14, 0.1, 0.24);
+    // Hoysala livery (painted in liveries.js) wrapped around the curved body.
+    const y0 = 0.33, y1 = m.belt;
+    v.decalWrap(pink ? 'pinkL' : 'hoysalaL', 'L', (y0 + y1) / 2, y1 - y0, zr + 0.06, zf - 0.06, hw);
+    v.decalWrap(pink ? 'pinkR' : 'hoysalaR', 'R', (y0 + y1) / 2, y1 - y0, zr + 0.06, zf - 0.06, hw);
+    const zb = (zWs + zf) / 2 - 0.05;
+    v.decal('bonnet', 0, top(zb) + 0.012, zb, W * 0.55, (zf - zWs) * 0.42, 'T');
+    v.decal(pink ? 'pinkText' : 'police', 0, yTail - 0.25, zr - 0.02, 1.2, 0.3, 'B');
+    const lbz = (prof.zRoofEnd + prof.zWsTop) / 2 + 0.25;
+    v.add(G.box, P.chrome, 0x222222, 0, roofY + 0.05, lbz, W * 0.78, 0.08, 0.3);
+    v.add(G.box, P.plastic, 0xe8e8f0, 0, roofY + 0.14, lbz, W * 0.14, 0.1, 0.24);
   }
-  const wr = suv ? 0.37 : mpv ? 0.33 : 0.31, ww = suv ? 0.25 : 0.21;
-  const wz = spec.wheelbase / 2, wx = W / 2 - ww / 2 + 0.02;
-  // Wheel arches.
-  for (const z of [wz, -wz]) for (const s of [-1, 1]) v.add(G.cyl, P.matte, 0x0e0e0e, s * (W / 2 - 0.05), y0 + 0.05, z, wr + 0.06, 0.12, wr + 0.06, 0, Math.PI / 2);
-  v.wheel(wx, wr, wz, wr, ww, true); v.wheel(-wx, wr, wz, wr, ww, true);
-  v.wheel(wx, wr, -wz, wr, ww, false); v.wheel(-wx, wr, -wz, wr, ww, false);
-  const extra = { color: colour };
-  if (police) extra.lightBar = { y: y0 + lowH + cabH + 0.17, z: cabZ + 0.2, w: W * 0.3 };
+  // Wheels: alloys on newer cars, steel with covers on taxis and Boleros.
+  const ww = m.W > 1.75 ? 0.23 : 0.2;
+  const hub = { hub: 0.62, hubColor: taxi || m.label.includes('Bolero') ? 0x8a8e92 : 0xc8ccd0 };
+  for (const zc of [zFA, zRA]) {
+    const x = hw(zc) - ww / 2 + 0.01;
+    v.wheel(x, m.wr, zc, m.wr, ww, zc === zFA, hub); v.wheel(-x, m.wr, zc, m.wr, ww, zc === zFA, hub);
+  }
+  const extra = { color: colour, spec, modelKey: key };
+  if (police) extra.lightBar = { y: roofY + 0.14, z: (prof.zRoofEnd + prof.zWsTop) / 2 + 0.25, w: W * 0.3 };
   return v.finish(spec, extra);
 }
 

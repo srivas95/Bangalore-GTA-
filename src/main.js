@@ -17,7 +17,8 @@ import { Environment } from './systems/environment.js';
 import { Traffic } from './entities/traffic.js';
 import { StreetLife } from './entities/pedestrians.js';
 import { Player } from './entities/player.js';
-import { Vehicle } from './entities/vehicle.js';
+import { Vehicle, damageFromSpeed } from './entities/vehicle.js';
+import { Particles } from './systems/particles.js';
 import { HUD } from './ui/hud.js';
 import { LINES, CURB_H, METRO_LINES, RAILWAY } from './config.js';
 
@@ -110,6 +111,7 @@ async function init() {
   const missions = new Missions(scene, layout, city.pois, hud, audio);
   const police = new Police(scene, layout, colliders, hud, audio);
   env.onThunder = (delay) => audio.thunder(delay, 0.6 + Math.random() * 0.4);
+  const particles = new Particles(scene);
 
   const world = {
     layout, colliders, traffic, streetLife, audio, hud, camera, police, player, signals,
@@ -120,7 +122,50 @@ async function init() {
     get hour() { return env.hour; },
     trafficScale: 1, pedScale: 1, initialFill: true,
     shake: (a) => rig.shake(a),
+    particles,
     crime: (reason, x, z, stars) => police.crime(reason, x, z, stars, world),
+  };
+
+  // ---------- Crashes and explosions ----------
+  world.onVehicleImpact = (a, b, speed, cx, cz) => {
+    const share = (m1, m2) => (2 * m2) / (m1 + m2);
+    a.takeDamage(damageFromSpeed(speed * Math.min(1.6, share(a.mass, b.mass)) * 0.75), cx, cz, world);
+    b.takeDamage(damageFromSpeed(speed * Math.min(1.6, share(b.mass, a.mass)) * 0.75), cx, cz, world);
+    if (speed > 6) particles.burst('spark', cx, 0.7, cz, Math.min(14, Math.round(speed)), 4, 0.8);
+    if (speed > 4) audio.crunch?.(Math.min(1, speed / 18));
+    // A traffic vehicle that's been killed stays where it died.
+    if (b.engineDead && b.driver === 'ai') {
+      const agent = traffic.findAgent(b);
+      if (agent) { traffic.release(agent); free.push(b); }
+    }
+  };
+  world.explode = (x, y, z, src) => {
+    particles.burst('blast', x, y, z, 26, 7, 0.9);
+    particles.burst('fire', x, y, z, 30, 5, 1.2, 1.6);
+    particles.burst('spark', x, y, z, 40, 14, 1.0);
+    for (let k = 0; k < 14; k++) particles.emit('blackSmoke', x + (Math.random() - 0.5) * 3, y + Math.random() * 2, z + (Math.random() - 0.5) * 3, 0, 2 + Math.random() * 2, 0, 2.2);
+    audio.explosion?.(x, z, camera);
+    const pd = Math.hypot(player.pos.x - x, player.pos.z - z);
+    rig.shake(Math.max(0, 1.2 - pd / 40));
+    // Blast damage: the player, people, other vehicles.
+    if (pd < 7) {
+      const hurt = 95 * (1 - pd / 7);
+      if (player.vehicle === src) player.damage(120, x, z, world);
+      else if (player.vehicle) { player.damage(hurt * 0.4, x, z, world); }
+      else { player.damage(hurt, x, z, world); player.knock = 1.6; const a = Math.atan2(player.x - x, player.z - z); player.kx = Math.sin(a) * 9; player.kz = Math.cos(a) * 9; }
+    }
+    for (const p of streetLife.peds) {
+      const d = Math.hypot(p.x - x, p.z - z);
+      if (d < 8 && p.state !== 'down') streetLife.knock(p, ((p.x - x) / (d || 1)) * 8, ((p.z - z) / (d || 1)) * 8, audio);
+      else if (d < 30) streetLife.scare?.(p, x, z);
+    }
+    for (const v of world.vehicles) {
+      if (v === src) continue;
+      const d = Math.hypot(v.x - x, v.z - z);
+      if (d > 9) continue;
+      v.takeDamage(70 * (1 - d / 9), x, z, world);
+      if (v.driver !== 'ai') { const k = (1 - d / 9) * 9000 / v.mass; v.vx += ((v.x - x) / (d || 1)) * k; v.vz += ((v.z - z) / (d || 1)) * k; v.angVel += (Math.random() - 0.5) * k * 0.4; }
+    }
   };
 
   // ---------- Busted / wasted ----------
@@ -255,7 +300,8 @@ async function init() {
 
     for (const v of free) {
       if (v === player.vehicle) continue;
-      if (v.speed > 0.05) v.update(dt, null, world);
+      if (v.speed > 0.05 || Math.abs(v.angVel) > 0.02) v.update(dt, null, world);
+      else if (v.health < 45 || v.fireT > 0 || v.wrecked) v.effects(dt, world); // keep smoking and burning
       v.group.visible = Math.abs(v.x - world.focus.x) < 300 && Math.abs(v.z - world.focus.z) < 300;
     }
     police.update(dt, world);
@@ -277,6 +323,7 @@ async function init() {
     metro.update(dt);
     city.rail.update(dt, world);
     city.update(dt, elapsed, camera);
+    particles.update(dt, camera, renderer);
     env.update(dt, world.focus, player, police);
     missions.update(dt, input, player);
     audio.setRain(env.rain);
@@ -322,16 +369,23 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
           if (d >= min || d < 1e-5) continue;
           nx /= d; nz /= d;
           const pen = min - d;
-          const vn = (a.vx - b.vx) * nx + (a.vz - b.vz) * nz;
+          // Contact point and its offset from each centre of mass; relative velocity there.
+          const cx = cb.x + nx * cb.r, cz = cb.z + nz * cb.r;
+          const pax = cx - a.x, paz = cz - a.z, pbx = cx - b.x, pbz = cz - b.z;
+          const avx = a.vx + a.angVel * paz, avz = a.vz - a.angVel * pax;
+          const bvx = b.vx + (b.angVel || 0) * pbz, bvz = b.vz - (b.angVel || 0) * pbx;
+          const vn = (avx - bvx) * nx + (avz - bvz) * nz;
+          const ta = (paz * nx - pax * nz) ** 2 / a.inertia;
           if (ai) {
             a.x += nx * pen; a.z += nz * pen;
-            if (vn < 0) { a.vx -= nx * vn * 1.3; a.vz -= nz * vn * 1.3; }
+            if (vn < 0) a.applyImpulse(nx * (-1.3 * vn) / (1 / a.mass + ta), nz * (-1.3 * vn) / (1 / a.mass + ta), pax, paz);
             const agent = traffic.findAgent(b);
             if (agent) {
               if (-vn > 9 && !['bus', 'lorry', 'tanker', 'schoolBus'].includes(b.type)) {
                 traffic.release(agent);
                 const k = (a.mass / (a.mass + b.mass)) * -vn * 1.4;
                 b.vx -= nx * k; b.vz -= nz * k;
+                b.angVel = (pbz * -nx - pbx * -nz) * k * b.mass / b.inertia;
                 if (b.rider && b.spec.twoWheeler) {
                   const opts = { outfit: b.rider.outfit, helmet: true };
                   b.removeRider();
@@ -350,12 +404,14 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
             a.x += nx * pen * ia / (ia + ib); a.z += nz * pen * ia / (ia + ib);
             b.x -= nx * pen * ib / (ia + ib); b.z -= nz * pen * ib / (ia + ib);
             if (vn < 0) {
-              const j = (-1.3 * vn) / (ia + ib);
-              a.vx += nx * j * ia; a.vz += nz * j * ia;
-              b.vx -= nx * j * ib; b.vz -= nz * j * ib;
+              const tb = (pbz * nx - pbx * nz) ** 2 / b.inertia;
+              const j = (-1.3 * vn) / (ia + ib + ta + tb);
+              a.applyImpulse(nx * j, nz * j, pax, paz);
+              b.applyImpulse(-nx * j, -nz * j, pbx, pbz);
             }
             if (a.driver === 'player' && b.driver === 'police' && -vn > 5) world.crime('Ramming a Hoysala', a.x, a.z, 1);
           }
+          if (-vn > 2) world.onVehicleImpact?.(a, b, -vn, cx, cz);
           if (-vn > 3) { world.audio.thud(Math.min(1, -vn / 15)); if (a.driver === 'player' || b.driver === 'player') world.shake(Math.min(0.5, -vn / 30)); }
           a.circles(_ca); b.circles(_cb);
         }

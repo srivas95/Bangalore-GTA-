@@ -163,7 +163,7 @@ export class Police {
       if (c.timer <= 0) { c.state = 'chase'; c.health = 70; h.group.rotation.x = 0; }
     } else {
       // Chase the player on foot, or head back to the car.
-      const target = (this.level > 0 && !pl.vehicle && !pl.dead) || (this.level > 0 && pl.vehicle && Math.hypot(pl.x - c.x, pl.z - c.z) < 12) ? pl : c.unit && this.units.includes(c.unit) ? c.unit.v : null;
+      const target = (this.level > 0 && !pl.vehicle && !pl.dead) || (this.level > 0 && pl.vehicle && Math.hypot(pl.x - c.x, pl.z - c.z) < 12) ? pl : c.unit && this.units.includes(c.unit) && !c.unit.v.engineDead ? c.unit.v : null;
       if (!target) { c.state = 'leave'; }
       const tx = target ? target.x : c.x + 1, tz = target ? target.z : c.z;
       const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz);
@@ -206,6 +206,14 @@ export class Police {
     const px = tgt.x, pz = tgt.z;
     const d = Math.hypot(px - v.x, pz - v.z);
     let aimX, aimZ, throttle = 1;
+    // A wrecked Hoysala: the constables bail out and carry on on foot.
+    if (v.engineDead) {
+      v.siren = false;
+      if (u.officers > 0 && u.state !== 'parked') this.spawnCops(u, world);
+      u.state = 'parked';
+      v.update(dt, { throttle: 0, steer: 0, handbrake: true }, world);
+      return;
+    }
     if (u.state === 'leave') {
       v.siren = false;
       if (!u.path.length || u.replan <= 0) { u.path = this.route(v.x, v.z, v.x + (v.x - px), v.z + (v.z - pz)); u.replan = 5; }

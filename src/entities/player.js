@@ -193,7 +193,20 @@ export class Player {
     const wasStalled = v.stalled;
     const impact = v.update(dt, ctrl, world);
     if (v.stalled && !wasStalled) world.hud?.say(`Engine flooded! ${LINES.flood[Math.floor(Math.random() * LINES.flood.length)]}`, 3);
-    if (impact > 4) { world.audio?.thud(Math.min(1, impact / 15)); world.shake?.(Math.min(0.6, impact / 25)); }
+    if (impact > 4) {
+      world.audio?.thud(Math.min(1, impact / 15));
+      world.audio?.crunch?.(Math.min(1, impact / 18));
+      world.shake?.(Math.min(0.6, impact / 25));
+      if (impact > 7 && v.lastHit) world.particles?.burst('spark', v.lastHit.x, v.y + 0.6, v.lastHit.z, Math.min(16, Math.round(impact)), 4, 0.8);
+    }
+    // Tyre smoke when you hang the tail out.
+    if (!v.spec.twoWheeler && v.speed > 6 && (v.slip > 0.22 || (ctrl.handbrake && v.speed > 9)) && world.particles) {
+      const fx = Math.sin(v.heading), fz = Math.cos(v.heading), lx = fz, lz = -fx;
+      const back = -v.spec.wheelbase / 2, side = v.spec.width / 2 - 0.15;
+      for (const sd of [-1, 1]) if (Math.random() < dt * 30) world.particles.emit('smoke', v.x + fx * back + lx * side * sd, v.y + 0.25, v.z + fz * back + lz * side * sd, -v.vx * 0.1, 0.4, -v.vz * 0.1, 0.8);
+    }
+    if (v.engineDead && ctrl.throttle > 0 && !this._deadNag) { this._deadNag = true; world.hud?.say(v.fireT > 0 ? 'It\'s on fire! Get out!' : 'The engine won\'t turn over. It\'s finished.', 2.5); }
+    if (!v.engineDead) this._deadNag = false;
     world.audio?.hornHold(v.spec.horn, input.down('KeyH', 'KeyQ'), v.hornPitch);
     if (v.spec.police && input.hit('KeyG')) v.siren = !v.siren; // your own Hoysala's siren
     if (v.waterDepth > 0.5 && v.speed > 3 && Math.random() < dt * 3) world.audio?.splash();

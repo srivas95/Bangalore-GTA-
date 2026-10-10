@@ -191,7 +191,21 @@ export class HUD {
     this.setHealth(player.health);
     if (this.toastT > 0) { this.toastT -= dt; if (this.toastT <= 0) this.el.toast.parentElement.classList.remove('show'); }
     if (this.subT > 0) { this.subT -= dt; if (this.subT <= 0) this.el.sub.classList.remove('show'); }
-    if (player.vehicle) this.el.speedVal.textContent = Math.round(Math.abs(player.vehicle.forwardSpeed) * 3.6);
+    if (player.vehicle) {
+      const v = player.vehicle;
+      this.el.speedVal.textContent = Math.round(Math.abs(v.forwardSpeed) * 3.6);
+      // Vehicle condition bar under the speedo.
+      if (!this.el.vhp) {
+        this.el.vhp = document.createElement('div');
+        this.el.vhp.className = 'vhp';
+        this.el.vhp.innerHTML = '<i></i>';
+        this.el.speed.appendChild(this.el.vhp);
+      }
+      const hp = Math.max(0, Math.min(100, v.health));
+      const bar = this.el.vhp.firstChild;
+      bar.style.width = `${hp}%`;
+      bar.style.background = hp > 50 ? '#7ad06a' : hp > 20 ? '#f0b030' : '#e04030';
+    }
     // Count money up smoothly.
     if (this.shownMoney !== this.money) {
       const d = this.money - this.shownMoney;

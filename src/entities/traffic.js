@@ -230,6 +230,7 @@ export class Traffic {
     if (i >= 0) this.agents.splice(i, 1);
     this.scene.remove(a.v.group);
     a.v.siren = false;
+    a.v.repair(); // back to the pool showroom-fresh
     const list = this.pool.get(a.v.type) || [];
     if (list.length < 30) { list.push(a.v); this.pool.set(a.v.type, list); }
     else {
@@ -429,6 +430,9 @@ export class Traffic {
       while (dh > Math.PI) dh -= Math.PI * 2;
       while (dh < -Math.PI) dh += Math.PI * 2;
       v.yawRate = dt > 0 ? (dh / dt) * 0.5 : 0;
+      v.ay = dt > 0 ? (dh / dt) * a.speed * 0.6 : 0; // drives the body-roll spring
+      v.ax = dt > 0 ? (a.speed - (a.lastSpeed ?? a.speed)) / dt : 0;
+      a.lastSpeed = a.speed;
       v.heading += dh * Math.min(1, dt * 10);
       v.vx = dt > 0 ? (v.x - prevX) / dt : 0;
       v.vz = dt > 0 ? (v.z - prevZ) / dt : 0;

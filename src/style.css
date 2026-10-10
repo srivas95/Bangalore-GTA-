@@ -78,3 +78,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 #screen.show { display: flex; }
 #screen-title { font-family: var(--hud-font); font-size: 110px; letter-spacing: 6px; -webkit-text-stroke: 3px #000; }
 #screen-sub { font-family: system-ui, sans-serif; font-size: 20px; color: #eee; margin-top: 8px; text-shadow: 0 2px 4px #000; }
+
+/* Vehicle condition bar under the speedometer. */
+.vhp { width: 92px; height: 5px; margin: 4px 0 0 auto; background: rgba(0, 0, 0, 0.45); border-radius: 3px; overflow: hidden; }
+.vhp i { display: block; height: 100%; width: 100%; transition: width 0.25s, background 0.25s; }
