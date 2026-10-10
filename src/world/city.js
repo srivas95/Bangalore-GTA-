@@ -6,7 +6,7 @@ import * as T from './textures.js';
 import { LANDMARKS, put } from './landmarks.js';
 import { buildInfrastructure } from './infrastructure.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { CURB_H, WORLD_MIN, WORLD_MAX, SHOP_SIGNS, RAILWAY } from '../config.js';
+import { CURB_H, WORLD_MIN, WORLD_MAX, SHOP_SIGNS, RAILWAY, FUEL_BRANDS, HOTELS } from '../config.js';
 
 const rng = T.mulberry32(20240607);
 const rand = (a = 0, b = 1) => a + (b - a) * rng();
@@ -37,6 +37,10 @@ export function buildCity(scene, layout, colliders, renderer) {
     if (s.pub) pools.pub.push(k);
   }
   const poolIdx = { general: 0, pub: 0, industrial: 0 };
+  // Famous brands open their first branch in their home neighbourhood.
+  const homeBrands = SHOP_SIGNS.map((s, k) => ({ s, k })).filter((h) => h.s.home);
+  const stations = []; // fuel stations placed so far
+  let fuelIdx = 0;
 
   const aniso = renderer.capabilities.getMaxAnisotropy();
   const tex = (t) => { t.anisotropy = Math.min(8, aniso); return t; };
@@ -229,6 +233,10 @@ export function buildCity(scene, layout, colliders, renderer) {
   }
 
   function nextSign(block) {
+    if (block.zone !== 'industrial') {
+      const h = homeBrands.find((h) => !h.placed && h.s.home === block.district);
+      if (h) { h.placed = true; return h.k; }
+    }
     const kind = block.zone === 'industrial' ? 'industrial' : block.pubs && rng() < 0.55 ? 'pub' : 'general';
     const pool = pools[kind];
     return pool[poolIdx[kind]++ % pool.length];
@@ -249,10 +257,101 @@ export function buildCity(scene, layout, colliders, renderer) {
     }
   }
 
+  function hotelFor(block) {
+    const o = block.outer;
+    return HOTELS.find((h) => h.at[0] > o.minX && h.at[0] < o.maxX && h.at[1] > o.minZ && h.at[1] < o.maxZ);
+  }
+
+  // A hotel tower (or a mall) with its name lit up on all four sides of the crown.
+  function brandedTower(lot, h, block) {
+    const top = building(lot, { style: h.style || (h.mall ? 'plaster' : 'glass'), floors: h.floors, tint: h.tint, block });
+    const w = lot.maxX - lot.minX, d = lot.maxZ - lot.minZ;
+    const cx = (lot.minX + lot.maxX) / 2, cz = (lot.minZ + lot.maxZ) / 2;
+    const sh = h.mall ? 3.6 : 4.2, y = top + (h.mall ? -sh / 2 - 0.6 : sh / 2 + 0.6);
+    const key = `brand_${h.name}`;
+    B.get('stone').box(cx, top, cz, w * 0.8, h.mall ? 0.4 : sh + 1.2, d * 0.8, 0x2a2a2a);
+    const sw = Math.min(Math.min(w, d) * 0.78, sh * 6);
+    for (const [face, x, z, depth] of [['n', cx, lot.minZ - 0.06, d], ['s', cx, lot.maxZ + 0.06, d], ['e', lot.maxX + 0.06, cz, w], ['w', lot.minX - 0.06, cz, w]]) {
+      const inset = h.mall ? 0 : 0.1 * depth; // the crown is 80% of the footprint
+      const px = face === 'e' ? x - inset : face === 'w' ? x + inset : x, pz = face === 's' ? z - inset : face === 'n' ? z + inset : z;
+      signs.push({ key, text: [h.name, h.sub], bg: h.bg, fg: h.fg, x: px, y, z: pz, w: sw, h: sh, face, fonts: [`bold ${h.mall ? 72 : 96}px "Oswald", Arial, sans-serif`, `${h.mall ? 34 : 40}px "Oswald", Arial, sans-serif`] });
+    }
+    pois.landmarks.push({ name: h.label, x: cx, z: cz });
+  }
+
+  // Fuel stations: a branded canopy over two pump islands, a kiosk at the back and a totem sign.
+  function fuelStation(lot, block) {
+    if (!lot.face || (block.edge && isWorldEdge(block, lot.face))) return false;
+    const along = lot.face === 'n' || lot.face === 's';
+    const a0 = along ? lot.minX : lot.minZ, a1 = along ? lot.maxX : lot.maxZ;
+    const D = along ? lot.maxZ - lot.minZ : lot.maxX - lot.minX;
+    if (a1 - a0 < 14 || D < 12 || rng() > 0.12) return false;
+    const cx0 = (lot.minX + lot.maxX) / 2, cz0 = (lot.minZ + lot.maxZ) / 2;
+    if (stations.some((s) => Math.hypot(s.x - cx0, s.z - cz0) < 800)) return false;
+    stations.push({ x: cx0, z: cz0 });
+    const brand = FUEL_BRANDS[[0, 1, 0, 2][fuelIdx++ % 4]];
+    // Local frame: a along the frontage, d inward from the road edge.
+    const M = (a, d) => {
+      switch (lot.face) {
+        case 'n': return [a, lot.minZ + d];
+        case 's': return [a, lot.maxZ - d];
+        case 'e': return [lot.maxX - d, a];
+        default: return [lot.minX + d, a];
+      }
+    };
+    const box = (b, a, d, la, ld, y, h, col, opts) => { const [x, z] = M(a, d); b.box(x, y, z, along ? la : ld, h, along ? ld : la, col, opts); };
+    const st = B.get('stone');
+    const am = (a0 + a1) / 2;
+    box(st, am, D / 2, a1 - a0, D, CURB_H, 0.03, 0xb4b0a8);
+    // Canopy.
+    const ca = Math.min(a1 - a0 - 3, 16), cd = Math.min(D * 0.55, 9), cdm = 1.5 + cd / 2;
+    box(st, am, cdm, ca, cd, 5.0, 0.35, 0xf2f2f2);
+    box(st, am, cdm, ca + 0.15, cd + 0.15, 5.3, 0.55, brand.canopy);
+    box(st, am, cdm, ca + 0.2, cd + 0.2, 5.42, 0.12, brand.stripe, { top: false });
+    for (const sa of [-1, 1]) for (const sd of [-1, 1]) {
+      const a = am + sa * (ca / 2 - 1.2), d = cdm + sd * (cd / 2 - 1.2);
+      box(st, a, d, 0.4, 0.4, CURB_H, 5.0, 0xe8e8e8);
+      const [x, z] = M(a, d);
+      colliders.addCentered(x, z, 0.5, 0.5, 5, 'pole');
+    }
+    // Pump islands.
+    for (const sa of [-1, 1]) {
+      const a = am + sa * ca * 0.22;
+      box(st, a, cdm, 1.1, 3.2, CURB_H, 0.2, 0xd8d4cc);
+      for (const sd of [-0.8, 0.8]) {
+        box(st, a, cdm + sd, 0.5, 0.7, CURB_H + 0.2, 1.7, brand.canopy);
+        box(st, a, cdm + sd, 0.52, 0.72, CURB_H + 1.45, 0.25, 0xffffff, { top: false });
+      }
+      const [x, z] = M(a, cdm);
+      colliders.addCentered(x, z, along ? 1.1 : 3.2, along ? 3.2 : 1.1, 1.9, 'pole');
+    }
+    // Kiosk at the back.
+    const kd = Math.min(5, D - cd - 2);
+    if (kd > 2.5) {
+      const [k0x, k0z] = M(am - 4.5, D - kd), [k1x, k1z] = M(am + 4.5, D);
+      building({ minX: Math.min(k0x, k1x), maxX: Math.max(k0x, k1x), minZ: Math.min(k0z, k1z), maxZ: Math.max(k0z, k1z), face: lot.face }, { style: 'plaster', floors: 1, tint: 0xf6f6f6, block });
+    }
+    // Branding: the canopy fascia facing the road, and a totem by the kerb.
+    const [fx, fz] = M(am, 1.5 - 0.1);
+    signs.push({ key: `fuel_${brand.key}_fascia`, text: [brand.name], bg: brand.bg, fg: brand.fg, x: fx, y: 5.37, z: fz, w: 4, h: 0.5, face: lot.face, font: 'bold 92px "Oswald", Arial, sans-serif' });
+    const ta = a1 - 1.2;
+    box(st, ta, 0.8, 0.3, 0.3, CURB_H, 4.2, 0x888888);
+    box(st, ta, 0.8, 1.7, 0.25, CURB_H + 3.2, 3.0, 0x222222);
+    const [tx, tz] = M(ta, 0.8 - 0.14);
+    signs.push({ key: `fuel_${brand.key}_totem`, text: [brand.name, brand.full, 'PETROL · DIESEL'], bg: brand.bg, fg: brand.fg, x: tx, y: CURB_H + 4.7, z: tz, w: 1.6, h: 2.8, face: lot.face, fonts: ['bold 300px "Oswald", Arial, sans-serif', 'bold 84px "Noto Sans Kannada", "Oswald", sans-serif', 'bold 84px "Oswald", Arial, sans-serif'] });
+    const [px, pz] = M(ta, 0.8);
+    colliders.addCentered(px, pz, 0.6, 0.6, 7, 'pole');
+    const [qx, qz] = M(am, -2);
+    pois.fuel = pois.fuel || [];
+    pois.fuel.push({ name: brand.name, x: qx, z: qz, face: lot.face });
+    return true;
+  }
+
   function buildStreetBlock(block, o) {
     const lots = lotsAround(block.inner, o.frontage, o.depth, o.sides || 'nsew');
     for (const lot of lots) {
       const shop = rng() < o.shop && lot.face && !(block.edge && isWorldEdge(block, lot.face));
+      if (block.zone !== 'market' && fuelStation(lot, block)) continue;
       building(lot, { style: pick(o.styles), floors: Math.round(rand(...o.floors)), shop, tint: pick(o.tints), block });
     }
     const i = block.inner;
@@ -260,7 +359,9 @@ export function buildCity(scene, layout, colliders, renderer) {
     if (i.maxX - i.minX > inset * 2 + 10 && i.maxZ - i.minZ > inset * 2 + 10) {
       const cx = (i.minX + i.maxX) / 2, cz = (i.minZ + i.maxZ) / 2;
       const hw = (i.maxX - i.minX) / 2 - inset, hd = (i.maxZ - i.minZ) / 2 - inset;
-      if (rng() < 0.6) building({ minX: cx - hw, maxX: cx + hw, minZ: cz - hd, maxZ: cz + hd }, { style: pick(o.styles), floors: Math.round(rand(o.floors[0] + 1, o.floors[1] + 3)), tint: pick(o.tints), block });
+      const hotel = hotelFor(block);
+      if (hotel) brandedTower({ minX: cx - hw, maxX: cx + hw, minZ: cz - hd, maxZ: cz + hd }, hotel, block);
+      else if (rng() < 0.6) building({ minX: cx - hw, maxX: cx + hw, minZ: cz - hd, maxZ: cz + hd }, { style: pick(o.styles), floors: Math.round(rand(o.floors[0] + 1, o.floors[1] + 3)), tint: pick(o.tints), block });
       else for (let k = 0; k < 6; k++) trees.push({ x: cx + rand(-hw, hw), z: cz + rand(-hd, hd), s: rand(0.8, 1.2), t: 0 });
     }
   }
@@ -294,13 +395,17 @@ export function buildCity(scene, layout, colliders, renderer) {
     }
     if (block.landmark === 'wtc') {
       pois.landmarks.push(LANDMARKS.wtc(ctx, cx, cz + 10));
-      building({ minX: i.minX + 4, maxX: i.minX + 30, minZ: i.minZ + 4, maxZ: i.minZ + 30, face: 'n' }, { style: 'glass', floors: 12, tint: 0xd8e4f0, block });
+      const mall = hotelFor(block);
+      if (mall) brandedTower({ minX: i.minX + 4, maxX: i.minX + 46, minZ: i.minZ + 4, maxZ: i.minZ + 34 }, mall, block);
+      else building({ minX: i.minX + 4, maxX: i.minX + 30, minZ: i.minZ + 4, maxZ: i.minZ + 30, face: 'n' }, { style: 'glass', floors: 12, tint: 0xd8e4f0, block });
       return;
     }
     const cells = [[0.25, 0.25], [0.72, 0.3], [0.3, 0.75], [0.72, 0.75]];
+    const hotel = hotelFor(block);
     for (const [fx, fz] of cells) {
       const x = i.minX + (i.maxX - i.minX) * fx, z = i.minZ + (i.maxZ - i.minZ) * fz;
       const s = rand(12, 18);
+      if (hotel && fx === 0.25) { brandedTower({ minX: x - 15, maxX: x + 15, minZ: z - 12, maxZ: z + 12 }, hotel, block); continue; }
       building({ minX: x - s, maxX: x + s, minZ: z - s * 0.8, maxZ: z + s * 0.8 }, { style: 'glass', floors: Math.round(rand(10, 26)), tint: pick([0xd0e0ff, 0xe0f0e8, 0xf0e8d8, 0xc8d8f0]), block });
     }
   }
@@ -657,7 +762,7 @@ function buildTextSigns(group, signs) {
   for (const sg of signs) {
     let mat = cache.get(sg.key);
     if (!mat) {
-      const t = T.textTexture(sg.text, { bg: sg.bg || '#2a2622', fg: sg.fg || '#f2e6c8', w: 1024, h: Math.max(64, Math.round(1024 * sg.h / sg.w)) });
+      const t = T.textTexture(sg.text, { bg: sg.bg || '#2a2622', fg: sg.fg || '#f2e6c8', w: 1024, h: Math.max(64, Math.round(1024 * sg.h / sg.w)), ...(sg.font && { font: sg.font }), fonts: sg.fonts });
       mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.7, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.05 });
       cache.set(sg.key, mat);
     }

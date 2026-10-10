@@ -439,27 +439,42 @@ export function roofTexture() {
   return toTexture(c);
 }
 
-// Atlas of shop signs: 4 columns x 16 rows, each 256 x 64.
+// Atlas of shop signs: 4 columns x 16 rows, each 512 x 128. Real brands use their own colours.
 export const SIGN_COLS = 4, SIGN_ROWS = 16;
 export function signAtlas() {
-  const [c, ctx] = canvas(1024, 1024);
+  const [c, ctx] = canvas(2048, 2048);
   const bgs = [['#c0392b', '#fff'], ['#f1c40f', '#7a1010'], ['#1e7a3c', '#fff'], ['#1f4e8c', '#ffe066'],
     ['#e67e22', '#fff'], ['#fafafa', '#b0151f'], ['#6a1b9a', '#fff'], ['#111', '#f5c518']];
+  const W = 512, H = 128;
   for (let k = 0; k < SIGN_COLS * SIGN_ROWS; k++) {
     const sign = SHOP_SIGNS[k % SHOP_SIGNS.length];
-    const [bg, fg] = bgs[(k * 7 + Math.floor(k / SHOP_SIGNS.length)) % bgs.length];
-    const x = (k % SIGN_COLS) * 256, y = Math.floor(k / SIGN_COLS) * 64;
+    const [bg, fg] = sign.brand ? [sign.bg, sign.fg] : bgs[(k * 7 + Math.floor(k / SHOP_SIGNS.length)) % bgs.length];
+    const x = (k % SIGN_COLS) * W, y = Math.floor(k / SIGN_COLS) * H;
     ctx.fillStyle = bg;
-    ctx.fillRect(x, y, 256, 64);
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 4;
-    ctx.strokeRect(x + 2, y + 2, 252, 60);
-    ctx.fillStyle = fg;
+    ctx.fillRect(x, y, W, H);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = 'bold 26px "Noto Sans Kannada", "Arial Narrow", Arial, sans-serif';
-    fitText(ctx, sign.en.toUpperCase(), x + 128, y + 24, 240);
-    ctx.font = '16px "Noto Sans Kannada", sans-serif';
-    fitText(ctx, sign.kn, x + 128, y + 50, 240);
+    if (sign.brand) {
+      // Clean brand panel: thin inner keyline, the name large, tagline underneath.
+      ctx.strokeStyle = fg; ctx.globalAlpha = 0.5; ctx.lineWidth = 3;
+      ctx.strokeRect(x + 8, y + 8, W - 16, H - 16);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = fg;
+      const serif = /Bhavan|Coffee Bar|MTR|CTR|Empire/.test(sign.en);
+      const short = sign.en.length <= 5;
+      ctx.font = `${serif ? 'bold' : '700'} ${short ? 70 : 54}px ${serif ? 'Georgia, "Times New Roman", serif' : '"Oswald", "Arial Narrow", Arial, sans-serif'}`;
+      fitText(ctx, sign.en, x + W / 2, y + 50, W - 40);
+      ctx.font = '600 22px "Noto Sans Kannada", "Oswald", Arial, sans-serif';
+      fitText(ctx, sign.kn, x + W / 2, y + 102, W - 50);
+      continue;
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 8;
+    ctx.strokeRect(x + 4, y + 4, W - 8, H - 8);
+    ctx.fillStyle = fg;
+    ctx.font = 'bold 52px "Noto Sans Kannada", "Arial Narrow", Arial, sans-serif';
+    fitText(ctx, sign.en.toUpperCase(), x + W / 2, y + 48, W - 32);
+    ctx.font = '32px "Noto Sans Kannada", sans-serif';
+    fitText(ctx, sign.kn, x + W / 2, y + 100, W - 32);
   }
   const t = toTexture(c, { repeat: false });
   return t;
@@ -483,11 +498,12 @@ export function signUV(k) {
   return [u0, v0, u1, v1];
 }
 
-export function textTexture(lines, { w = 512, h = 128, bg = '#1f4e8c', fg = '#fff', font = 'bold 44px "Noto Sans Kannada", Arial, sans-serif' } = {}) {
+// fonts: optional per-line fonts (e.g. a big brand name over a small tagline).
+export function textTexture(lines, { w = 512, h = 128, bg = '#1f4e8c', fg = '#fff', font = 'bold 44px "Noto Sans Kannada", Arial, sans-serif', fonts } = {}) {
   const [c, ctx] = canvas(w, h);
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = fg; ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  lines.forEach((l, k) => fitText(ctx, l, w / 2, (h / (lines.length + 1)) * (k + 1), w - 20));
+  ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  lines.forEach((l, k) => { ctx.font = fonts?.[k] ?? font; fitText(ctx, l, w / 2, (h / (lines.length + 1)) * (k + 1), w - 20); });
   return toTexture(c, { repeat: false });
 }
 

@@ -1,8 +1,10 @@
 // AI traffic: a dense population streamed around the player that follows the road graph,
-// keeps LEFT, obeys (mostly) the signals, filters between lanes on two-wheelers, honks a lot,
-// and drowns its engine in flooded underpasses.
+// keeps LEFT, obeys (mostly) the signals and honks a lot. Cars and buses keep to their lanes;
+// autos and two-wheelers ignore lane markings, weave across the carriageway, squeeze through
+// gaps and now and then ride on the wrong side of the road. Everyone wades through floods.
 import { Vehicle } from './vehicle.js';
 import { mulberry32 } from '../world/textures.js';
+import { LANE_W } from '../config.js';
 
 const rng = mulberry32(4242);
 const BASE_MIX = {
@@ -10,6 +12,7 @@ const BASE_MIX = {
   suv: 0.05, tempo: 0.025, miniTruck: 0.03, bus: 0.055, schoolBus: 0.015, lorry: 0.015, tanker: 0.012, hoysala: 0.008,
 };
 const HEAVY = new Set(['bus', 'schoolBus', 'lorry', 'tanker', 'tempo', 'goodsAuto', 'miniTruck']);
+const AUTOS = new Set(['auto', 'goodsAuto']);
 const CELL = 24;
 
 function pickType(hour, industrial) {
@@ -88,13 +91,21 @@ export class Traffic {
       if (!v.rider) v.addRider(rng);
       this.scene.add(v.group);
       const two = v.spec.twoWheeler;
+      const erratic = two || AUTOS.has(type);
       const a = {
         v, edge: e, lane, path, s, speed: 0, turning: false,
         cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
-        stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, stunned: 0,
+        stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
         jumper: rng() < (two ? 0.3 : type === 'auto' ? 0.25 : HEAVY.has(type) ? 0.05 : 0.1),
         impatience: rng(),
+        // Lane-ignoring weavers, and the ones who'll happily ride against the traffic.
+        erratic, weaveT: rng() * 2, surge: 1, surgeT: rng() * 4,
+        wrongProne: erratic && rng() < (two ? 0.3 : 0.18), wrong: false, wrongNow: false,
       };
+      if (erratic) {
+        const [lo, hi] = this.band(a);
+        a.lat = a.latTarget = lo + rng() * (hi - lo);
+      }
       this.agents.push(a);
       this.addToGrid(a);
       return a;
@@ -110,6 +121,36 @@ export class Traffic {
     // Vehicles turning onto a flyover approach stay off the flyover lane.
     if (e.flyover && fromTurn && lane === 0) lane = 1;
     return lane;
+  }
+
+  // Lateral range (relative to the agent's lane centre) of its own side of the carriageway.
+  band(a) {
+    const r = a.edge.road, half = (r.median || 0) / 2, off = this.layout.laneOffset(r, a.lane);
+    let lo = half + 0.7, hi = half + r.lanes * LANE_W - 0.75;
+    // Flyover approaches: the inner lane climbs the deck, so stay on whichever side you're on.
+    if (a.edge.flyover) {
+      if (a.lane === 0) hi = half + LANE_W - 0.6;
+      else lo = half + LANE_W + 0.6;
+    }
+    return [lo - off, Math.max(lo, hi) - off];
+  }
+
+  // The oncoming side of an undivided road, for riding against the traffic.
+  wrongBand(a) {
+    const r = a.edge.road, off = this.layout.laneOffset(r, a.lane);
+    return [-(r.lanes * LANE_W - 0.7) - off, -0.8 - off];
+  }
+
+  // Start a wrong-side run along this road? Only on undivided roads with room to do it.
+  maybeGoWrong(a) {
+    a.wrong = false;
+    const r = a.edge.road;
+    if (!a.wrongProne || r.median || a.edge.flyover || a.path.length < 90 || rng() > 0.4) return;
+    a.wrong = true;
+    const [lo, hi] = this.wrongBand(a);
+    // Most hug the far kerb; a few ride the centre line.
+    a.latTarget = rng() < 0.7 ? lo + rng() * 0.8 : hi - rng() * 0.8;
+    a.weaveT = 3 + rng() * 3;
   }
 
   edgePath(e, lane) {
@@ -154,6 +195,10 @@ export class Traffic {
       a.turning = false;
       a.path = a.nextPath;
       a.s = 0;
+      if (a.erratic) {
+        a.weaveT = 0;
+        this.maybeGoWrong(a);
+      }
       return;
     }
     const e2 = this.chooseNext(a);
@@ -166,6 +211,9 @@ export class Traffic {
     a.nextPath = next;
     a.turning = true;
     a.s = 0;
+    // Through the junction, stay roughly on the turning line.
+    a.wrong = false;
+    a.latTarget = Math.max(-1.2, Math.min(1.2, a.latTarget));
   }
 
   release(a) {
@@ -220,15 +268,17 @@ export class Traffic {
     const lx = fz, lz = -fx;
     const ox = v.x + lx * (lat - a.lat), oz = v.z + lz * (lat - a.lat);
     const myHalf = v.spec.width / 2;
+    const margin = a.erratic ? 0.12 : 0.3;
     let gap = Infinity, blocker = null;
-    const test = (px, pz, py, r, who) => {
+    const test = (px, pz, py, r, who, closing = 0, rLat = r) => {
       if (Math.abs(py - v.y) > 2.5) return;
       const dx = px - ox, dz = pz - oz;
       const ahead = dx * fx + dz * fz;
-      if (ahead <= 0 || ahead > look) return;
+      if (ahead <= 0 || ahead > look + closing * 2) return;
       const latd = Math.abs(dx * lx + dz * lz);
-      if (latd > myHalf + r + 0.3) return;
-      const g = ahead - v.spec.length / 2 - r;
+      if (latd > myHalf + rLat + margin) return;
+      // Someone coming head-on closes the gap twice as fast: plan for where they'll be.
+      const g = ahead - v.spec.length / 2 - r - closing * 1.5;
       if (g < gap) { gap = g; blocker = who; }
     };
     const span = Math.ceil((look + 8) / CELL);
@@ -238,9 +288,12 @@ export class Traffic {
       for (const b of l) {
         if (b === a) continue;
         const dot = Math.sin(b.v.heading) * fx + Math.cos(b.v.heading) * fz;
-        if (dot < -0.7) continue; // oncoming
+        // Oncoming traffic only matters when someone is on the wrong side.
+        const oncoming = dot < -0.7;
+        if (oncoming && !a.wrongNow && !b.wrongNow) continue;
         const ad = Math.abs(dot);
-        test(b.v.x, b.v.z, b.v.y, (b.v.spec.length / 2) * ad + (b.v.spec.width / 2) * (1 - ad), b);
+        const hl = b.v.spec.length / 2, hw = b.v.spec.width / 2;
+        test(b.v.x, b.v.z, b.v.y, hl * ad + hw * (1 - ad), b, oncoming ? b.speed : 0, hw * ad + hl * (1 - ad));
       }
     }
     for (const o of obstacles) test(o.x, o.z, o.y ?? v.y, o.r, o);
@@ -265,24 +318,50 @@ export class Traffic {
       const look = 6 + a.speed * 1.6 + v.spec.length / 2;
 
       let { gap, blocker } = this.gapAhead(a, a.lat, look, obstacles);
-      // Two-wheelers squeeze through gaps between larger vehicles.
-      if (two && gap < 6 + a.speed) {
-        let best = a.latTarget, bestGap = gap;
-        const maxLat = 1.4;
-        for (const cand of [-maxLat, -0.7, 0, 0.7, maxLat]) {
-          const r = this.gapAhead(a, cand, look, obstacles);
-          if (r.gap > bestGap + 1.5) { bestGap = r.gap; best = cand; }
+      let surge = 1;
+      if (a.erratic) {
+        const [lo, hi] = a.turning ? [-1.2, 1.2] : this.band(a);
+        const left = a.path.length - a.s;
+        // A wrong-side run ends well before the junction: cut back across to your own side.
+        if (a.wrong && !a.turning && left < 40) { a.wrong = false; a.weaveT = 0; }
+        a.weaveT -= dt;
+        if (a.weaveT <= 0 && !a.turning) {
+          if (a.wrong) {
+            const [wl, wh] = this.wrongBand(a);
+            a.latTarget = Math.max(wl, Math.min(wh, a.latTarget + (rng() - 0.5) * 1.5));
+            a.weaveT = 1.5 + rng() * 2;
+          } else {
+            // Drift somewhere else across the carriageway; lane markings are a suggestion.
+            a.latTarget = Math.max(lo, Math.min(hi, a.lat + (rng() - 0.5) * (two ? 5 : 3.5)));
+            a.weaveT = (two ? 0.8 : 1.5) + rng() * (two ? 2.5 : 3.5);
+          }
         }
-        a.latTarget = best;
-      } else if (two && gap > 25) a.latTarget *= 0.98;
+        // Squeeze through any gap: sample across the whole road (both sides when riding wrong).
+        if (gap < 7 + a.speed * 1.2) {
+          let best = a.latTarget, bestGap = gap;
+          const [wl] = this.wrongBand(a);
+          const from = a.wrong ? wl : lo, steps = a.wrong ? 9 : 6;
+          for (let k = 0; k <= steps; k++) {
+            const cand = from + ((hi - from) * k) / steps;
+            const r = this.gapAhead(a, cand, look, obstacles);
+            const score = r.gap - Math.abs(cand - a.lat) * 0.4;
+            if (score > bestGap + 1.2) { bestGap = score; best = cand; }
+          }
+          a.latTarget = best;
+        }
+        // Bursts of speed and sudden slow-downs.
+        a.surgeT -= dt;
+        if (a.surgeT <= 0) { a.surge = 0.75 + rng() * 0.55; a.surgeT = 2 + rng() * 4; }
+        surge = a.surge;
+      }
 
-      let target = (a.turning ? Math.min(a.cruise, 6.5) : a.cruise) * rainSlow;
+      let target = (a.turning ? Math.min(a.cruise, 6.5) : a.cruise * surge) * rainSlow;
       a.waitingSignal = false;
       // Signals.
       if (!a.turning && a.edge.to.signal && !(a.edge.flyover && a.lane === 0)) {
         const st = sig.state(a.edge.to, a.edge.road.axis);
         if (st !== 'green') {
-          const creep = two ? 2.4 : 0;
+          const creep = two ? 2.4 : a.erratic ? 1.2 : 0;
           const d = a.path.length + creep - a.s - (two ? 0 : 1.0);
           const jump = a.jumper && (st === 'amber' || sig.redAge(a.edge.to, a.edge.road.axis) < 2.5 + a.impatience * 2);
           const committed = st === 'amber' && d < a.speed * 1.1;
@@ -294,17 +373,23 @@ export class Traffic {
       }
       if (a.ghost > 0) a.ghost -= dt;
       else if (gap < Infinity) {
-        const safe = (two ? 1.0 : 2.0) + a.speed * 0.55;
+        const safe = (two ? 1.0 : a.erratic ? 1.4 : 2.0) + a.speed * (a.erratic ? 0.4 : 0.55);
         if (gap < safe) target = Math.min(target, Math.max(0, (gap - (two ? 0.4 : 1.0)) * 1.5));
+        // Somebody's coming at you on your side of the road: lean on the horn.
+        if (blocker?.wrongNow && gap < 25 && distP < 150 && (a.honkCd -= dt * 4) <= 0) {
+          a.honkCd = 1 + rng() * 2;
+          audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
+        }
       }
       if (blocker && blocker.waitingSignal) a.waitingSignal = true;
       if (a.stunned > 0) { a.stunned -= dt; target = 0; }
-      // Flood water.
+      // Flood water: everyone slows down and wades through (and eases off before reaching it).
+      const fx0 = Math.sin(v.heading), fz0 = Math.cos(v.heading);
       const depth = world.waterDepth(v.x, v.z, v.y);
+      const depthAhead = Math.max(depth, world.waterDepth(v.x + fx0 * 10, v.z + fz0 * 10, v.y));
       v.waterDepth = depth;
-      if (depth > 0.12) target = Math.min(target, 3);
-      if (depth > v.spec.stall) { v.stalled = true; target = 0; }
-      else if (depth < 0.05) v.stalled = false;
+      v.stalled = false;
+      if (depthAhead > 0.06) target = Math.min(target, Math.max(2.2, 7.5 - depthAhead * (two ? 7 : 5)));
 
       const acc = target > a.speed ? v.spec.accel * 0.8 : v.spec.brake;
       a.speed += Math.sign(target - a.speed) * Math.min(Math.abs(target - a.speed), acc * dt);
@@ -317,7 +402,7 @@ export class Traffic {
           a.honkCd = (a.waitingSignal ? 3 : 1.2) + rng() * 2.5;
           if (!a.waitingSignal || rng() < 0.4) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
         }
-        if (a.stuck > 5 && !a.waitingSignal && !v.stalled && !(blocker && (blocker.isPlayer || blocker.isCop))) { a.ghost = 2.5; a.stuck = 0; }
+        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop))) { a.ghost = 2.5; a.stuck = 0; }
         if (a.stuck > 45 && distP > 120) { this.despawn(a); continue; }
       } else a.stuck = Math.max(0, a.stuck - dt);
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
@@ -328,11 +413,18 @@ export class Traffic {
         this.advance(a);
       }
       const p = sample(a.path, a.s);
-      a.lat += Math.sign(a.latTarget - a.lat) * Math.min(Math.abs(a.latTarget - a.lat), 1.2 * dt);
-      const nh = p.h;
+      // Sideways moves: weavers dart across, everyone else drifts gently.
+      const latSpeed = two ? 2.6 : a.erratic ? 1.8 : 1.2;
+      const cap = latSpeed * Math.min(1, 0.1 + a.speed / 4); // no sliding sideways at a standstill
+      const wantVel = Math.max(-cap, Math.min(cap, (a.latTarget - a.lat) * 2));
+      a.latVel += (wantVel - a.latVel) * Math.min(1, dt * 4);
+      a.lat += a.latVel * dt;
+      a.wrongNow = !a.turning && this.layout.laneOffset(a.edge.road, a.lane) + a.lat < 0;
+      // Point the vehicle where it's actually going, so weaving reads as steering.
+      const nh = p.h + Math.atan2(a.latVel, Math.max(2.5, a.speed)) * (a.speed > 0.3 ? 1 : 0);
       const prevX = v.x, prevZ = v.z;
-      v.x = p.x + Math.cos(nh) * a.lat;
-      v.z = p.z - Math.sin(nh) * a.lat;
+      v.x = p.x + Math.cos(p.h) * a.lat;
+      v.z = p.z - Math.sin(p.h) * a.lat;
       let dh = nh - v.heading;
       while (dh > Math.PI) dh -= Math.PI * 2;
       while (dh < -Math.PI) dh += Math.PI * 2;

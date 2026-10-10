@@ -55,13 +55,14 @@ City, Nandi Hills as an out-of-town drive.
 | --- | --- |
 | On foot | Walk, run, jump, swim through floods, **punch (LMB/Z) and kick (RMB/X)** |
 | Vehicles | 16 types: scooter, delivery scooter, Royal Bullet, auto, goods auto, hatchback, sedan, cab, SUV, **Hoysala (Maruti Ertiga)**, tempo traveller, mini truck, lorry, water tanker, BMTC bus, school bus. Each type has its own **horn** (bulb horns on autos, air horns on buses, the musical lorry horn…) and engine sound |
-| Traffic | ~170 vehicles streamed around the player (×1.3 at rush hour, ×0.4 late night); lorries come out at night; keeps left; signals with jumpers; two-wheelers filter through gaps; honking; stalls in floods |
+| Traffic | ~170 vehicles streamed around the player (×1.3 at rush hour, ×0.4 late night); lorries come out at night; cars and buses keep left in lane; **autos and two-wheelers ignore lanes, weave, squeeze through gaps and sometimes ride on the wrong side**; signals with jumpers; honking; everyone slows down and wades through floods |
 | Signals | ~110 signalised junctions with an all-red pedestrian phase; traffic constables at named junctions |
 | Pedestrians | Footpath walkers, **crowds at signals that cross on the walk phase or jaywalk**, chai-stall regulars, cows. They dodge, flee, get knocked down and sometimes fight back |
 | Police | Wanted level (0–5 stars). Crimes are witnessed by police or reported via 112. **Hoysala patrol cars** route through the road graph, ram on sight, and constables get out with **lathis**. Break line of sight to shed stars; get pinned and you're **busted** |
 | Health | Regenerating health; **wasted** sends you to hospital with a bill |
 | Day/night | 24-minute day; sun and moon, stars, lit windows and shopfronts, street-lamp pools, headlights, bloom |
-| Monsoon | Showers arrive on their own (or press K). Rain, lightning and thunder, wet reflective roads, **underpasses fill with water and then the roads flood**. Deep water stalls engines (scooters first, buses last) |
+| Monsoon | Showers arrive on their own (or press K). Rain, lightning and thunder, wet reflective roads, **underpasses collect up to a metre of water** and roads puddle. AI traffic slows down and wades through; the player's engine can drown in the deep end (scooters first, buses last) |
+| Liveries and brands | Hoysala in the real Bengaluru City Police livery; five BMTC liveries with LED route boards; Namma Metro trainsets in Purple and Green Line colours; 26 real Bengaluru brands on shopfronts, HP / Indian Oil / Bharat Petroleum fuel stations, JW Marriott, ITC Gardenia, Taj MG Road, Orion Mall |
 | Metro and rail | Purple Line (MG Road → Indiranagar) and Green Line (Tumkur Road); Indian Railways trains through Yeshwanthpur |
 
 ### Next up (proposed)

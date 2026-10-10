@@ -270,6 +270,8 @@ export class HUD {
     ctx.fillStyle = '#ffe9a8';
     ctx.font = 'bold 11px sans-serif';
     for (const l of this.pois.landmarks) { if (!l) continue; ctx.strokeText('◆ ' + l.name, X(l.x), X(l.z) + 14); ctx.fillText('◆ ' + l.name, X(l.x), X(l.z) + 14); }
+    ctx.fillStyle = '#9fd8ff';
+    for (const f of this.pois.fuel || []) { ctx.strokeText('⛽ ' + f.name, X(f.x), X(f.z)); ctx.fillText('⛽ ' + f.name, X(f.x), X(f.z)); }
     ctx.lineWidth = 1;
     for (const m of markers) {
       ctx.fillStyle = m.color || '#ffd400';

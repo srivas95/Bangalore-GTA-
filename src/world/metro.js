@@ -82,21 +82,48 @@ export function buildMetro(scene, layout, colliders) {
       t.group.position.x = t.x;
     }
   };
-  return { update, group };
+  return { update, group, trains };
 }
 
+// Namma Metro (BEML) trainset: brushed-stainless cars with a stripe in the line colour along the
+// lower body, glazed doors, and cab ends whose windscreen and dark nose panel sit in a frame
+// painted in the line colour (purple or green).
 function makeTrain(mats, z, dir, x, line) {
   const B = new BuilderSet();
-  const p = B.get('paint'), g = B.get('glass');
-  const cars = 3, len = 20;
+  const p = B.get('paint'), g = B.get('glass'), m = B.get('metal');
+  const cars = 3, len = 20, Y = DECK_Y;
+  const steel = 0xb8bcc0, doorCol = 0xa2a6aa, dark = 0x3a3d42;
   for (let k = 0; k < cars; k++) {
     const cx = (k - 1) * (len + 0.6);
-    p.box(cx, DECK_Y + 2.0, 0, len, 3.0, 2.9, 0xd8dade);
-    p.box(cx, DECK_Y + 2.3, 0, len + 0.02, 0.5, 2.92, line.color, { top: false });
-    g.box(cx, DECK_Y + 3.0, 0, len - 1, 1.1, 2.94, 0x1a2228, { top: false });
-    p.box(cx, DECK_Y + 1.7, 0, len - 2, 0.35, 2.4, 0x333333, { top: false });
+    m.box(cx, Y + 2.3, 0, len, 2.7, 2.9, steel, { bottom: true });
+    p.box(cx, Y + 2.0, 0, len, 0.32, 2.86, 0x55595e, { top: false }); // skirt
+    p.box(cx, Y + 5.0, 0, len - 0.4, 0.1, 2.5, 0x8a8e92); // roof
+    for (const rx of [-5, 3]) p.box(cx + rx, Y + 5.1, 0, 2.4, 0.3, 1.6, 0x9a9ea2); // roof equipment
+    p.box(cx, Y + 2.95, 0, len, 0.14, 2.94, line.color, { top: false }); // line-colour stripe
+    // Doors (four a side) with tall glazing; windows between them.
+    for (const dx of [-7.5, -2.5, 2.5, 7.5]) {
+      p.box(cx + dx, Y + 2.33, 0, 1.4, 2.3, 2.92, doorCol, { top: false });
+      p.box(cx + dx, Y + 2.95, 0, 1.4, 0.14, 2.95, line.color, { top: false });
+      for (const o of [-0.33, 0.33]) g.box(cx + dx + o, Y + 3.25, 0, 0.5, 1.15, 2.96, 0x161c22, { top: false });
+    }
+    for (const wx of [-5, 0, 5]) g.box(cx + wx, Y + 3.3, 0, 2.6, 1.0, 2.94, 0x161c22, { top: false });
+    for (const wx of [-9.2, 9.2]) g.box(cx + wx, Y + 3.3, 0, 1.0, 1.0, 2.94, 0x161c22, { top: false });
+    // Bogies and the gangway to the next car.
+    for (const bx of [-6.5, 6.5]) p.box(cx + bx, Y + 1.7, 0, 2.6, 0.45, 2.2, 0x2a2a2a, { top: false });
+    if (k < cars - 1) p.box(cx + len / 2 + 0.3, Y + 2.3, 0, 0.7, 2.6, 2.2, 0x2a2a2a);
   }
-  for (const e of [-(len * 1.5 + 0.6), len * 1.5 + 0.6]) p.box(e + Math.sign(-e) * 0.2, DECK_Y + 2.0, 0, 0.5, 3.0, 2.7, line.color);
+  // Cab ends.
+  for (const sg of [-1, 1]) {
+    const e = sg * (len * 1.5 + 0.6);
+    const at = (d) => e + sg * d;
+    m.box(at(0.25), Y + 2.0, 0, 0.5, 0.6, 2.8, steel); // silver nose
+    p.box(at(0.4), Y + 2.05, 0, 0.3, 0.25, 0.6, 0x2a2a2a); // coupler
+    p.box(at(0.12), Y + 2.6, 0, 0.24, 2.4, 2.9, line.color); // the coloured frame
+    p.box(at(0.25), Y + 2.7, 0, 0.06, 0.75, 2.4, dark); // nose panel
+    g.box(at(0.25), Y + 3.55, 0, 0.06, 1.25, 2.3, 0x10161c); // windscreen
+    p.box(at(0.29), Y + 4.6, 0, 0.03, 0.18, 0.9, 0xffa020); // destination LED
+    for (const hz of [-0.95, -0.72, 0.72, 0.95]) p.box(at(0.29), Y + 2.95, hz, 0.03, 0.13, 0.13, 0xf8f6ee); // headlamps
+  }
   const group = new THREE.Group();
   B.buildAll(mats, group);
   group.position.set(x, 0, z);

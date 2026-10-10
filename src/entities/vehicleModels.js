@@ -6,6 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { MeshBuilder, buildSkinned, makePbrMaterial } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 import { textTexture } from '../world/textures.js';
+import { decalAtlas, decalUV, BUS_LIVERIES, pickBusLivery } from './liveries.js';
 
 // horn: profile key in systems/audio.js. stall: water depth (m) that floods the engine.
 export const VEHICLE_TYPES = {
@@ -44,42 +45,6 @@ const G = {
   sphere: new THREE.SphereGeometry(1, 10, 6),
 };
 
-// Decal atlas: 2 columns x 4 rows of 512x128 cells.
-const DECALS = { hoysala: 0, police: 1, hornOk: 2, school: 3, bmtc: 4, pink: 5, water: 6, cab: 7 };
-let decalMat = null;
-function decalMaterial() {
-  if (decalMat) return decalMat;
-  const c = document.createElement('canvas');
-  c.width = 1024; c.height = 512;
-  const ctx = c.getContext('2d');
-  const cells = [
-    { t: ['HOYSALA', 'ಹೊಯ್ಸಳ'], fg: '#16307a', bg: null },
-    { t: ['BENGALURU CITY POLICE', 'ಬೆಂಗಳೂರು ನಗರ ಪೊಲೀಸ್ · 112'], fg: '#16307a', bg: null },
-    { t: ['HORN OK PLEASE'], fg: '#c0182a', bg: '#f2c200' },
-    { t: ['SCHOOL BUS', 'ಶಾಲಾ ವಾಹನ'], fg: '#111', bg: null },
-    { t: ['500D  SILK BOARD'], fg: '#ff9a20', bg: '#111' },
-    { t: ['PINK HOYSALA', 'ಹೊಯ್ಸಳ · 112'], fg: '#ffffff', bg: null },
-    { t: ['DRINKING WATER', 'ಕುಡಿಯುವ ನೀರು'], fg: '#1a4ab0', bg: null },
-    { t: ['CITY CAB'], fg: '#111', bg: null },
-  ];
-  cells.forEach((cell, k) => {
-    const x = (k % 2) * 512, y = Math.floor(k / 2) * 128;
-    if (cell.bg) { ctx.fillStyle = cell.bg; ctx.fillRect(x, y, 512, 128); }
-    ctx.fillStyle = cell.fg;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (cell.t.length === 1) { ctx.font = 'bold 64px "Oswald", "Arial Narrow", Arial, sans-serif'; ctx.fillText(cell.t[0], x + 256, y + 66, 490); }
-    else {
-      ctx.font = 'bold 56px "Oswald", "Arial Narrow", Arial, sans-serif'; ctx.fillText(cell.t[0], x + 256, y + 44, 490);
-      ctx.font = 'bold 34px "Noto Sans Kannada", sans-serif'; ctx.fillText(cell.t[1], x + 256, y + 100, 490);
-    }
-  });
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  decalMat = new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.2, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -2 });
-  return decalMat;
-}
-
 // Builder wrapper: tracks bones, PBR preset and adds decals.
 class VB {
   constructor() {
@@ -113,14 +78,35 @@ class VB {
     this.wheels.push({ steerIdx, spinIdx, r });
     return steerIdx;
   }
-  decal(cell, x, y, z, w, h, face) {
-    const col = cell % 2, row = Math.floor(cell / 2);
-    const u0 = col / 2, u1 = (col + 1) / 2, v1 = 1 - row / 4, v0 = 1 - (row + 1) / 4;
+  // Decal from the livery atlas. Faces: L (+x side), R (-x side), F (front), B (back), T (top, reads from the front).
+  decal(name, x, y, z, w, h, face) {
+    const [u0, v0, u1, v1] = decalUV(name);
     const d = this.decals, hw = w / 2, hh = h / 2;
     if (face === 'L') d.quad([x, y - hh, z + hw], [x, y - hh, z - hw], [x, y + hh, z - hw], [x, y + hh, z + hw], [1, 0, 0], [u0, v0, u1, v1]); // +x side, read front-to-back
     if (face === 'R') d.quad([x, y - hh, z - hw], [x, y - hh, z + hw], [x, y + hh, z + hw], [x, y + hh, z - hw], [-1, 0, 0], [u0, v0, u1, v1]);
     if (face === 'B') d.quad([x + hw, y - hh, z], [x - hw, y - hh, z], [x - hw, y + hh, z], [x + hw, y + hh, z], [0, 0, -1], [u0, v0, u1, v1]);
     if (face === 'F') d.quad([x - hw, y - hh, z], [x + hw, y - hh, z], [x + hw, y + hh, z], [x - hw, y + hh, z], [0, 0, 1], [u0, v0, u1, v1]);
+    if (face === 'T') d.quad([x - hw, y, z + hh], [x + hw, y, z + hh], [x + hw, y, z - hh], [x - hw, y, z - hh], [0, 1, 0], [u0, v0, u1, v1]);
+  }
+  // Side decal that hugs a curved body: halfWidth(z) gives the body's half-width along its length.
+  decalWrap(name, side, y, h, z0, z1, halfWidth, segs = 16) {
+    const [u0, v0, u1, v1] = decalUV(name);
+    const s = side === 'L' ? 1 : -1, y0 = y - h / 2, y1 = y + h / 2;
+    for (let k = 0; k < segs; k++) {
+      // Walk from the front (z1) to the rear (z0): u runs front-to-back on the L side, back-to-front on R.
+      const za = z1 - ((z1 - z0) * k) / segs, zb = z1 - ((z1 - z0) * (k + 1)) / segs;
+      const xa = s * (halfWidth(za) + 0.014), xb = s * (halfWidth(zb) + 0.014);
+      const ta = k / segs, tb = (k + 1) / segs;
+      const dx = xb - xa, dz = zb - za, nl = Math.hypot(dx, dz) || 1;
+      const n = [-s * dz / nl, 0, s * dx / nl]; // outward, perpendicular to the strip
+      if (side === 'L') {
+        const ua = u0 + (u1 - u0) * ta, ub = u0 + (u1 - u0) * tb;
+        this.decals.quad4([xa, y0, za], [xb, y0, zb], [xb, y1, zb], [xa, y1, za], n, [ua, v0], [ub, v0], [ub, v1], [ua, v1]);
+      } else {
+        const ua = u1 - (u1 - u0) * ta, ub = u1 - (u1 - u0) * tb;
+        this.decals.quad4([xb, y0, zb], [xa, y0, za], [xa, y1, za], [xb, y1, zb], n, [ub, v0], [ua, v0], [ua, v1], [ub, v1]);
+      }
+    }
   }
   finish(spec, extra = {}) {
     const group = new THREE.Group();
@@ -128,7 +114,7 @@ class VB {
     const mesh = buildSkinned(this.b, vehicleMaterial, this.bones);
     group.add(mesh);
     if (!this.decals.empty) {
-      const dm = this.decals.build(decalMaterial(), { castShadow: false });
+      const dm = this.decals.build(decalAtlas(), { castShadow: false });
       group.add(dm);
     }
     const wheels = this.wheels.map((w) => ({ steer: w.steerIdx >= 0 ? this.bones[w.steerIdx] : null, spin: this.bones[w.spinIdx], r: w.r }));
@@ -187,7 +173,7 @@ function buildCar(type, r, opts) {
   // Pillars (A, B, C and D for MPVs).
   const pillars = mpv || suv ? [-0.42, -0.12, 0.18, 0.42] : [-0.38, 0.0, 0.38];
   for (const s of [-1, 1]) {
-    for (const f of pillars) v.add(G.box, P.paint, colour, s * W * 0.445, y0 + lowH + cabH / 2, cabZ + f * cabL * 0.95, 0.04, cabH * 0.95, 0.07);
+    for (const f of pillars) v.add(G.box, P.paint, police ? 0x111111 : colour, s * W * 0.445, y0 + lowH + cabH / 2, cabZ + f * cabL * 0.95, 0.04, cabH * 0.95, 0.07);
     v.add(G.rbox, P.paint, colour, s * W * 0.52, y0 + lowH + 0.07, cabZ + cabL / 2 - 0.12, 0.12, 0.09, 0.17); // mirror
     v.add(G.box, P.glass, 0x222a30, s * W * 0.575, y0 + lowH + 0.07, cabZ + cabL / 2 - 0.12, 0.005, 0.07, 0.13);
     // Door seams and handles.
@@ -199,10 +185,15 @@ function buildCar(type, r, opts) {
   if (!hatch && !mpv && !suv) v.add(tapered(W * 0.97, 0.06, L * 0.2, 0.95, 1, 0.02), P.paint, colour, 0, y0 + lowH + 0.01, -L / 2 + L * 0.1 + 0.05); // boot
   if (suv) { v.add(G.box, P.matte, 0x222222, 0, y0 + lowH + cabH + 0.09, cabZ, W * 0.8, 0.04, roofL * 0.9); v.add(G.rbox, P.matte, 0x222222, 0, y0 + lowH + 0.2, -L / 2 - 0.12, 0.5, 0.5, 0.18); }
   // Bumpers, grille, lamps.
-  v.add(G.rbox, P.plastic, police ? 0x2a2a2a : 0x1e1e1e, 0, y0 + 0.14, L / 2 - 0.04, W * 0.99, 0.26, 0.18);
+  v.add(G.rbox, police ? P.paint : P.plastic, police ? colour : 0x1e1e1e, 0, y0 + 0.14, L / 2 - 0.04, W * 0.99, 0.26, 0.18);
+  if (police) {
+    // Ertiga face: gloss-black grille and a black lower intake in a body-colour bumper.
+    v.add(G.box, P.plastic, 0x111111, 0, y0 + 0.1, L / 2 + 0.055, W * 0.6, 0.12, 0.02);
+    for (const s of [-1, 1]) v.add(G.box, P.plastic, 0x111111, s * W * 0.36, y0 + 0.12, L / 2 + 0.05, 0.2, 0.1, 0.02); // fog-lamp housings
+  }
   v.add(G.rbox, P.plastic, 0x1e1e1e, 0, y0 + 0.14, -L / 2 + 0.04, W * 0.99, 0.26, 0.18);
-  v.add(G.rbox, P.chrome, 0x2a2a2a, 0, y0 + lowH * 0.58, L / 2 + 0.005, W * 0.42, 0.16, 0.03);
-  for (let k = 0; k < 3; k++) v.add(G.box, P.chrome, 0x9a9a9a, 0, y0 + lowH * 0.52 + k * 0.045, L / 2 + 0.02, W * 0.38, 0.01, 0.01);
+  v.add(G.rbox, P.chrome, police ? 0x0c0c0c : 0x2a2a2a, 0, y0 + lowH * 0.58, L / 2 + 0.005, W * (police ? 0.46 : 0.42), police ? 0.2 : 0.16, 0.03);
+  for (let k = 0; k < 3; k++) v.add(G.box, P.chrome, police ? 0x3a3a3a : 0x9a9a9a, 0, y0 + lowH * 0.52 + k * 0.045, L / 2 + 0.02, W * 0.38, 0.01, 0.01);
   for (const s of [-1, 1]) {
     v.add(G.rbox, P.head, 0xfff6dc, s * W * 0.36, y0 + lowH * 0.66, L / 2 - 0.02, W * 0.22, 0.12, 0.07);
     v.add(G.rbox, P.tail, 0xd01010, s * W * 0.38, y0 + lowH * 0.72, -L / 2 + 0.02, W * 0.18, 0.15, 0.07);
@@ -210,17 +201,19 @@ function buildCar(type, r, opts) {
   }
   plate(v, L / 2 + 0.06, y0 + 0.2, type === 'taxi', 0.5, 1);
   plate(v, -L / 2 - 0.06, y0 + 0.32, type === 'taxi', 0.5, -1);
-  if (type === 'taxi') v.decal(DECALS.cab, W / 2 + 0.012, y0 + lowH * 0.45, -0.2, 1.1, 0.27, 'L');
+  if (type === 'taxi') v.decal('cab', W / 2 + 0.012, y0 + lowH * 0.45, -0.2, 1.1, 0.27, 'L');
   if (police) {
-    // Hoysala livery: blue band with red pinstripe along the sides, roof light bar.
-    for (const s of [-1, 1]) {
-      v.add(G.box, P.paint, pink ? 0x8a1a5a : 0x1a3a9a, s * (W / 2 + 0.004), y0 + lowH * 0.36, 0, 0.006, 0.16, L * 0.86);
-      v.add(G.box, P.paint, 0xd01818, s * (W / 2 + 0.005), y0 + lowH * 0.23, 0, 0.006, 0.04, L * 0.86);
-    }
-    v.decal(pink ? DECALS.pink : DECALS.hoysala, W / 2 + 0.012, y0 + lowH * 0.72, -0.15, 1.5, 0.38, 'L');
-    v.decal(pink ? DECALS.pink : DECALS.hoysala, -W / 2 - 0.012, y0 + lowH * 0.72, -0.15, 1.5, 0.38, 'R');
-    v.decal(DECALS.police, 0, y0 + lowH * 0.62, -L / 2 - 0.13, 1.3, 0.32, 'B');
-    v.add(G.box, P.chrome, 0x333333, 0, y0 + lowH + cabH + 0.08, cabZ + 0.2, W * 0.75, 0.08, 0.32);
+    // Hoysala livery (painted in liveries.js): blue swoosh over the front door and wheel, blue
+    // rear quarter, the 112 roundel, BENGALURU CITY POLICE / ಪೊಲೀಸ್, POLICE on the bonnet.
+    // The lower body is a scaled rounded box: its sides curve in over the last ~12% at each end.
+    const halfW = (z) => { const d = Math.min(0.12, Math.max(0, Math.abs(z) / L - 0.38)); return W * (0.38 + Math.sqrt(0.0144 - d * d)); };
+    v.decalWrap(pink ? 'pinkL' : 'hoysalaL', 'L', y0 + lowH / 2, lowH * 0.97, -L * 0.49, L * 0.49, halfW);
+    v.decalWrap(pink ? 'pinkR' : 'hoysalaR', 'R', y0 + lowH / 2, lowH * 0.97, -L * 0.49, L * 0.49, halfW);
+    v.decal('bonnet', 0, y0 + lowH + 0.066, L / 2 - bonnetL / 2 - 0.05, W * 0.62, bonnetL * 0.62, 'T');
+    v.decal(pink ? 'pinkText' : 'police', 0, y0 + lowH * 0.62, -L / 2 - 0.13, 1.3, 0.32, 'B');
+    // Light bar: red, white and blue lamps on a black base.
+    v.add(G.box, P.chrome, 0x222222, 0, y0 + lowH + cabH + 0.08, cabZ + 0.2, W * 0.78, 0.08, 0.3);
+    v.add(G.box, P.plastic, 0xe8e8f0, 0, y0 + lowH + cabH + 0.17, cabZ + 0.2, W * 0.14, 0.1, 0.24);
   }
   const wr = suv ? 0.37 : mpv ? 0.33 : 0.31, ww = suv ? 0.25 : 0.21;
   const wz = spec.wheelbase / 2, wx = W / 2 - ww / 2 + 0.02;
@@ -229,7 +222,7 @@ function buildCar(type, r, opts) {
   v.wheel(wx, wr, wz, wr, ww, true); v.wheel(-wx, wr, wz, wr, ww, true);
   v.wheel(wx, wr, -wz, wr, ww, false); v.wheel(-wx, wr, -wz, wr, ww, false);
   const extra = { color: colour };
-  if (police) extra.lightBar = { y: y0 + lowH + cabH + 0.17, z: cabZ + 0.2, w: W * 0.36 };
+  if (police) extra.lightBar = { y: y0 + lowH + cabH + 0.17, z: cabZ + 0.2, w: W * 0.3 };
   return v.finish(spec, extra);
 }
 
@@ -326,14 +319,58 @@ function buildTwoWheeler(type, r, opts) {
   return v.finish(spec, { color: colour });
 }
 
-// Buses, school buses, tempo travellers.
+// BMTC buses in their real liveries: blue Ordinary, red Volvo Vajra, teal Vayu Vajra (airport),
+// white-green-blue electric and orange-blue Metro Feeder. The sides are painted in liveries.js.
+function buildBmtc(r, opts) {
+  const spec = VEHICLE_TYPES.bus;
+  const v = new VB();
+  const L = spec.length, W = spec.width, H = 2.9, base = 0.4;
+  const livery = opts.livery ?? pickBusLivery(r);
+  const lv = BUS_LIVERIES[livery];
+  v.add(new RoundedBoxGeometry(W, H, L, 2, 0.2), P.paint, lv.body, 0, base + H / 2, 0);
+  // Glass band (the side decals leave the panes clear), windscreen and rear window.
+  v.add(G.box, P.glass, 0x141a20, 0, base + H * 0.7, -0.3, W + 0.03, H * 0.34, L - 1.6);
+  v.add(G.box, P.glass, 0x141a20, 0, base + H * 0.62, L / 2 + 0.005, W - 0.16, H * 0.5, 0.04);
+  v.add(G.box, P.glass, 0x141a20, 0, base + H * 0.75, -L / 2 - 0.005, W - 0.4, H * 0.3, 0.04);
+  // Front: livery-coloured lower panel, black bumper, roof cap.
+  v.add(G.box, P.paint, lv.frontLow, 0, base + H * 0.2, L / 2 + 0.012, W - 0.06, H * 0.34, 0.02);
+  if (livery === 'vajra') v.add(G.box, P.paint, 0xffffff, 0, base + H * 0.33, L / 2 + 0.024, W - 0.3, 0.05, 0.01);
+  if (livery === 'ev') v.add(G.box, P.paint, 0x1f4ea8, 0, base + H * 0.05, L / 2 + 0.024, W - 0.1, 0.16, 0.01);
+  if (livery === 'feeder') v.add(G.box, P.paint, 0xffffff, 0, base + H * 0.37, L / 2 + 0.024, W - 0.1, 0.05, 0.01);
+  v.add(G.box, P.paint, lv.roof, 0, base + H * 0.93, L / 2 + 0.012, W - 0.06, H * 0.12, 0.02);
+  // Roof-mounted AC (electric buses carry battery pods up there too).
+  v.add(G.rbox, P.plastic, lv.ac, 0, base + H + 0.14, -1, 1.7, 0.28, livery === 'ev' ? 4.2 : 3);
+  if (livery === 'ev') v.add(G.rbox, P.plastic, lv.ac, 0, base + H + 0.12, 3.2, 1.9, 0.24, 1.6);
+  v.add(G.box, P.matte, 0x222222, 0, base + 0.15, L / 2 + 0.05, W, 0.35, 0.15);
+  v.add(G.box, P.matte, 0x222222, 0, base + 0.15, -L / 2 - 0.05, W, 0.35, 0.15);
+  for (const s of [-1, 1]) {
+    v.add(G.box, P.head, 0xfff8e0, s * (W / 2 - 0.35), base + 0.45, L / 2 + 0.03, 0.34, 0.14, 0.04);
+    v.add(G.box, P.tail, 0xc81010, s * (W / 2 - 0.25), base + 0.55, -L / 2 - 0.02, 0.2, 0.3, 0.04);
+    v.add(G.rbox, P.matte, 0x222222, s * (W / 2 + 0.2), base + H * 0.7, L / 2 - 0.2, 0.08, 0.4, 0.06); // mirrors
+  }
+  plate(v, L / 2 + 0.09, base + 0.1, true, 0.55, 1);
+  v.decal(`bus_${livery}_L`, W / 2 + 0.02, base + H / 2, 0, L - 0.2, H - 0.06, 'L');
+  v.decal(`bus_${livery}_R`, -W / 2 - 0.02, base + H / 2, 0, L - 0.2, H - 0.06, 'R');
+  v.decal(pick(lv.boards, r).name, 0, base + H * 0.93, L / 2 + 0.03, 2.0, 0.34, 'F');
+  // Wheels sit flush with the body side, in black wheel wells.
+  const wr = 0.5, ww = 0.32;
+  const wz = spec.wheelbase / 2 + 0.2, wz2 = -spec.wheelbase / 2 + 0.2;
+  for (const z of [wz, wz2]) for (const s of [-1, 1]) v.add(G.cyl, P.matte, 0x0c0c0c, s * (W / 2 + 0.004), wr, z, 0.6, 0.01, 0.6, 0, Math.PI / 2);
+  const x1 = W / 2 - ww / 2 + 0.012, x2 = W / 2 - (ww + 0.1) / 2 + 0.012;
+  v.wheel(x1, wr, wz, wr, ww, true, { hub: 0.62 }); v.wheel(-x1, wr, wz, wr, ww, true, { hub: 0.62 });
+  v.wheel(x2, wr, wz2, wr, ww + 0.1, false, { hub: 0.62 }); v.wheel(-x2, wr, wz2, wr, ww + 0.1, false, { hub: 0.62 });
+  return v.finish(spec, { livery });
+}
+
+// School buses and tempo travellers.
 function buildBus(type, r, opts) {
+  if (type === 'bus') return buildBmtc(r, opts);
   const spec = VEHICLE_TYPES[type];
   const v = new VB();
   const L = spec.length, W = spec.width;
   const school = type === 'schoolBus', tempo = type === 'tempo';
-  const livery = opts.livery ?? (school ? 'school' : tempo ? 'tempo' : pick(['vajra', 'ordinary', 'green', 'ordinary'], r));
-  const [main, stripe] = { vajra: [0x1f4e9c, 0xf2f2f2], green: [0x2a8a4a, 0xf2f2f2], ordinary: [0xb02a2a, 0xf0e2c0], school: [0xf2b800, 0x2a2a2a], tempo: [0xf2f2f2, 0x1c3a7a] }[livery];
+  const livery = school ? 'school' : 'tempo';
+  const [main, stripe] = { school: [0xf2b800, 0x2a2a2a], tempo: [0xf2f2f2, 0x1c3a7a] }[livery];
   const H = tempo ? 2.2 : 2.9, base = tempo ? 0.35 : 0.4;
   v.add(new RoundedBoxGeometry(W, H, L, 2, tempo ? 0.25 : 0.2), P.paint, main, 0, base + H / 2, 0);
   if (tempo) v.add(tapered(W * 0.96, 0.6, 1.2, 0.9, 0.6, -0.2), P.paint, main, 0, base + 0.55, L / 2 + 0.3);
@@ -342,8 +379,8 @@ function buildBus(type, r, opts) {
   for (let z = -L / 2 + 1.5; z < L / 2 - 1; z += tempo ? 1.0 : 1.3) for (const s of [-1, 1]) v.add(G.box, P.paint, main, s * (W / 2 + 0.017), base + H * 0.7, z, 0.01, H * 0.34, 0.08);
   v.add(G.box, P.glass, 0x1a2228, 0, base + H * 0.62, L / 2 + 0.005, W - 0.2, H * 0.5, 0.04);
   v.add(G.box, P.glass, 0x1a2228, 0, base + H * 0.75, -L / 2 - 0.005, W - 0.4, H * 0.3, 0.04);
-  if (!tempo) {
-    for (const dz of school ? [L / 2 - 1.2] : [L / 2 - 1.9, -2.2]) v.add(G.box, P.matte, 0x2a2a2a, W / 2 + 0.01, base + H * 0.45, dz, 0.03, H * 0.8, 1.1); // kerb-side doors
+  if (school) {
+    v.add(G.box, P.matte, 0x2a2a2a, W / 2 + 0.01, base + H * 0.45, L / 2 - 1.2, 0.03, H * 0.8, 1.1); // kerb-side door
     v.add(G.box, P.plastic, 0xd8d8d8, 0, base + H + 0.12, -1, 1.6, 0.25, 3); // roof AC unit
   }
   v.add(G.box, P.matte, 0x222222, 0, base + 0.15, L / 2 + 0.05, W, 0.35, 0.15);
@@ -354,8 +391,7 @@ function buildBus(type, r, opts) {
     v.add(G.rbox, P.matte, 0x222222, s * (W / 2 + 0.2), base + H * 0.7, L / 2 - 0.2, 0.08, 0.4, 0.06); // mirrors
   }
   plate(v, L / 2 + 0.09, base + 0.1, !school || true, 0.55, 1);
-  if (type === 'bus') v.decal(DECALS.bmtc, 0, base + H - 0.2, L / 2 + 0.03, 1.9, 0.38, 'F');
-  if (school) { v.decal(DECALS.school, W / 2 + 0.02, base + H * 0.42, 0, 2.6, 0.62, 'L'); v.decal(DECALS.school, -W / 2 - 0.02, base + H * 0.42, 0, 2.6, 0.62, 'R'); v.decal(DECALS.school, 0, base + H * 0.95, L / 2 + 0.03, 1.6, 0.38, 'F'); }
+  if (school) { v.decal('school', W / 2 + 0.02, base + H * 0.42, 0, 2.6, 0.62, 'L'); v.decal('school', -W / 2 - 0.02, base + H * 0.42, 0, 2.6, 0.62, 'R'); v.decal('school', 0, base + H * 0.95, L / 2 + 0.03, 1.6, 0.38, 'F'); }
   const wr = tempo ? 0.38 : 0.5, ww = tempo ? 0.24 : 0.32;
   const wz = spec.wheelbase / 2 + (tempo ? 0.1 : 0.2), wz2 = -spec.wheelbase / 2 + (tempo ? 0.1 : 0.2);
   v.wheel(W / 2 - 0.3, wr, wz, wr, ww, true); v.wheel(-W / 2 + 0.3, wr, wz, wr, ww, true);
@@ -386,8 +422,8 @@ function buildTruck(type, r, opts) {
   if (tanker) {
     const t = new THREE.CylinderGeometry(1, 1, 1, 18); t.rotateX(Math.PI / 2);
     v.add(t, P.paint, opts.tankColor ?? pick([0x2a6ab0, 0xe8e0d0, 0x2a8a4a], r), 0, base + 1.15, bz, W * 0.46, 0.95, bedL);
-    v.decal(DECALS.water, W * 0.47, base + 1.2, bz, 3.2, 0.8, 'L');
-    v.decal(DECALS.water, -W * 0.47, base + 1.2, bz, 3.2, 0.8, 'R');
+    v.decal('water', W * 0.47, base + 1.2, bz, 3.2, 0.8, 'L');
+    v.decal('water', -W * 0.47, base + 1.2, bz, 3.2, 0.8, 'R');
   } else {
     const bedCol = mini ? cabCol : pick([0x2a6ab0, 0xd06a1a, 0x2a8a4a], r);
     const sideH = mini ? 0.45 : 1.3;
@@ -396,7 +432,7 @@ function buildTruck(type, r, opts) {
     v.add(G.box, P.paint, bedCol, 0, base + 0.25 + sideH / 2, -L / 2 + 0.03, W, sideH, 0.05);
     // Load under a tarp.
     v.add(G.rboxS, P.cloth, pick([0x2a4a8a, 0x8a6a4a, 0x3a6a3a, 0xd0b080, 0xb02a2a], r), 0, base + 0.25 + sideH * 0.7, bz, W * 0.95, sideH * (mini ? 1.3 : 1.0), bedL * 0.95);
-    if (!mini) v.decal(DECALS.hornOk, 0, base + 0.55, -L / 2 - 0.01, 1.8, 0.45, 'B');
+    if (!mini) v.decal('hornOk', 0, base + 0.55, -L / 2 - 0.01, 1.8, 0.45, 'B');
   }
   for (const s of [-1, 1]) {
     v.add(G.box, P.head, 0xfff8e0, s * (W / 2 - 0.3), base + 0.35, L / 2 + 0.02, 0.24, 0.14, 0.04);

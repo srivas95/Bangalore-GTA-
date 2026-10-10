@@ -7,6 +7,7 @@ import { floodMaterial } from '../world/infrastructure.js';
 import { WORLD_MIN, WORLD_MAX } from '../config.js';
 
 const DAY_MINUTES = 24; // real minutes per in-game day
+const UNDERPASS_MAX_WATER = 1.0; // metres above the underpass floor at the peak of a storm
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -23,7 +24,7 @@ export class Environment {
     this.rainTarget = 0;
     this.weatherTimer = 150 + Math.random() * 120; // real seconds until the first shower
     this.wetness = 0;
-    this.accum = 0; // metres of water collected in underpasses
+    this.accum = 0; // how full the storm drains are, 0..1
     this.roadFlood = 0;
     this.flash = 0;
     this.nextLightning = 8;
@@ -252,14 +253,16 @@ export class Environment {
 
     // Wet roads and flooding.
     this.wetness += ((rain > 0.1 ? 1 : 0) - this.wetness) * Math.min(1, dt / (rain > 0.1 ? 25 : 120));
-    if (rain > 0.1) this.accum = Math.min(9.5, this.accum + rain * dt * 0.055);
-    else this.accum = Math.max(0, this.accum - dt * 0.02);
+    // Underpasses collect up to a metre of water at their lowest point after a long shower,
+    // enough to slow everyone down and drown a scooter, but not to swallow a bus.
+    if (rain > 0.1) this.accum = Math.min(1, this.accum + rain * dt / 210);
+    else this.accum = Math.max(0, this.accum - dt / 400);
     for (const u of this.layout.underpasses) {
-      u.waterLevel = Math.min(0.12, -u.depth - 0.4 + this.accum);
+      u.waterLevel = -u.depth - 0.08 + smooth(0, 1, this.accum) * (UNDERPASS_MAX_WATER + 0.08);
       u.waterMesh.visible = u.waterLevel > -u.depth + 0.02;
       u.waterMesh.position.y = u.waterLevel;
     }
-    this.roadFlood = smooth(5.6, 9.5, this.accum) * 0.12;
+    this.roadFlood = smooth(0.6, 1, this.accum) * 0.08;
     this.flood.visible = this.roadFlood > 0.01;
     this.flood.position.y = Math.max(0.02, this.roadFlood);
     floodMaterial.normalMap.offset.set(this.rainUniforms.uTime.value * 0.02, this.rainUniforms.uTime.value * 0.013);

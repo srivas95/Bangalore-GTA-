@@ -45,8 +45,8 @@ export class Vehicle {
     this.lamps = [];
     for (const s of [-1, 1]) {
       const m = new THREE.Mesh(LAMP_GEO, policeLampMats.off);
-      m.scale.set(lb.w, 0.1, 0.24);
-      m.position.set(s * lb.w * 0.55, lb.y, lb.z);
+      m.scale.set(lb.w * 0.85, 0.1, 0.24);
+      m.position.set(s * lb.w * 0.75, lb.y, lb.z);
       m.userData.colour = s < 0 ? 'red' : 'blue';
       this.group.add(m);
       this.lamps.push(m);
@@ -120,10 +120,10 @@ export class Vehicle {
     let thr = input ? input.throttle : 0;
     const hb = input ? input.handbrake : true;
 
-    // Flood water: drag, and a drowned engine if it's too deep.
+    // Flood water: drag, and (for the player) a drowned engine if it's too deep.
     const depth = world ? world.waterDepth(this.x, this.z, this.y) : 0;
     this.waterDepth = depth;
-    if (depth > s.stall) this.stalled = true;
+    if (depth > s.stall && this.driver === 'player') this.stalled = true;
     else if (depth < 0.05) this.stalled = false;
     if (this.stalled) thr = Math.min(0, thr) * 0.15;
 

@@ -154,9 +154,9 @@ export const BLOCKS = [
 
 // Elevated metro lines along roads. Stations: centre coordinate along the road.
 export const METRO_LINES = [
-  { road: 'MG Road', axis: 'z', pos: 0, from: -580, to: WORLD_MAX, color: 0x6a2c91, name: 'Purple Line',
+  { road: 'MG Road', axis: 'z', pos: 0, from: -580, to: WORLD_MAX, color: 0x9a2d8c, name: 'Purple Line',
     stations: [{ at: 0, en: 'M.G. ROAD', kn: 'ಎಂ.ಜಿ. ರಸ್ತೆ' }, { at: 610, en: 'INDIRANAGAR', kn: 'ಇಂದಿರಾನಗರ' }] },
-  { road: 'Tumkur Road', axis: 'z', pos: -1540, from: WORLD_MIN, to: -820, color: 0x1f9a4a, name: 'Green Line',
+  { road: 'Tumkur Road', axis: 'z', pos: -1540, from: WORLD_MIN, to: -820, color: 0x2fae4a, name: 'Green Line',
     stations: [{ at: -1620, en: 'PEENYA INDUSTRY', kn: 'ಪೀಣ್ಯ ಇಂಡಸ್ಟ್ರಿ' }, { at: -980, en: 'YESHWANTHPUR', kn: 'ಯಶವಂತಪುರ' }] },
 ];
 
@@ -181,29 +181,52 @@ export function defaultBlockInfo(cx, cz) {
 }
 
 // Shop signs. Kannada text is rendered with Noto Sans Kannada (loaded in index.html).
+// Real Bengaluru brands carry their own colours (bg/fg) and a tagline; `home` places the first
+// one in its famous neighbourhood (MTR by Lalbagh, Vidyarthi Bhavan in Basavanagudi...).
+const brand = (en, kn, bg, fg, extra = {}) => ({ en, kn, bg, fg, brand: true, ...extra });
 export const SHOP_SIGNS = [
+  // Famous names.
+  brand('A2B', 'Adyar Ananda Bhavan · Sweets & Veg Restaurant', '#d6001c', '#ffd400', { food: true }),
+  brand('MTR', 'Mavalli Tiffin Rooms · Since 1924', '#0f5132', '#ffffff', { food: true, home: 'Jayanagar' }),
+  brand('Vidyarthi Bhavan', 'Since 1943 · ವಿದ್ಯಾರ್ಥಿ ಭವನ', '#f4ecd8', '#8a1c1c', { food: true, home: 'Basavanagudi' }),
+  brand('CTR', 'Shri Sagar · Benne Masala Dose', '#7a1f1f', '#ffffff', { food: true, home: 'Malleshwaram' }),
+  brand("Brahmin's Coffee Bar", 'Idli · Vada · Coffee', '#ffffff', '#1b4d8c', { food: true, home: 'Basavanagudi' }),
+  brand('Empire Restaurant', 'Open till late', '#c8102e', '#ffffff', { food: true, home: 'Church Street' }),
+  brand('Meghana Foods', 'Biryani · ಬಿರಿಯಾನಿ', '#7b0d0d', '#ffd54a', { food: true, home: 'Koramangala' }),
+  brand('Truffles', 'Burgers · Steaks · Shakes', '#2b1a12', '#f6c445', { food: true, home: 'Koramangala' }),
+  brand('Toit', 'Brewpub · Indiranagar', '#141414', '#f2f2f2', { food: true, pub: true, home: 'Indiranagar' }),
+  brand('Café Coffee Day', 'A lot can happen over coffee', '#e2001a', '#ffffff', { food: true, home: 'Brigade Road' }),
+  brand('Third Wave Coffee', 'Specialty Coffee', '#f5f3ee', '#1e1e1e', { food: true, pub: true, home: 'Indiranagar' }),
+  brand('Chai Point', 'Chai · Snacks', '#ffd200', '#3a1d0f', { food: true }),
+  brand('Corner House', 'Ice Creams · Death by Chocolate', '#b5121b', '#ffd200', { food: true, home: 'Brigade Road' }),
+  brand('Polar Bear', 'Ice Cream Sundaes', '#00a3e0', '#ffffff', { food: true, home: 'Indiranagar' }),
+  brand('Nandini', 'Milk Parlour · ನಂದಿನಿ ಹಾಲು', '#0a5cad', '#ffffff', { food: true }),
+  brand('Nilgiris', 'Supermarket · Since 1905', '#00843d', '#ffffff', { home: 'Brigade Road' }),
+  brand('Sapna Book House', 'ಸಪ್ನ ಬುಕ್ ಹೌಸ್', '#c62828', '#ffffff', { home: 'Jayanagar' }),
+  brand('Titan World', 'Watches', '#1a1a1a', '#d4a64a', { home: 'Commercial Street' }),
+  brand('Tanishq', 'Jewellery', '#6d1b2c', '#e8c77a', { home: 'Commercial Street' }),
+  brand('KSIC Mysore Silk', 'Govt. of Karnataka · ಮೈಸೂರು ರೇಷ್ಮೆ', '#4a0e4e', '#f2c94c', { home: 'MG Road' }),
+  brand('Apollo Pharmacy', '24 x 7', '#0b5ea8', '#ffffff'),
+  brand('Reliance Digital', 'Electronics', '#e4002b', '#ffffff'),
+  brand('Croma', 'Electronics', '#0d0d0d', '#12daa8'),
+  brand('Bata', 'Footwear', '#e2001a', '#ffffff'),
+  brand('Canara Bank', 'ಕೆನರಾ ಬ್ಯಾಂಕ್ · ATM', '#0b4ea2', '#ffd200', { home: 'MG Road' }),
+  brand("Namdhari's Fresh", 'Fruits & Vegetables', '#6cb33f', '#ffffff'),
+  // Neighbourhood shops.
   { en: 'Sri Sagar Darshini', kn: 'ಶ್ರೀ ಸಾಗರ್ ದರ್ಶಿನಿ', food: true },
   { en: 'Namma Filter Coffee', kn: 'ನಮ್ಮ ಕಾಫಿ', food: true },
   { en: "Iyengar's Bakery", kn: 'ಅಯ್ಯಂಗಾರ್ ಬೇಕರಿ', food: true },
   { en: 'Udupi Grand Hotel', kn: 'ಉಡುಪಿ ಹೋಟೆಲ್', food: true },
   { en: 'Bengaluru Biryani House', kn: 'ಬಿರಿಯಾನಿ', food: true },
-  { en: 'Sri Krishna Sweets', kn: 'ಸ್ವೀಟ್ಸ್', food: true },
-  { en: 'Meghna Mess', kn: 'ಹೋಟೆಲ್', food: true },
   { en: 'Halli Mane Tiffins', kn: 'ದರ್ಶಿನಿ', food: true },
   { en: 'Ganesh Mobiles', kn: 'ಗಣೇಶ್ ಮೊಬೈಲ್ಸ್' },
-  { en: 'Mysore Silks', kn: 'ಸಿಲ್ಕ್ಸ್' },
   { en: 'Lakshmi Medicals', kn: 'ಮೆಡಿಕಲ್ಸ್' },
-  { en: 'Tech Mantra Electronics', kn: 'ಬೆಂಗಳೂರು' },
   { en: 'Raghu Xerox & Prints', kn: 'ನಮ್ಮ' },
   { en: 'Cauvery Handicrafts', kn: 'ಕಾವೇರಿ' },
-  { en: 'Bharath Footwear', kn: 'ನಮ್ಮ' },
   { en: 'Kannadiga Book House', kn: 'ಕನ್ನಡ' },
-  { en: 'Nandini Milk Parlour', kn: 'ನಂದಿನಿ', food: true },
   { en: 'Hoppy Bear Brewpub', kn: 'ಬೆಂಗಳೂರು', food: true, pub: true },
   { en: 'Startup Co-Work Hub', kn: 'ನಮ್ಮ' },
   { en: 'Vinayaka Hardware', kn: 'ವಿನಾಯಕ' },
-  { en: 'Brew Bros Taproom', kn: 'ಬೆಂಗಳೂರು', food: true, pub: true },
-  { en: 'Third Wave Filter Co.', kn: 'ಕಾಫಿ', food: true, pub: true },
   { en: 'Dosa Corner', kn: 'ದೋಸೆ', food: true },
   { en: 'Kodava Kitchen', kn: 'ಕೊಡವ', food: true },
   { en: 'Andhra Spice Meals', kn: 'ಊಟ', food: true },
@@ -213,7 +236,21 @@ export const SHOP_SIGNS = [
   { en: 'Bharat Electricals', kn: 'ಭಾರತ್' },
   { en: 'Gully Gaming Lounge', kn: 'ನಮ್ಮ', pub: true },
   { en: 'Silk Route Bar & Kitchen', kn: 'ಬೆಂಗಳೂರು', food: true, pub: true },
-  { en: 'Mavalli Tiffin Corner', kn: 'ತಿಂಡಿ', food: true },
+  { en: 'Peenya Precision Tools', kn: 'ಪೀಣ್ಯ', industrial: true },
+  { en: 'Karnataka Auto Components', kn: 'ಕರ್ನಾಟಕ', industrial: true },
+];
+
+// Fuel stations (forecourts with branded canopies) and hotel towers with lit crown signs.
+export const FUEL_BRANDS = [
+  { key: 'hp', name: 'HP', full: 'HINDUSTAN PETROLEUM', canopy: 0x0b4ea2, stripe: 0xe31e24, bg: '#0b4ea2', fg: '#ffffff' },
+  { key: 'iocl', name: 'IndianOil', full: 'ಇಂಡಿಯನ್ ಆಯಿಲ್ · INDIAN OIL', canopy: 0xf26522, stripe: 0x1d2a6b, bg: '#f26522', fg: '#ffffff' },
+  { key: 'bpcl', name: 'BHARAT PETROLEUM', full: 'Pure for Sure', canopy: 0xffd200, stripe: 0x0054a6, bg: '#0054a6', fg: '#ffd200' },
+];
+export const HOTELS = [
+  { at: [195, -60], label: 'JW Marriott Hotel', name: 'JW MARRIOTT', sub: 'BENGALURU', bg: '#1c1c1c', fg: '#e8d6a8', floors: 20, tint: 0xc8d4e0 },
+  { at: [195, 205], label: 'ITC Gardenia', name: 'ITC GARDENIA', sub: 'A LUXURY COLLECTION HOTEL', bg: '#2e4a2a', fg: '#f0e6c8', floors: 14, tint: 0xe0d8c8 },
+  { at: [-325, 70], label: 'Taj MG Road', name: 'TAJ MG ROAD', sub: 'BENGALURU', bg: '#1a1a1a', fg: '#d8b56a', floors: 12, tint: 0xf0e6d4, style: 'apartment' },
+  { at: [-825, -825], label: 'Orion Mall', name: 'ORION MALL', sub: 'BRIGADE GATEWAY', bg: '#ffffff', fg: '#c8102e', floors: 5, mall: true, tint: 0xf0ece4 },
 ];
 
 // Things people shout.
