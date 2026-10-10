@@ -68,7 +68,7 @@ export class Gangs {
       m.dead = true; m.state = 'down'; m.vx = fx * 4; m.vz = fz * 4; m.deadT = 0;
       if (lethal || Math.random() < 0.5) world.particles?.burst('blood', m.x, m.y + 1.1, m.z, 8, 2, 0.6);
       // Their weapon clatters to the ground.
-      world.pickups?.add(m.weapon, m.x + fx * 0.8, m.z + fz * 0.8, m.y);
+      if (m.weapon !== 'fists') world.pickups?.add(m.weapon, m.x + fx * 0.8, m.z + fz * 0.8, m.y);
       m.h.weaponMesh && (m.h.weaponMesh.visible = false);
       world.onGangDown?.(m);
     } else if (knock) { m.state = 'stagger'; m.timer = 0.6; m.vx = fx * 4; m.vz = fz * 4; }

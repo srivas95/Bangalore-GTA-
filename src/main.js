@@ -23,6 +23,7 @@ import { Pickups, WEAPONS } from './systems/weapons.js';
 import { Gangs } from './entities/gangs.js';
 import { HUD } from './ui/hud.js';
 import { MetroRide } from './systems/metroRide.js';
+import { Story } from './systems/story.js';
 import { LINES, CURB_H } from './config.js';
 import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, geo } from './world/mapdata.js';
 
@@ -149,7 +150,10 @@ async function init() {
     crime: (reason, x, z, stars) => police.crime(reason, x, z, stars, world),
     camRig: rig,
     skipClock: (s) => env.skip(s),
+    setHour: (h) => { env.hour = h; },
+    footpathNear, park, metroRide,
   };
+  const story = new Story(scene, hud, audio, missions, world);
 
   // ---------- Crashes and explosions ----------
   world.onVehicleImpact = (a, b, speed, cx, cz) => {
@@ -301,6 +305,7 @@ async function init() {
     player.respawn(p.x, p.z);
     police.reset();
     missions.job && missions.fail('You missed the job.');
+    story.active && story.fail(pending.list === HOSPITALS ? 'You were wasted.' : 'You were busted.');
     rig.first = true;
     world.reseed();
     hud.hideScreen();
@@ -429,6 +434,7 @@ async function init() {
     particles.update(dt, camera, renderer);
     env.update(dt, world.focus, player, police);
     missions.update(dt, input, player);
+    story.update(dt, input);
     audio.setRain(env.rain);
 
     if (metroRide.active) hud.prompt('');
@@ -445,7 +451,7 @@ async function init() {
     if (!window.__freeCam && !metroRide.active) rig.update(dt, input, player, colliders);
     if (!metroRide.active) metroRide.banner.classList.remove('show');
     audio.engine(player.vehicle);
-    const markers = missions.markers.slice();
+    const markers = missions.markers.concat(story.markers);
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
     hud.update(dt, player, rig.yaw, markers);
     { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
@@ -456,7 +462,7 @@ async function init() {
   tick();
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, composer };
+  window.__game = { story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, composer };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.

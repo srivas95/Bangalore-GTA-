@@ -12,7 +12,7 @@ const PASSENGERS = [
   { who: 'Tourist', line: '"Is this the famous Bangalore traffic? Amazing!"' },
 ];
 
-class Marker {
+export class Marker {
   constructor(scene, color) {
     const g = new THREE.Group();
     const beam = new THREE.Mesh(
@@ -115,6 +115,7 @@ export class Missions {
   update(dt, input, player) {
     const t = performance.now() / 1000;
     this.marker.update(t);
+    if (this.paused) return; // a story mission is running
     const p = player.pos;
     if (!this.job) {
       if (this.offer) {
