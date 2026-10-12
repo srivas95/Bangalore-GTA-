@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { BuilderSet } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 import { createHuman } from '../entities/human.js';
+import { withAO } from '../world/ao.js';
 import { mulberry32 } from '../world/textures.js';
 
 // Per group: green, amber, all-red. Then the pedestrian phase.
@@ -89,7 +90,7 @@ export class Signals {
       }
       if (n.name) this.addTrafficCop(scene, n);
     }
-    B.buildAll({ metal: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 }) }, scene);
+    B.buildAll({ metal: withAO(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 })) }, scene);
     const geo = new THREE.SphereGeometry(0.13, 8, 6);
     this.bulbs = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ toneMapped: false }), bulbs.length);
     const m = new THREE.Matrix4();
@@ -97,6 +98,8 @@ export class Signals {
     this.bulbs.computeBoundingSphere();
     scene.add(this.bulbs);
     this.cOn = [new THREE.Color(3, 0.15, 0.1), new THREE.Color(3, 1.6, 0.1), new THREE.Color(0.1, 2.6, 0.6)];
+    this.bulbPos = bulbs;
+    this.haloCol = [new THREE.Color(1, 0.08, 0.04), new THREE.Color(1, 0.5, 0.04), new THREE.Color(0.08, 1, 0.35)];
     this.cOff = [new THREE.Color(0.18, 0.04, 0.04), new THREE.Color(0.18, 0.12, 0.03), new THREE.Color(0.03, 0.14, 0.05)];
   }
 
@@ -115,6 +118,17 @@ export class Signals {
     b.buildAll({ m: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 }) }, scene);
     scene.add(h.group);
     (this.cops || (this.cops = [])).push({ h, n });
+  }
+
+  // The lit bulb of every signal head within r of (x, z): f(x, y, z, colour).
+  forLitBulbs(x, z, r, f) {
+    for (const head of this.heads) {
+      if (Math.abs(head.node.x - x) > r || Math.abs(head.node.z - z) > r) continue;
+      const s = this.state(head.node, head.axis);
+      const on = s === 'red' ? 0 : s === 'amber' ? 1 : 2;
+      const p = this.bulbPos[head.base + on];
+      f(p[0], p[1], p[2], this.haloCol[on]);
+    }
   }
 
   update(dt, focus) {

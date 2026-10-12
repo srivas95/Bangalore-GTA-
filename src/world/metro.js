@@ -6,6 +6,7 @@ import { BuilderSet, makeFrame } from './meshBuilder.js';
 import { put } from './landmarks.js';
 import { textTexture } from './textures.js';
 import { textScale } from './detail.js';
+import { withAO } from './ao.js';
 import { Path } from './path.js';
 import { METRO } from './mapdata.js';
 
@@ -77,8 +78,8 @@ export function buildMetro(scene, layout, colliders) {
   group.name = 'metro';
   scene.add(group);
   const mats = {
-    concrete: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }),
-    paint: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 }),
+    concrete: withAO(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 })),
+    paint: withAO(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 })),
     metal: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.9 }),
     glass: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.1, metalness: 0.6, transparent: true, opacity: 0.55 }),
     glow: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),

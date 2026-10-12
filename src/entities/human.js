@@ -126,6 +126,7 @@ export function createHuman(opts = {}, r = Math.random) {
   mesh.receiveShadow = false;
   const group = new THREE.Group();
   group.add(mesh);
+  group.userData.blob = { w: 1.2, l: 1.2 };
   const bn = {};
   for (const [k, i] of Object.entries(B)) bn[k] = bones[i];
   return {

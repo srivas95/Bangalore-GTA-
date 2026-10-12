@@ -154,7 +154,8 @@ and signing.
 
 ### Day/night and monsoon
 
-- **Day/night.** A 24-minute day brings lit windows, sodium street-lamp pools, headlights and bloom.
+- **Day/night.** A 24-minute day brings lit windows, sodium street-lamp pools, and glowing headlights,
+  tail lights and signals.
 - **Monsoon.** Rain showers come on their own, with lightning, wet roads and flooded underpasses.
   Traffic slows down and wades through; drive into the deep end and your engine can drown.
 
@@ -184,7 +185,7 @@ art direction and what's next.
 ```
 src/
   config.js            Constants, shop signage and brands, dialogue lines
-  main.js              Renderer + bloom, game loop, busted/wasted, vehicle-vehicle collisions
+  main.js              Renderer, game loop, busted/wasted, vehicle-vehicle collisions
   world/
     mapdata.js         Real geography: arterials, metro stations, railway, parks, lakes, districts, landmarks
     roadnet.js         Polylines → planar road graph → polygon city blocks (pure JS, testable in Node)
@@ -197,6 +198,10 @@ src/
     geom.js, path.js   Polygon fill/walls, rectangle overlap, arc-length polylines
     textures.js        Canvas-painted textures (facades, lit windows, asphalt, pavers, signs, water)
     meshBuilder.js     Merged/chunked geometry with local frames, per-vertex PBR material, rigid skinning
+    detail.js          World detail levels (Full / Lite / Minimum)
+    ao.js              Baked shading: dark wall bases, ground shading map next to buildings and trees
+    blobs.js           Soft contact shadows under vehicles and people
+    halos.js           Light halos: street lamps, signals, headlights, tail lights, police light bars
   entities/
     human.js           Skinned 13-bone people + animations
     carBodies.js       Lofted car bodies for the real models (Swift, Dzire, Etios, Innova…)

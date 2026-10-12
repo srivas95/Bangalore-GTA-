@@ -50,6 +50,7 @@ export class Environment {
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.04;
     scene.add(this.sun, this.sun.target);
+    this.shadowEvery = 1;
 
     // Lights that always exist (changing light count forces shader recompiles): headlights, police strobes.
     this.headlight = new THREE.SpotLight(0xfff2d8, 0, 70, 0.55, 0.5, 1.2);
@@ -215,7 +216,7 @@ export class Environment {
     this.hemi.color.setHSL(0.6, lerp(0.35, 0.4, day), lerp(0.35, 0.78, day));
     this.hemi.groundColor.setHSL(0.08, 0.25, lerp(0.08, 0.35, day));
     this.scene.environmentIntensity = lerp(0.12, 0.55, day) * (1 - rain * 0.4) + this.flash;
-    this.renderer.toneMappingExposure = lerp(0.75, 1.05, night) + this.flash * 0.6;
+    this.renderer.toneMappingExposure = lerp(0.9, 1.25, night) + this.flash * 0.6;
 
     // Fog: hazy blue by day, warm at dusk, deep blue at night, grey and close in the rain.
     const fc = new THREE.Color(0xaebdcc).lerp(new THREE.Color(0xd0a888), low * day * 0.7).lerp(new THREE.Color(0x0c1220), night);
@@ -306,6 +307,18 @@ export class Environment {
       this.strobeR.intensity = ph < 2 ? k : 0;
       this.strobeB.intensity = ph >= 2 ? k : 0;
     } else this.strobeR.intensity = this.strobeB.intensity = 0;
+  }
+
+  // 'off' | 'near' | 'full'. Near: a 90 m square at half the resolution, redrawn every other frame.
+  setShadows(mode) {
+    const near = mode === 'near';
+    this.sun.castShadow = mode === 'near' || mode === 'full';
+    const size = near ? 1024 : this.maxShadowMap || 2048, S = near ? 45 : 85;
+    const sh = this.sun.shadow;
+    if (sh.mapSize.x !== size) { sh.mapSize.set(size, size); sh.map?.dispose(); sh.map = null; }
+    Object.assign(sh.camera, { left: -S, right: S, top: S, bottom: -S });
+    sh.camera.updateProjectionMatrix();
+    this.shadowEvery = near ? 2 : 1;
   }
 
   clockString() {

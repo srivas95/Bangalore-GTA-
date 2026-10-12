@@ -3,9 +3,11 @@
 const KEY = 'namma-bengaluru-settings-v1';
 
 export const PRESETS = {
-  low: { resScale: 0.6, shadows: false, bloom: false, drawDist: 0.55, traffic: 0.55, peds: 0.5 },
-  medium: { resScale: 0.8, shadows: true, bloom: false, drawDist: 0.75, traffic: 0.8, peds: 0.75 },
-  high: { resScale: 1, shadows: true, bloom: true, drawDist: 1, traffic: 1, peds: 1 },
+  // shadows: 'off', 'near' (a small area round the player, cheap enough for phones) or 'full'.
+  low: { resScale: 0.6, shadows: 'near', bloom: false, drawDist: 0.55, traffic: 0.55, peds: 0.5 },
+  medium: { resScale: 0.8, shadows: 'full', bloom: false, drawDist: 0.75, traffic: 0.8, peds: 0.75 },
+  // Bloom is optional everywhere: lights get their glow from halos, so every device looks alike.
+  high: { resScale: 1, shadows: 'full', bloom: false, drawDist: 1, traffic: 1, peds: 1 },
 };
 
 export const isTouchDevice = () => typeof window !== 'undefined' && (matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window);
@@ -19,6 +21,9 @@ export class Settings {
   constructor() {
     this.values = defaults();
     try { Object.assign(this.values, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { /* storage blocked */ }
+    // Older saves stored shadows as on/off.
+    if (this.values.shadows === true) this.values.shadows = 'full';
+    if (this.values.shadows === false) this.values.shadows = 'off';
     this.listeners = [];
   }
 
@@ -59,8 +64,8 @@ export class Settings {
       <h2>Settings</h2>
       ${row('Quality', `<select data-k="quality"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="custom" disabled>Custom</option></select>`)}
       ${row('Resolution', slider('resScale', 0.4, 1, 0.05))}
-      ${row('Shadows', check('shadows'))}
-      ${row('Bloom (glow)', check('bloom'))}
+      ${row('Shadows', `<select data-k="shadows"><option value="off">Off</option><option value="near">Near you</option><option value="full">Full</option></select>`)}
+      ${row('Bloom (extra glow)', check('bloom'))}
       ${row('Draw distance', slider('drawDist', 0.4, 1, 0.05))}
       ${row('Traffic', slider('traffic', 0.2, 1.2, 0.05))}
       ${row('Pedestrians', slider('peds', 0.2, 1.2, 0.05))}

@@ -581,3 +581,26 @@ export function lightPoolTexture() {
   ctx.fillRect(0, 0, 128, 128);
   return toTexture(c, { repeat: false });
 }
+
+// Normal map from a painted texture's brightness (dark window panes read as recessed, light
+// frames, sills and ledges as raised), so facades catch the sun without extra geometry.
+export function normalFromTexture(tex, strength = 2.5, size = 512) {
+  const src = tex.image;
+  const [c, ctx] = canvas(size, size);
+  ctx.drawImage(src, 0, 0, size, size);
+  const img = ctx.getImageData(0, 0, size, size), d = img.data;
+  const h = new Float32Array(size * size);
+  for (let k = 0; k < size * size; k++) h[k] = (d[k * 4] * 0.3 + d[k * 4 + 1] * 0.59 + d[k * 4 + 2] * 0.11) / 255;
+  const at = (x, y) => h[((y + size) % size) * size + ((x + size) % size)];
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    // Sobel gradient (the texture tiles, so wrap at the edges).
+    const gx = (at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1)) - (at(x - 1, y - 1) + 2 * at(x - 1, y) + at(x - 1, y + 1));
+    const gy = (at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1)) - (at(x - 1, y - 1) + 2 * at(x, y - 1) + at(x + 1, y - 1));
+    // Canvas y runs down, texture v up.
+    const nx = -gx * strength, ny = gy * strength, nz = 1, l = Math.hypot(nx, ny, nz);
+    const i = (y * size + x) * 4;
+    d[i] = (nx / l * 0.5 + 0.5) * 255; d[i + 1] = (ny / l * 0.5 + 0.5) * 255; d[i + 2] = (nz / l * 0.5 + 0.5) * 255; d[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  return toTexture(c, { srgb: false });
+}

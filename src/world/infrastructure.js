@@ -9,6 +9,7 @@ import * as T from './textures.js';
 import { CURB_H } from '../config.js';
 import { buildRailway } from './railway.js';
 import { DETAIL } from './detail.js';
+import { withAO } from './ao.js';
 
 const SHRUB = new THREE.IcosahedronGeometry(1, 0);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 12);
@@ -40,7 +41,7 @@ export function buildInfrastructure(ctx) {
   const { B, layout, colliders, mats, tex, group } = ctx;
   const ensureRoadMat = (lanes, median, width) => {
     const key = roadMaterialKey(lanes, median);
-    if (!mats[key]) mats[key] = new THREE.MeshStandardMaterial({ map: tex(T.roadTexture({ lanes, median, width })), roughness: 0.88 });
+    if (!mats[key]) mats[key] = withAO(new THREE.MeshStandardMaterial({ map: tex(T.roadTexture({ lanes, median, width })), roughness: 0.88 }));
     ctx.roadMats.add(mats[key]);
     return key;
   };

@@ -90,7 +90,7 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 | Story | Act I (five missions), mission givers, dialogue, saving to localStorage, daily Majestic collections after Act I |
 | Garages | Puncture/service stalls citywide and Chikka Motors: repairs, resprays that can shed up to 3 stars, buying vehicles, owned vehicles saved and delivered to any garage |
 | Level crossings | Booms lower with flashing lamps when a train approaches, block the road, traffic queues |
-| Settings | Quality presets, resolution, shadows, bloom, draw distance, densities, sensitivity, invert Y, volume, touch toggle |
+| Settings | Quality presets, resolution, shadows (off / near / full), optional bloom, world detail, draw distance, densities, sensitivity, invert Y, volume, touch toggle |
 | Touch | Floating analog joystick, drag-to-look, context buttons; phones default to the Low preset |
 | Platforms | Browser (installable, offline), Windows installer and portable exe (Electron), Android APK (Capacitor), built by GitHub Actions |
 
@@ -105,7 +105,10 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 ## 5. Art direction and models
 
 - **Current:** fully procedural geometry and textures, physically based lighting, image-based reflections from the
-  sky, soft shadows, haze, bloom. People are single skinned meshes with a 13-bone rig; vehicles are single skinned
+  sky, soft shadows, haze, PBR Neutral tone mapping. The look is the same on PC, web and Android: shading next to
+  walls and buildings is baked into a ground map at load, people and vehicles get soft contact shadows, facades get
+  normal maps from their own paint, and lights glow with halo sprites instead of a bloom pass (bloom is optional).
+  Phones keep real-time shadows near the player. People are single skinned meshes with a 13-bone rig; vehicles are single skinned
   meshes whose wheels are bones. This keeps crowds and traffic cheap.
 - **Planned art pass:** swap procedural builders for glTF models one at a time, without touching gameplay code:
   1. Hero vehicles: auto, Activa, Hoysala Ertiga, BMTC Volvo.
@@ -122,4 +125,4 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
   with a near/far LOD.
 - Traffic and pedestrians are pooled and streamed; the simulation can be stepped without rendering
   (`window.__game.step(n)`), which is how automated tests drive the game.
-- Performance mode (O) lowers resolution and turns off shadows, bloom and some traffic.
+- Performance mode (O) lowers resolution, keeps shadows only near you and thins out traffic.

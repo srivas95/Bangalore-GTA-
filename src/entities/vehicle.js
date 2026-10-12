@@ -26,6 +26,7 @@ export class Vehicle {
     if (this.model.spec && this.model.spec !== this.spec) this.spec = this.model.spec; // real car dimensions
     this.group = this.model.group;
     this.group.userData.vehicle = this;
+    this.group.userData.blob = { w: this.spec.width * 1.6, l: this.spec.length * 1.2 };
     this.x = x; this.z = z; this.y = 0;
     this.heading = heading;
     this.vx = 0; this.vz = 0;

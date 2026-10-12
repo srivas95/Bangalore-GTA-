@@ -13,6 +13,7 @@ import { metroRoutes } from './metro.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CURB_H, SHOP_SIGNS, FUEL_BRANDS } from '../config.js';
 import { DETAIL, textScale } from './detail.js';
+import { withAO } from './ao.js';
 
 const rng = T.mulberry32(20240607);
 const rand = (a = 0, b = 1) => a + (b - a) * rng();
@@ -52,7 +53,11 @@ export function buildCity(scene, layout, colliders, renderer) {
   const aniso = renderer.capabilities.getMaxAnisotropy();
   const tex = (t) => { t.anisotropy = Math.min(8, aniso); return t; };
   const std = (o) => new THREE.MeshStandardMaterial(o);
-  const facade = (style, map, extra = {}) => std({ map: tex(map), vertexColors: true, emissiveMap: T.windowGlow(style), emissive: 0xffe2b0, emissiveIntensity: 0, ...extra });
+  // Facades get a normal map from their own painting, so window recesses and ledges catch the light.
+  const facade = (style, map, extra = {}, bump = 0) => std({
+    map: tex(map), vertexColors: true, emissiveMap: T.windowGlow(style), emissive: 0xffe2b0, emissiveIntensity: 0,
+    ...(bump && { normalMap: tex(T.normalFromTexture(map, bump, DETAIL.lite ? 256 : 512)), normalScale: new THREE.Vector2(1, 1) }), ...extra,
+  });
   const mats = {
     ground: std({ map: tex(T.soilTexture()), roughness: 1 }),
     sidewalk: std({ map: tex(T.paverTexture()), roughness: 0.95, vertexColors: true }),
@@ -60,11 +65,11 @@ export function buildCity(scene, layout, colliders, renderer) {
     plaza: std({ map: tex(T.concreteTexture()), roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
     junction: std({ map: tex(T.asphaltTexture()), roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
     zebra: std({ map: tex(T.zebraTexture()), roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
-    plaster: facade('plaster', T.plasterFacade(), { roughness: 0.9 }),
-    apartment: facade('apartment', T.apartmentFacade(), { roughness: 0.9 }),
-    heritage: facade('heritage', T.heritageFacade(), { roughness: 0.85 }),
+    plaster: facade('plaster', T.plasterFacade(), { roughness: 0.9 }, 3),
+    apartment: facade('apartment', T.apartmentFacade(), { roughness: 0.9 }, 3),
+    heritage: facade('heritage', T.heritageFacade(), { roughness: 0.85 }, 3),
     glass: facade('glass', T.glassFacade(), { roughness: 0.12, metalness: 0.65, envMapIntensity: 1.2 }),
-    shop: facade('shop', T.shopfrontTexture(), { roughness: 0.85 }),
+    shop: facade('shop', T.shopfrontTexture(), { roughness: 0.85 }, 2),
     roof: std({ map: tex(T.roofTexture()), roughness: 0.95, vertexColors: true }),
     stone: std({ roughness: 0.75, vertexColors: true, side: THREE.DoubleSide }),
     metal: std({ roughness: 0.4, metalness: 0.7, vertexColors: true }),
@@ -74,6 +79,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     water: std({ color: 0x4f7f86, roughness: 0.06, metalness: 0.2, normalMap: T.waterNormal(), normalScale: new THREE.Vector2(0.35, 0.35), envMapIntensity: 1.3 }),
   };
   mats.signs.emissiveMap = mats.signs.map;
+  for (const k of Object.keys(mats)) if (k !== 'glow' && k !== 'signs' && k !== 'water') withAO(mats[k]);
   mats.water.normalMap.repeat.set(12, 12);
   // Materials whose emissive brightens at night: [material, day, night].
   const nightMats = [
@@ -687,8 +693,9 @@ export function buildCity(scene, layout, colliders, renderer) {
   for (const m of group.children) if (m.name.startsWith('road_')) m.castShadow = false;
 
   const treeLod = buildInstancedTrees(group, trees, colliders);
-  const lampPools = buildLamps(group, lamps, colliders);
-  buildTanks(group, DETAIL.min ? [] : tanks);
+  const lampHeads = [];
+  const lampPools = buildLamps(group, lamps, colliders, lampHeads);
+  const tankLod = buildTanks(group, DETAIL.min ? [] : tanks);
   const textSignMats = buildTextSigns(group, signs);
   for (const m of textSignMats) nightMats.push([m, 0.05, 0.8]);
 
@@ -700,6 +707,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     for (const a of anims) a(dt, t, camera);
     mats.water.normalMap.offset.set(t * 0.01, t * 0.006);
     treeLod(camera);
+    if (camera) tankLod(camera);
     if (camera && (cullT -= dt) <= 0) {
       cullT = 0.25;
       const px = camera.position.x, pz = camera.position.z, far = (camera.far > 900 ? 900 : camera.far);
@@ -715,7 +723,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     for (const m of wetMats) { m.roughness = 0.95 - wet * 0.55; m.color.setScalar(1 - wet * 0.3); }
   };
   sharedUniforms.uWet.value = 0;
-  return { group, pois, update, setLighting, materials: mats, lampPositions: lamps, rail: infra.rail };
+  return { group, pois, update, setLighting, materials: mats, lampPositions: lamps, rail: infra.rail, trees, lampHeads };
 }
 
 function rectPoly(r) {
@@ -741,7 +749,7 @@ const CHIMNEY = new THREE.CylinderGeometry(1, 1, 1, 12);
 function buildInstancedTrees(group, trees, colliders) {
   const trunkGeo = new THREE.CylinderGeometry(0.22, 0.4, 1, 6);
   trunkGeo.translate(0, 0.5, 0);
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a4636, roughness: 1 });
+  const trunkMat = withAO(new THREE.MeshStandardMaterial({ color: 0x5a4636, roughness: 1 }));
   const canopy = (wide, detail, n) => {
     const parts = [];
     const r = T.mulberry32(wide ? 3 : 9);
@@ -815,11 +823,14 @@ function buildInstancedTrees(group, trees, colliders) {
     trunkMeshes.push({ mesh: tm, cx, cz });
   }
   // Swap canopy detail by distance from the camera; nothing past the fog.
+  const nearRange = DETAIL.lite ? 40 : 140;
   return (camera) => {
     if (!camera) return;
     for (const ch of chunks) {
       const dx = Math.abs(ch.cx - camera.position.x), dz = Math.abs(ch.cz - camera.position.z);
-      const near = dx < CHUNK * 1.1 && dz < CHUNK * 1.1;
+      // Detailed canopies only in chunks within nearRange of the camera (they're most of the
+      // triangles drawn); simple ones out to the fog.
+      const near = Math.hypot(Math.max(0, dx - CHUNK / 2), Math.max(0, dz - CHUNK / 2)) < nearRange;
       const far = Math.hypot(dx, dz) > 900 + CHUNK * 0.7;
       ch.ih.visible = near; ch.il.visible = !near && !far;
     }
@@ -828,7 +839,7 @@ function buildInstancedTrees(group, trees, colliders) {
 }
 
 // Lamps: [x, z, armDirX, armDirZ] with the arm reaching out over the road.
-function buildLamps(group, lamps, colliders) {
+function buildLamps(group, lamps, colliders, heads) {
   const b = new BuilderSet({ chunk: CHUNK, release: true });
   const pole = b.get('metal');
   const head = b.get('glow');
@@ -840,10 +851,12 @@ function buildLamps(group, lamps, colliders) {
     b.xf = makeFrame(x, z, Math.atan2(ax, az));
     put(pole, cyl, 0, 8.1, 0.8, 0x6a6e72, 0, 0.7, 1.7, 0.7, Math.PI / 2, 0);
     head.box(0, 7.85, 1.6, 0.6, 0.15, 0.6, 0xfff2cc);
+    const [hx, hz] = frameToWorld(b.xf, 0, 1.6);
+    heads.push([hx, 7.75, hz]);
     b.xf = null;
     colliders.addCentered(x, z, 0.3, 0.3, 8, 'pole');
   }
-  b.buildAll({ metal: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.6 }), glow: new THREE.MeshBasicMaterial({ vertexColors: true }) }, group, { glow: { castShadow: false } });
+  b.buildAll({ metal: withAO(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.6 })), glow: new THREE.MeshBasicMaterial({ vertexColors: true }) }, group, { glow: { castShadow: false } });
   // Pools of sodium light on the road, only visible at night.
   const poolMat = new THREE.MeshBasicMaterial({ map: T.lightPoolTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false });
   const geo = new THREE.PlaneGeometry(1, 1);
@@ -862,16 +875,37 @@ function buildLamps(group, lamps, colliders) {
   return pools;
 }
 
+// Black Sintex tanks on the roofs: tens of thousands of them, so instanced per chunk and only
+// drawn within tankRange of the camera.
 function buildTanks(group, tanks) {
-  if (!tanks.length) return;
-  const geo = new THREE.CylinderGeometry(0.6, 0.6, 1.3, 10);
+  if (!tanks.length) return () => {};
+  const geo = new THREE.CylinderGeometry(0.6, 0.6, 1.3, DETAIL.lite ? 6 : 8);
   geo.translate(0, 0.65, 0);
-  const inst = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 }), tanks.length);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 });
+  const buckets = new Map();
+  for (const t of tanks) {
+    const key = `${Math.floor(t[0] / CHUNK)},${Math.floor(t[2] / CHUNK)}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(t);
+  }
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-  tanks.forEach(([x, y, z, sc], k) => { m.compose(p.set(x, y, z), q, s.set(sc, sc, sc)); inst.setMatrixAt(k, m); });
-  inst.castShadow = true;
-  inst.computeBoundingSphere();
-  group.add(inst);
+  const chunks = [];
+  for (const [key, list] of buckets) {
+    const inst = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach(([x, y, z, sc], k) => { m.compose(p.set(x, y, z), q, s.set(sc, sc, sc)); inst.setMatrixAt(k, m); });
+    inst.castShadow = true;
+    inst.computeBoundingSphere();
+    group.add(inst);
+    const [cx, cz] = key.split(',').map((v) => (+v + 0.5) * CHUNK);
+    chunks.push({ inst, cx, cz });
+  }
+  const range = DETAIL.lite ? 260 : 450;
+  return (camera) => {
+    for (const c of chunks) {
+      const dx = Math.max(0, Math.abs(c.cx - camera.position.x) - CHUNK / 2), dz = Math.max(0, Math.abs(c.cz - camera.position.z) - CHUNK / 2);
+      c.inst.visible = Math.hypot(dx, dz) < range;
+    }
+  };
 }
 
 function buildTextSigns(group, signs) {

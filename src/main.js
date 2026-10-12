@@ -30,6 +30,9 @@ import { Garages } from './systems/garages.js';
 import { LINES, CURB_H } from './config.js';
 import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, WORLD, geo } from './world/mapdata.js';
 import { DETAIL, setDetail } from './world/detail.js';
+import { bakeAO, aoUniforms } from './world/ao.js';
+import { BlobShadows } from './world/blobs.js';
+import { Halos } from './world/halos.js';
 
 const BOOT_KEY = 'namma-bengaluru-boot';
 
@@ -57,8 +60,9 @@ async function init() {
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.75;
+  // Khronos PBR Neutral: keeps the pastel facades and signboards true to colour (ACES and AgX wash them out).
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 0.9;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.getElementById('app').appendChild(renderer.domElement);
 
@@ -74,7 +78,24 @@ async function init() {
   traffic.prewarm(150, 16.5);
   const streetLife = new StreetLife(scene, layout, colliders, signals);
   const env = new Environment(scene, renderer, camera, layout, city);
-  if (DETAIL.lite) env.sun.shadow.mapSize.set(1024, 1024);
+  // Baked ground shading next to buildings, walls, trees and under the metro viaducts.
+  {
+    const strips = [];
+    for (const r of metro.routes) {
+      let run = null;
+      for (let s = 0; s <= r.path.length; s += 12) {
+        const p = r.path.at(Math.min(s, r.path.length), {});
+        if (r.yAt(s) > 4) (run ||= []).push([p.x, p.z]);
+        else if (run) { if (run.length > 1) strips.push({ pts: run, width: 9, alpha: 0.3 }); run = null; }
+      }
+      if (run && run.length > 1) strips.push({ pts: run, width: 9, alpha: 0.3 });
+    }
+    bakeAO(layout.world, { boxes: colliders.all, trees: city.trees, strips }, DETAIL.lite ? 3.5 : 2.5);
+  }
+  const blobs = new BlobShadows(scene);
+  const halos = new Halos(scene, city.lampHeads);
+  if (DETAIL.lite) env.maxShadowMap = 1024;
+  renderer.shadowMap.autoUpdate = false;
 
   // Bloom makes lamps, signals and headlights glow at night. Its render targets are only
   // allocated once it's switched on.
@@ -355,7 +376,7 @@ async function init() {
     pixelRatio = Math.min(devicePixelRatio, 1.5) * s.resScale;
     renderer.setPixelRatio(pixelRatio);
     composer?.setPixelRatio(pixelRatio);
-    env.sun.castShadow = s.shadows;
+    env.setShadows(s.shadows);
     useBloom = s.bloom;
     env.drawDist = s.drawDist;
     camera.far = 400 + 1000 * s.drawDist;
@@ -420,7 +441,10 @@ async function init() {
     requestAnimationFrame(tick);
     const dt = Math.min(clock.getDelta(), 1 / 20);
     if (!paused) update(dt);
-    if (useBloom) { const c = getComposer(); bloom.strength = 0.15 + env.night * 0.6; c.render(); } else renderer.render(scene, camera);
+    renderer.shadowMap.needsUpdate = ++shadowFrame % env.shadowEvery === 0;
+    blobs.update(camera, useBloom);
+    halos.update(camera, env.night, signals, useBloom);
+    if (useBloom) { const c = getComposer(); bloom.strength = 0.1 + env.night * 0.3; c.render(); } else renderer.render(scene, camera);
     // A few seconds of drawing the city means this start worked.
     if (bootOk && ++frames > 10 && performance.now() - bootT > 6000) { bootOk(); bootOk = null; }
   };
@@ -530,22 +554,20 @@ async function init() {
     cam.up.set(0, 0, -1);
     cam.lookAt(cam.position.x, 0, cam.position.z);
     cam.updateMatrixWorld();
-    const rt = new THREE.WebGLRenderTarget(4, 4);
-    const auto = renderer.shadowMap.autoUpdate;
-    renderer.shadowMap.autoUpdate = false;
-    renderer.setRenderTarget(rt);
+    // (Drawn to the screen, so the shader variants are the ones used in play, but into a single
+    // pixel behind the menu.)
+    renderer.setViewport(0, 0, 1, 1);
     renderer.render(scene, cam);
-    renderer.setRenderTarget(null);
-    renderer.shadowMap.autoUpdate = auto;
-    rt.dispose();
+    renderer.setViewport(0, 0, innerWidth, innerHeight);
   }
+  let shadowFrame = 0;
   const bootT = performance.now();
   let frames = 0;
   let bootOk = () => { try { localStorage.removeItem(BOOT_KEY); } catch { /* ignore */ } };
   tick();
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, get composer() { return getComposer(); } };
+  window.__game = { story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.
