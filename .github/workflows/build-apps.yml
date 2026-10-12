@@ -56,7 +56,9 @@ jobs:
         with: { node-version: 20 }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
-      - uses: android-actions/setup-android@v3
+      # The Ubuntu runner ships the Android SDK (ANDROID_HOME); Gradle fetches anything missing.
+      - name: Accept Android SDK licences
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
       - uses: actions/download-artifact@v4
         with: { name: web-dist, path: dist }
       - name: Copy the web build into the Android project
