@@ -15,8 +15,9 @@ is outlined in [STORY.md](STORY.md); its first act is playable.
 
 ## 2. The map
 
-The map is real Bengaluru at 1/5 scale, centred on Majestic. It covers about 4 km × 4.4 km of game world, generated
-from real coordinates (`src/world/mapdata.js`):
+The map is real Bengaluru at 1/5 scale, centred on Majestic. It covers about 6.3 km × 7.8 km of game world, generated
+from real coordinates (`src/world/mapdata.js`). The dense street grid fills the built-up areas (the city, Yelahanka,
+K.R. Puram to Whitefield); the countryside between them has village roads, fields and farmhouses.
 
 - **Arterials** follow their real alignments: Tumkur Road, Mysore Road, Magadi Road, Chord Road, Bellary Road,
   Hosur Road, Old Madras Road, Kanakapura Road, Bannerghatta Road, Sarjapur Road, both arcs of the Outer Ring Road,
@@ -45,7 +46,10 @@ from real coordinates (`src/world/mapdata.js`):
 | **Koramangala / Silk Board / HSR / BTM** (south-east) | Startups, the final boss | Forum Mall, Silk Board flyover, Madiwala and Agara lakes |
 | **Vijayanagar / Nayandahalli / Kengeri** (west) | Residential | Purple Line along Mysore Road, Bangalore University |
 
-Planned additions: the airport road, Whitefield, Electronic City proper, and Nandi Hills as an out-of-town drive.
+| **K.R. Puram / Mahadevapura / Whitefield** (east) | Tech parks, malls | ITPL, Phoenix Marketcity, Nexus Shantiniketan, Purple Line to Kadugodi, Whitefield station |
+| **Yelahanka / NH 44 / Devanahalli** (north) | Town and countryside | Airport Road, **Kempegowda International Airport** (terminals, tower, jets taking off) |
+
+Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills as an out-of-town drive.
 
 ## 3. Core loop
 
@@ -84,15 +88,19 @@ Planned additions: the airport road, Whitefield, Electronic City proper, and Nan
 | Day/night & monsoon | 24-minute day, night glow and bloom; rain, lightning, wet roads, flooded underpasses, drowned engines |
 | Brands | 26 real Bengaluru brands, fuel stations, hotels and malls with lit crowns |
 | Story | Act I (five missions), mission givers, dialogue, saving to localStorage, daily Majestic collections after Act I |
+| Garages | Puncture/service stalls citywide and Chikka Motors: repairs, resprays that can shed up to 3 stars, buying vehicles, owned vehicles saved and delivered to any garage |
+| Level crossings | Booms lower with flashing lamps when a train approaches, block the road, traffic queues |
+| Settings | Quality presets, resolution, shadows, bloom, draw distance, densities, sensitivity, invert Y, volume, touch toggle |
+| Touch | Floating analog joystick, drag-to-look, context buttons; phones default to the Low preset |
+| Platforms | Browser (installable, offline), Windows installer and portable exe (Electron), Android APK (Capacitor), built by GitHub Actions |
 
 ### Next up (proposed)
 1. **Act II** missions: land deals with Hanu Anna, the war with Seenu, ACP Shalini Rao's investigation.
-2. **Garages and repairs** (puncture shops, a Gandhinagar mechanic) and buying vehicles.
-3. **Phone UI:** contacts, gig apps, map, UPI payments, mission calls.
-4. **Police escalation:** roadblocks at 4★, Cheetah patrol bikes, bribe negotiation.
-5. **Safehouses** (Raghu's lodge, later a flat) as save points.
-6. **Kannada radio stations** and voiced barks.
-7. **Mobile/touch controls**, graphics settings.
+2. **Phone UI:** contacts, gig apps, map, UPI payments, mission calls.
+3. **Police escalation:** roadblocks at 4★, Cheetah patrol bikes, bribe negotiation.
+4. **Safehouses** (Raghu's lodge, later a flat) as save points.
+5. **Kannada radio stations** and voiced barks.
+6. **Yellow Line** to Electronic City; flights you can board at the airport.
 
 ## 5. Art direction and models
 
