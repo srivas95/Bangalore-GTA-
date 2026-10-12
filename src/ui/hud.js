@@ -1,10 +1,10 @@
 // DOM heads-up display: minimap, district toasts, speedometer, prompts, subtitles, big map.
 
 const ZONE_COLOURS = {
-  park: '#5d8a46', lake: '#5d8a46', landmark: '#b8ad98', gov: '#a8a090', residential: '#bfb29a',
+  park: '#5d8a46', lake: '#5d8a46', rural: '#9aa66a', landmark: '#b8ad98', gov: '#a8a090', residential: '#bfb29a',
   commercial: '#c9b9a0', market: '#d0b48c', towers: '#b0b8c0', mixed: '#c4b8a4', industrial: '#a8a4a0',
 };
-const MAP_SCALE = 0.5; // minimap texture pixels per metre
+const MAP_SCALE = 0.32; // minimap texture pixels per metre
 
 const $ = (id) => document.getElementById(id);
 

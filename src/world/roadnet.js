@@ -9,6 +9,8 @@ export const LANE_W = 3.4;
 export const SIDEWALK_W = 4;
 export const roadWidth = (r) => (r.boundary ? 0 : r.lanes * 2 * LANE_W + (r.median || 0));
 
+const VILLAGES = ['Kogilu', 'Bagalur', 'Chokkanahalli', 'Hunasamaranahalli', 'Bettahalasur', 'Doddajala', 'Kannur', 'Avalahalli', 'Mittaganahalli',
+  'Budigere', 'Bidarahalli', 'Kadusonnappanahalli', 'Rampura', 'Sonnenahalli', 'Hirandahalli', 'Kattigenahalli', 'Shettigere', 'Arebinnamangala'];
 const ORD = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
 
 export function pointInPoly(x, z, poly) {
@@ -44,9 +46,11 @@ function intersect(a, b, c, d) {
 }
 
 // ---------- the street grid ----------
-function makeGrid(cfg, arterials) {
+function makeGrid(cfg, arterials, rural = false) {
   const { world, avoid, rng } = cfg;
-  const spacing = cfg.spacing || 150;
+  const urban = cfg.urban || null;
+  const inUrban = (x, z) => !urban || urban.some((p) => pointInPoly(x, z, p));
+  const spacing = rural ? cfg.ruralSpacing || 650 : cfg.spacing || 150;
   const lines = [];
   const axisLines = (axis) => {
     const [lo, hi] = axis === 'x' ? [world.minX, world.maxX] : [world.minZ, world.maxZ];
@@ -58,6 +62,8 @@ function makeGrid(cfg, arterials) {
   for (const a of arterials) for (let i = 0; i < a.pts.length - 1; i++) arts.push([a.pts[i], a.pts[i + 1]]);
   const roads = [];
   const blocked = (x, z, dirX, dirZ) => {
+    // City streets inside the built-up areas; village roads outside them.
+    if (urban && inUrban(x, z) !== !rural) return true;
     for (const poly of avoid) if (pointInPoly(x, z, poly)) return true;
     for (const [a, b] of arts) {
       const dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
@@ -73,9 +79,10 @@ function makeGrid(cfg, arterials) {
     const [lo, hi] = L.axis === 'x' ? [world.minZ, world.maxZ] : [world.minX, world.maxX];
     let start = null;
     const flush = (end) => {
-      if (start !== null && end - start > 70) {
+      if (start !== null && end - start > (rural ? 200 : 70)) {
         const p = (t) => (L.axis === 'x' ? [L.pos, t] : [t, L.pos]);
-        roads.push({ name: `${ORD((L.k % 24) + 1)} ${L.axis === 'x' ? 'Main Road' : 'Cross Road'}`, lanes: L.k % 5 === 2 ? 2 : 1, median: 0, pts: [p(start), p(end)], grid: true });
+        if (rural) roads.push({ name: `${VILLAGES[(L.k * 7 + (L.axis === 'x' ? 3 : 0)) % VILLAGES.length]} Road`, lanes: 1, median: 0, pts: [p(start), p(end)], grid: true, rural: true });
+        else roads.push({ name: `${ORD((L.k % 24) + 1)} ${L.axis === 'x' ? 'Main Road' : 'Cross Road'}`, lanes: L.k % 5 === 2 ? 2 : 1, median: 0, pts: [p(start), p(end)], grid: true });
       }
       start = null;
     };
@@ -91,7 +98,7 @@ function makeGrid(cfg, arterials) {
 // ---------- graph ----------
 export function buildRoadNet(cfg) {
   const { world, arterials } = cfg;
-  const roads = [...arterials.map((r) => ({ ...r })), ...makeGrid(cfg, arterials)];
+  const roads = [...arterials.map((r) => ({ ...r })), ...makeGrid(cfg, arterials), ...(cfg.urban ? makeGrid(cfg, arterials, true) : [])];
   // World boundary closes the outer blocks.
   const W = world;
   roads.push({ name: 'boundary', boundary: true, lanes: 0, median: 0, pts: [[W.minX, W.minZ], [W.maxX, W.minZ], [W.maxX, W.maxZ], [W.minX, W.maxZ], [W.minX, W.minZ]] });

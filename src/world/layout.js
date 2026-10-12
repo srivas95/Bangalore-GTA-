@@ -12,8 +12,8 @@ export class Layout {
     let seed = 1203;
     this.rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     this.world = MD.WORLD;
-    const avoid = [...MD.PARKS.map((p) => p.poly), ...MD.LAKES.map((l) => l.poly)];
-    const net = buildRoadNet({ world: this.world, arterials: MD.ARTERIALS, avoid, rng: this.rng, spacing: 150 });
+    const avoid = [...MD.PARKS.map((p) => p.poly), ...MD.LAKES.map((l) => l.poly), MD.AIRPORT.poly];
+    const net = buildRoadNet({ world: this.world, arterials: MD.ARTERIALS, avoid, rng: this.rng, spacing: 150, urban: MD.URBAN, ruralSpacing: 650 });
     this.net = net;
     this.roads = net.roads.filter((r) => !r.boundary);
     this.buildGraph(net);
@@ -157,12 +157,22 @@ export class Layout {
   // Landmarks go in the block at their real location, or the nearest one big enough to hold them.
   assignSpecials() {
     const NEED = { vidhanaSoudha: [104, 84], highCourt: [80, 40], stadium: [60, 60], iskcon: [74, 60], wtc: [66, 46], ibcPlatinumCity: [100, 100],
-      forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60] };
+      forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60], airport: [600, 380], itpl: [90, 90] };
     const fits = (b, s) => { const [nw, nd] = NEED[s.landmark] || [30, 30]; return !b.special && b.zone !== 'park' && b.zone !== 'lake' && b.inner.maxX - b.inner.minX >= nw && b.inner.maxZ - b.inner.minZ >= nd; };
     const put = (b, s) => { const { at, ...rest } = s; Object.assign(b, rest, { special: true }); };
     // First the ones whose own block can hold them, then the rest go to the nearest that can.
     const rest = [];
     for (const s of MD.SPECIAL_BLOCKS) {
+      if (s.landmark === 'airport') {
+        // The airport takes its whole fenced site, whatever shape the block around it is.
+        const b = this.blocks.find((q) => pointInPoly(s.at[0], s.at[1], q.poly));
+        if (!b) continue;
+        put(b, s);
+        const [[x0, z0], , [x1, z1]] = MD.AIRPORT.poly;
+        b.inner = { minX: x0 + 20, maxX: x1 - 20, minZ: Math.max(this.world.minZ + 20, z0 + 20), maxZ: z1 - 20 };
+        b.airportSite = true;
+        continue;
+      }
       const b = this.blocks.find((q) => pointInPoly(s.at[0], s.at[1], q.poly));
       if (b && fits(b, s)) put(b, s); else rest.push(s);
     }
@@ -180,22 +190,40 @@ export class Layout {
   blockInfo(b) {
     for (const p of MD.PARKS) if (pointInPoly(b.cx, b.cz, p.poly)) return { zone: 'park', district: p.name, park: p };
     for (const l of MD.LAKES) if (pointInPoly(b.cx, b.cz, l.poly)) return { zone: 'lake', district: l.name, lakeName: l.name, lake: l };
-    let best = MD.DISTRICTS[0], bd = Infinity;
-    for (const d of MD.DISTRICTS) { const dd = Math.hypot(d.x - b.cx, d.z - b.cz); if (dd < bd) { bd = dd; best = d; } }
+    // Countryside outside the built-up areas.
+    const urban = MD.URBAN.some((p) => pointInPoly(b.cx, b.cz, p));
+    const list = urban ? MD.DISTRICTS : MD.RURAL_DISTRICTS;
+    let best = list[0], bd = Infinity;
+    for (const d of list) { const dd = Math.hypot(d.x - b.cx, d.z - b.cz); if (dd < bd) { bd = dd; best = d; } }
     return { zone: best.zone, district: best.name, pubs: !!best.pubs };
   }
 
+  // The largest axis-aligned rectangle (with the block's aspect) found around a few centres.
   innerRect(poly, cx, cz) {
     const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]);
-    const hw0 = (Math.max(...xs) - Math.min(...xs)) / 2, hd0 = (Math.max(...zs) - Math.min(...zs)) / 2;
-    const ok = (k) => {
-      const hw = hw0 * k, hd = hd0 * k;
-      for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [1, 0], [0, 1], [-1, 0]]) if (!pointInPoly(cx + sx * hw, cz + sz * hd, poly)) return false;
-      return true;
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+    const hw0 = (maxX - minX) / 2, hd0 = (maxZ - minZ) / 2;
+    const fit = (ox, oz) => {
+      const ok = (k) => {
+        const hw = hw0 * k, hd = hd0 * k;
+        for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [1, 0], [0, 1], [-1, 0]]) if (!pointInPoly(ox + sx * hw, oz + sz * hd, poly)) return false;
+        return true;
+      };
+      let lo = 0, hi = 1;
+      for (let it = 0; it < 12; it++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
+      return lo;
     };
-    let lo = 0, hi = 1;
-    for (let it = 0; it < 14; it++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
-    return { minX: cx - hw0 * lo, maxX: cx + hw0 * lo, minZ: cz - hd0 * lo, maxZ: cz + hd0 * lo };
+    let best = { k: fit(cx, cz), x: cx, z: cz };
+    // Concave blocks: try other centres on a coarse grid.
+    if (best.k < 0.45 && poly.length > 4) {
+      for (let i = 1; i < 6; i++) for (let j = 1; j < 6; j++) {
+        const ox = minX + ((maxX - minX) * i) / 6, oz = minZ + ((maxZ - minZ) * j) / 6;
+        if (!pointInPoly(ox, oz, poly)) continue;
+        const k = fit(ox, oz);
+        if (k > best.k) best = { k, x: ox, z: oz };
+      }
+    }
+    return { minX: best.x - hw0 * best.k, maxX: best.x + hw0 * best.k, minZ: best.z - hd0 * best.k, maxZ: best.z + hd0 * best.k };
   }
 
   // ---------- underpasses, flyovers, railway ----------
@@ -363,9 +391,19 @@ export class Layout {
   blockAt(x, z) {
     const b = this.blockContaining(x, z);
     if (b && !b.island) return b;
+    // On a road: the nearest block in the raster, searching outwards ring by ring.
+    const W = this.world;
+    const ci = Math.floor((x - W.minX) / RASTER), cj = Math.floor((z - W.minZ) / RASTER);
+    for (let r = 0; r <= 24; r++) {
+      for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        const i = ci + di, j = cj + dj;
+        if (i < 0 || j < 0 || i >= this.rw || j >= this.rh) continue;
+        const idx = this.raster[j * this.rw + i];
+        if (idx >= 0 && !this.allBlocks[idx].island) return this.allBlocks[idx];
+      }
+    }
     let best = this.blocks[0], bd = Infinity;
-    const idx = this.blockIndexAt(x, z);
-    if (idx >= 0 && !this.allBlocks[idx].island) return this.allBlocks[idx];
     for (const q of this.blocks) {
       const d = Math.abs(q.cx - x) + Math.abs(q.cz - z);
       if (d < bd) { bd = d; best = q; }

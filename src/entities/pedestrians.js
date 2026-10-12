@@ -67,7 +67,7 @@ export class StreetLife {
     this.cows = [];
     this.pool = [];
     this.walkerTarget = 110;
-    this.loops = layout.blocks.filter((b) => b.zone !== 'lake').map(loopFor).filter(Boolean);
+    this.loops = layout.blocks.filter((b) => b.zone !== 'lake' && b.zone !== 'rural' && !b.airportSite).map(loopFor).filter(Boolean);
     this.crowdNodes = new Map();
     this.stalls = [];
     this.buildChaiStalls();

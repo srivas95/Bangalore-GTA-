@@ -8,7 +8,16 @@ const MX = 108600 / SCALE, MZ = 110600 / SCALE; // metres per degree
 export const geo = (lat, lon) => [(lon - LON0) * MX, (LAT0 - lat) * MZ];
 const G = (pts) => pts.map(([a, b]) => geo(a, b));
 
-export const WORLD = { minX: -2000, maxX: 2000, minZ: -1720, maxZ: 2640 };
+export const WORLD = { minX: -2000, maxX: 4300, minZ: -5150, maxZ: 2640 };
+
+// Built-up areas get the dense street grid; the rest is countryside with village roads.
+const rectPoly = (x0, z0, x1, z1) => [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+export const URBAN = [
+  rectPoly(-2000, -1720, 2000, 2640), // the city proper
+  rectPoly(2000, -800, 4300, 1000), // KR Puram, Mahadevapura, Marathahalli, Whitefield
+  rectPoly(-20, -3260, 1080, -2230), // Yelahanka
+  rectPoly(-20, -2230, 1200, -1720), // Kodigehalli, Jakkur, Sahakara Nagar
+];
 
 // Arterials. lanes: per direction. median: width (m). metro: carries a viaduct.
 export const ARTERIALS = [
@@ -32,16 +41,22 @@ export const ARTERIALS = [
   { name: 'Queens Road', lanes: 1, median: 0, pts: G([[12.9796, 77.5958], [12.985, 77.5992]]) },
   { name: 'Kasturba Road', lanes: 2, median: 3, pts: G([[12.9796, 77.5958], [12.9756, 77.6004], [12.968, 77.5962], [12.964, 77.595]]) },
   { name: 'MG Road', lanes: 3, median: 4, pts: G([[12.9756, 77.6004], [12.9756, 77.6066], [12.973, 77.617]]) },
-  { name: 'Old Madras Road', lanes: 3, median: 4, pts: G([[12.973, 77.617], [12.976, 77.6268], [12.9784, 77.6385], [12.986, 77.6449], [12.9907, 77.6525], [12.995, 77.6635]]) },
+  { name: 'Old Madras Road', lanes: 3, median: 4, pts: G([[12.973, 77.617], [12.976, 77.6268], [12.9784, 77.6385], [12.986, 77.6449], [12.9907, 77.6525], [12.995, 77.6635], [12.9985, 77.676], [12.9955, 77.6905], [12.9935, 77.7006], [12.9905, 77.7115]]) },
+  { name: 'ITPL Main Road', lanes: 2, median: 3, pts: G([[12.9905, 77.7115], [12.988, 77.7195], [12.984, 77.7265], [12.9835, 77.7345], [12.985, 77.742], [12.987, 77.748], [12.9905, 77.754], [12.9935, 77.759], [12.996, 77.7625], [12.998, 77.775]]) },
+  { name: 'Whitefield Main Road', lanes: 2, median: 3, pts: G([[12.9565, 77.7012], [12.967, 77.7155], [12.9698, 77.73], [12.9705, 77.75], [12.9835, 77.7575], [12.996, 77.7625]]) },
+  { name: 'Varthur Road', lanes: 1, median: 0, pts: G([[12.9565, 77.7012], [12.952, 77.718], [12.945, 77.735], [12.94, 77.7475], [12.935, 77.775]]) },
+  { name: 'Airport Road (NH 44)', lanes: 3, median: 6, pts: G([[13.057, 77.5952], [13.0605, 77.5935], [13.08, 77.5945], [13.1007, 77.5963], [13.125, 77.601], [13.149, 77.611], [13.1665, 77.627], [13.183, 77.644], [13.195, 77.657], [13.205, 77.67], [13.2005, 77.6825], [13.1832, 77.6825], [13.1832, 77.7]]) },
+  { name: 'Hennur Bagalur Road', lanes: 1, median: 0, pts: G([[13.039, 77.62], [13.045, 77.638], [13.064, 77.645], [13.09, 77.652], [13.115, 77.66], [13.138, 77.668], [13.16, 77.685], [13.1832, 77.7]]) },
+  { name: 'Doddaballapur Road', lanes: 1, median: 0, pts: G([[13.1007, 77.5963], [13.104, 77.575], [13.11, 77.55], [13.118, 77.52], [13.125, 77.49]]) },
   { name: 'Hosur Road', lanes: 3, median: 4, pts: G([[12.964, 77.595], [12.9575, 77.6015], [12.943, 77.611], [12.93, 77.6195], [12.9177, 77.6238], [12.905, 77.633], [12.891, 77.6445], [12.879, 77.6555]]) },
   { name: 'Lalbagh Road', lanes: 2, median: 0, pts: G([[12.9611, 77.5748], [12.958, 77.584], [12.9505, 77.5898]]) },
   { name: 'Bannerghatta Road', lanes: 2, median: 3, pts: G([[12.9505, 77.5898], [12.938, 77.6005], [12.9177, 77.5996], [12.896, 77.5985], [12.86, 77.597]]) },
-  { name: 'Old Airport Road', lanes: 3, median: 4, pts: G([[12.961, 77.6387], [12.9585, 77.655], [12.957, 77.6625]]) },
+  { name: 'Old Airport Road', lanes: 3, median: 4, pts: G([[12.961, 77.6387], [12.9585, 77.655], [12.957, 77.6625], [12.9568, 77.68], [12.9565, 77.7012]]) },
   { name: '100 Feet Road', lanes: 2, median: 3, pts: G([[12.9784, 77.6408], [12.969, 77.641], [12.961, 77.6387]]) },
   { name: 'Inner Ring Road', lanes: 3, median: 4, pts: G([[12.961, 77.6387], [12.95, 77.634], [12.9365, 77.626], [12.93, 77.6195]]) },
   { name: 'Sarjapur Road', lanes: 2, median: 3, pts: G([[12.9365, 77.626], [12.928, 77.64], [12.92, 77.6575], [12.915, 77.664]]) },
   { name: 'Outer Ring Road', lanes: 3, median: 4, pts: G([[13.0285, 77.5404], [13.0055, 77.5155], [12.985, 77.507], [12.96, 77.51], [12.9418, 77.5245], [12.927, 77.54], [12.9185, 77.556], [12.915, 77.5735], [12.9168, 77.5868], [12.9177, 77.5996], [12.9166, 77.6101], [12.9177, 77.6238], [12.922, 77.646], [12.9265, 77.6635]]) },
-  { name: 'Outer Ring Road', lanes: 3, median: 4, pts: G([[13.0285, 77.5404], [13.04, 77.556], [13.0358, 77.597], [13.039, 77.62], [13.03, 77.645], [13.022, 77.6635]]) },
+  { name: 'Outer Ring Road', lanes: 3, median: 4, pts: G([[13.0285, 77.5404], [13.04, 77.556], [13.0358, 77.597], [13.039, 77.62], [13.03, 77.645], [13.022, 77.6635], [13.0095, 77.674], [12.9985, 77.676], [12.989, 77.6915], [12.972, 77.698], [12.9565, 77.7012], [12.9395, 77.6955], [12.9265, 77.6635]]) },
   { name: 'Hennur Road', lanes: 2, median: 0, pts: G([[12.9907, 77.6525], [13.004, 77.632], [13.0145, 77.62], [13.039, 77.62]]) },
   { name: 'Cunningham Road', lanes: 1, median: 0, pts: G([[12.985, 77.5872], [12.9866, 77.5932], [12.985, 77.5992]]) },
   { name: 'Infantry Road', lanes: 1, median: 0, pts: G([[12.985, 77.5992], [12.9836, 77.6085], [12.9798, 77.6145]]) },
@@ -59,7 +74,8 @@ export const JUNCTION_NAMES = [
   ['South End Circle', 12.9382, 77.58], ['Banashankari Junction', 12.915, 77.5735], ['Silk Board Junction', 12.9177, 77.6238],
   ['Sony World Junction', 12.9365, 77.626], ['Domlur Junction', 12.961, 77.6387], ['Nayandahalli Junction', 12.9418, 77.5245],
   ['Jayadeva Junction', 12.9177, 77.5996], ['Dairy Circle', 12.938, 77.6005], ['Indiranagar 100 Ft Junction', 12.9784, 77.6408],
-  ['Vijayanagar Junction', 12.9706, 77.5372], ['Rajajinagar Junction', 12.9995, 77.5497], ['Deepanjali Nagar Junction', 12.9518, 77.5372],
+  ['Vijayanagar Junction', 12.9706, 77.5372], ['K.R. Puram Junction', 12.9985, 77.676], ['Marathahalli Bridge', 12.9565, 77.7012],
+  ['Hoodi Junction', 12.9905, 77.7115], ['Yelahanka Junction', 13.1007, 77.5963], ['Trumpet Interchange', 13.205, 77.67], ['Kadugodi Junction', 12.996, 77.7625], ['Rajajinagar Junction', 12.9995, 77.5497], ['Deepanjali Nagar Junction', 12.9518, 77.5372],
 ];
 
 // Namma Metro: station [en, kn, lat, lon, underground].
@@ -81,6 +97,13 @@ export const METRO = [
       ['Trinity', 'ಟ್ರಿನಿಟಿ', 12.973, 77.617], ['Halasuru', 'ಹಲಸೂರು', 12.976, 77.6268],
       ['Indiranagar', 'ಇಂದಿರಾನಗರ', 12.9784, 77.6385], ['Swami Vivekananda Road', 'ಸ್ವಾಮಿ ವಿವೇಕಾನಂದ ರಸ್ತೆ', 12.986, 77.6449],
       ['Baiyappanahalli', 'ಬೈಯಪ್ಪನಹಳ್ಳಿ', 12.9907, 77.6525],
+      // Whitefield extension (positions approximate).
+      ['Benniganahalli', 'ಬೆನ್ನಿಗಾನಹಳ್ಳಿ', 12.995, 77.6635], ['Krishnarajapura', 'ಕೃಷ್ಣರಾಜಪುರ', 12.9985, 77.676],
+      ['Singayyanapalya', 'ಸಿಂಗಯ್ಯನಪಾಳ್ಯ', 12.9955, 77.6905], ['Garudacharapalya', 'ಗರುಡಾಚಾರಪಾಳ್ಯ', 12.9935, 77.7006],
+      ['Hoodi', 'ಹೂಡಿ', 12.9905, 77.7115], ['Seetharampalya', 'ಸೀತಾರಾಮಪಾಳ್ಯ', 12.988, 77.7195], ['Kundalahalli', 'ಕುಂದಲಹಳ್ಳಿ', 12.984, 77.7265],
+      ['Nallurhalli', 'ನಲ್ಲೂರಹಳ್ಳಿ', 12.9835, 77.7345], ['Sri Sathya Sai Hospital', 'ಶ್ರೀ ಸತ್ಯ ಸಾಯಿ ಆಸ್ಪತ್ರೆ', 12.985, 77.742],
+      ['Pattandur Agrahara', 'ಪಟ್ಟಂದೂರು ಅಗ್ರಹಾರ', 12.987, 77.748], ['Kadugodi Tree Park', 'ಕಾಡುಗೋಡಿ ಟ್ರೀ ಪಾರ್ಕ್', 12.9905, 77.754],
+      ['Hopefarm Channasandra', 'ಹೋಪ್‌ಫಾರ್ಮ್ ಚನ್ನಸಂದ್ರ', 12.9935, 77.759], ['Whitefield (Kadugodi)', 'ವೈಟ್‌ಫೀಲ್ಡ್ (ಕಾಡುಗೋಡಿ)', 12.996, 77.7625],
     ],
   },
   {
@@ -109,12 +132,14 @@ export const METRO = [
 // Indian Railways: KSR City (Majestic) out to Yeshwanthpur and Tumkur, and east via Cantonment.
 export const RAIL_LINES = [
   { name: 'KSR - Yeshwanthpur', pts: G([[12.9785, 77.569], [12.986, 77.562], [12.997, 77.5605], [13.01, 77.5585], [13.0235, 77.5575], [13.032, 77.548], [13.042, 77.527], [13.049, 77.508], [13.055, 77.484]]) },
-  { name: 'KSR - Cantonment', pts: G([[12.9785, 77.569], [12.9815, 77.578], [12.988, 77.5905], [12.9935, 77.599], [12.996, 77.615], [12.9975, 77.633], [12.999, 77.65], [13.0005, 77.6635]]) },
+  { name: 'KSR - Cantonment', pts: G([[12.9785, 77.569], [12.9815, 77.578], [12.988, 77.5905], [12.9935, 77.599], [12.996, 77.615], [12.9975, 77.633], [12.999, 77.65], [13.0005, 77.6635], [13.0035, 77.678], [13.0015, 77.695], [12.9995, 77.714], [12.998, 77.74], [12.9975, 77.7605], [12.998, 77.775]]) },
 ];
 export const RAIL_STATIONS = [
   { name: 'Krantivira Sangolli Rayanna (Bengaluru City) Station', kn: 'ಬೆಂಗಳೂರು ನಗರ ರೈಲು ನಿಲ್ದಾಣ', board: 'KSR BENGALURU CITY JN.', short: 'KSR BENGALURU', at: geo(12.9785, 77.569), line: 0 },
   { name: 'Yeshwanthpur Junction', kn: 'ಯಶವಂತಪುರ ಜಂಕ್ಷನ್', board: 'YESHWANTHPUR JN.', short: 'YESHWANTHPUR', at: geo(13.0235, 77.5575), line: 0 },
   { name: 'Bengaluru Cantonment', kn: 'ಬೆಂಗಳೂರು ದಂಡು', board: 'BENGALURU CANTT.', short: 'BENGALURU CANTT.', at: geo(12.9935, 77.599), line: 1 },
+  { name: 'Krishnarajapuram', kn: 'ಕೃಷ್ಣರಾಜಪುರಂ', board: 'KRISHNARAJAPURAM', short: 'K.R. PURAM', at: geo(13.003, 77.682), line: 1 },
+  { name: 'Whitefield', kn: 'ವೈಟ್‌ಫೀಲ್ಡ್', board: 'WHITEFIELD', short: 'WHITEFIELD', at: geo(12.9976, 77.757), line: 1 },
 ];
 
 // Open spaces: polygons (game coords) the street grid stays out of.
@@ -159,7 +184,22 @@ export const DISTRICTS = [
   D('Vijayanagar', 12.97, 77.53, 'residential'), D('Magadi Road', 12.974, 77.555, 'mixed'), D('Nagarbhavi', 12.962, 77.505, 'residential'),
   D('Deepanjali Nagar', 12.952, 77.545, 'mixed'), D('Nayandahalli', 12.942, 77.53, 'industrial'), D('Rajarajeshwari Nagar', 12.928, 77.515, 'residential'),
   D('Kengeri', 12.91, 77.49, 'mixed'), D('Kengeri Satellite Town', 12.925, 77.48, 'residential'), D('Sumanahalli', 12.99, 77.5, 'residential'),
+  D('K.R. Puram', 13.002, 77.68, 'market'), D('Mahadevapura', 12.99, 77.695, 'towers'), D('Marathahalli', 12.956, 77.701, 'commercial', { pubs: true }),
+  D('Brookefield', 12.966, 77.717, 'residential'), D('Hoodi', 12.99, 77.712, 'mixed'), D('ITPL', 12.986, 77.736, 'towers'), D('Whitefield', 12.97, 77.75, 'towers'),
+  D('Kadugodi', 12.997, 77.762, 'mixed'), D('Varthur', 12.94, 77.745, 'residential'), D('Kundalahalli', 12.966, 77.72, 'mixed'),
+  D('Yelahanka', 13.1007, 77.5963, 'mixed'), D('Yelahanka New Town', 13.102, 77.58, 'residential'), D('Kodigehalli', 13.06, 77.585, 'residential'),
+  D('Jakkur', 13.07, 77.61, 'residential'), D('Sahakara Nagar', 13.06, 77.595, 'residential'), D('Thanisandra', 13.06, 77.635, 'residential'),
 ];
+
+// Countryside around the city: blocks outside URBAN take the nearest of these names.
+export const RURAL_DISTRICTS = [
+  ['Bettahalasur', 13.15, 77.61], ['Devanahalli', 13.19, 77.67], ['Bagalur', 13.135, 77.665], ['Jala Hobli', 13.17, 77.6],
+  ['Rajanukunte', 13.13, 77.55], ['Budigere Cross', 13.08, 77.7], ['Hoskote Road', 13.02, 77.73], ['Kannamangala', 12.95, 77.77],
+  ['Sarjapur Outskirts', 12.89, 77.72], ['Kadusonnappanahalli', 13.11, 77.7], ['Chikkajala', 13.165, 77.63], ['Hesaraghatta Road', 13.08, 77.53],
+].map(([name, lat, lon]) => { const [x, z] = geo(lat, lon); return { name, x, z, zone: 'rural' }; });
+
+// Kempegowda International Airport: the street grid stays out of it.
+export const AIRPORT = { name: 'Kempegowda International Airport', poly: rectPoly(...geo(13.214, 77.684), ...geo(13.184, 77.73)) };
 
 // Specific blocks (by a point inside) with a landmark or a special zone.
 const B = (lat, lon, props) => { const [x, z] = geo(lat, lon); return { at: [x, z], ...props }; };
@@ -175,6 +215,8 @@ export const SPECIAL_BLOCKS = [
   B(12.973, 77.6005, { zone: 'commercial', landmark: 'cathedral', district: "St. Mark's" }),
   B(12.971, 77.5965, { zone: 'towers', landmark: 'skyTower', district: 'Ashok Nagar' }),
   B(12.9775, 77.5735, { zone: 'landmark', landmark: 'busStand', district: 'Majestic' }),
+  B(13.199, 77.708, { zone: 'landmark', landmark: 'airport', district: 'Kempegowda International Airport' }),
+  B(12.9866, 77.7366, { zone: 'towers', landmark: 'itpl', district: 'ITPL' }),
 ];
 
 // Where you respawn.
@@ -182,11 +224,12 @@ export const POLICE_STATIONS = [
   ['Upparpet Police Station', 12.978, 77.574], ['Cubbon Park Police Station', 12.9745, 77.5985], ['Yeshwanthpur Police Station', 13.022, 77.548],
   ['Jayanagar Police Station', 12.928, 77.583], ['Koramangala Police Station', 12.935, 77.62], ['Indiranagar Police Station', 12.973, 77.64],
   ['Peenya Police Station', 13.031, 77.525], ['Kengeri Police Station', 12.912, 77.488], ['Hebbal Police Station', 13.036, 77.6],
+  ['Whitefield Police Station', 12.9705, 77.748], ['Yelahanka Police Station', 13.1, 77.595], ['K.R. Puram Police Station', 13.0, 77.678], ['KIA Airport Police Station', 13.198, 77.69],
 ].map(([name, lat, lon]) => { const [x, z] = geo(lat, lon); return { name, x, z }; });
 export const HOSPITALS = [
   ['Victoria Hospital', 12.9605, 77.5735], ['Bowring Hospital', 12.9835, 77.6045], ["St. John's Hospital", 12.9305, 77.6215],
   ['ESI Hospital, Rajajinagar', 12.995, 77.552], ['Jayadeva Hospital', 12.918, 77.6005], ['Manipal Hospital', 12.9585, 77.648],
-  ['Kempegowda Institute, Vijayanagar', 12.968, 77.538],
+  ['Kempegowda Institute, Vijayanagar', 12.968, 77.538], ['Vydehi Hospital, Whitefield', 12.976, 77.727], ['Yelahanka General Hospital', 13.098, 77.598],
 ].map(([name, lat, lon]) => { const [x, z] = geo(lat, lon); return { name, x, z }; });
 
 // Hotels and malls with lit crown signs (placed in the block containing the point).
@@ -195,6 +238,8 @@ export const HOTEL_SITES = [
   { at: geo(12.9655, 77.597), label: 'ITC Gardenia', name: 'ITC GARDENIA', sub: 'A LUXURY COLLECTION HOTEL', bg: '#2e4a2a', fg: '#f0e6c8', floors: 14, tint: 0xe0d8c8 },
   { at: geo(12.974, 77.612), label: 'Taj MG Road', name: 'TAJ MG ROAD', sub: 'BENGALURU', bg: '#1a1a1a', fg: '#d8b56a', floors: 12, tint: 0xf0e6d4, style: 'apartment' },
   { at: geo(13.0115, 77.5555), label: 'Orion Mall', name: 'ORION MALL', sub: 'BRIGADE GATEWAY', bg: '#ffffff', fg: '#c8102e', floors: 5, mall: true, tint: 0xf0ece4 },
+  { at: geo(12.9975, 77.6965), label: 'Phoenix Marketcity', name: 'PHOENIX MARKETCITY', sub: 'MAHADEVAPURA', bg: '#1a1a1a', fg: '#f0c040', floors: 5, mall: true, tint: 0xece6dc },
+  { at: geo(12.989, 77.728), label: 'Nexus Shantiniketan', name: 'NEXUS SHANTINIKETAN', sub: 'WHITEFIELD', bg: '#0f2a4a', fg: '#ffffff', floors: 5, mall: true, tint: 0xe4e8ee },
   { at: geo(12.9905, 77.5715), label: 'Mantri Square Mall', name: 'MANTRI SQUARE', sub: 'MALLESHWARAM', bg: '#2a1a5a', fg: '#ffffff', floors: 6, mall: true, tint: 0xe8e4f0 },
 ];
 

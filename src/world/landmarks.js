@@ -1,6 +1,7 @@
 // Stylised versions of central Bengaluru landmarks, built from primitives.
 import * as THREE from 'three';
 import { FACADE_TILE, GLASS_TILE } from './textures.js';
+import { BuilderSet, makeFrame } from './meshBuilder.js';
 
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -382,7 +383,168 @@ function silkBoardOffice(ctx, block) {
   return { name: 'Central Silk Board', x: cx, z: cz + 30 };
 }
 
+
+// ---------------------------------------------------------------------------------------------
+// Kempegowda International Airport: runway, taxiway, apron with parked jets, Terminal 1, the
+// "terminal in a garden" (T2), the control tower, a perimeter fence, and departures that taxi,
+// roll and climb out every minute or so.
+const LIVERIES = [
+  { body: 0xf4f4f4, tail: 0x1c2a8a, belly: 0x1c2a8a, name: 'IndiGo' },
+  { body: 0xf4f4f4, tail: 0xd8202a, belly: 0xd8202a, name: 'Air India' },
+  { body: 0xf6f2ea, tail: 0xf07a20, belly: 0xf07a20, name: 'Akasa Air' },
+  { body: 0xf4f4f4, tail: 0x5a2a7a, belly: 0x6a6a6a, name: 'Air India Express' },
+];
+
+// A narrow-body jet along local +x (nose at +x), wheels at y = 0.
+export function buildPlane(b, liv) {
+  const L = 37, R = 2.0, cy = 3.2;
+  put(b, G.cyl, 0, cy, 0, liv.body, 0, R, L - 6, R, 0, Math.PI / 2);
+  put(b, G.sphere, (L - 6) / 2, cy, 0, liv.body, 0, 3.2, R, R);
+  put(b, G.sphere, -(L - 6) / 2, cy + 0.4, 0, liv.body, 0, 4.5, R * 0.75, R * 0.85);
+  b.box(0, cy - 1.6, 0, L - 12, 0.6, 2.4, liv.belly); // belly stripe
+  b.box(L / 2 - 4.2, cy + 0.6, 0, 1.4, 0.5, 3.2, 0x1a2228); // cockpit windows
+  for (let x = -12; x <= 12; x += 1.6) b.box(x, cy + 0.6, 0, 0.5, 0.45, 4.02, 0x1a2228);
+  // Wings, swept back, with engines.
+  for (const sd of [-1, 1]) {
+    put(b, G.box, -1.5, cy - 0.9, sd * 8.5, liv.body, sd * 0.45, 5.5, 0.4, 16, 0, 0);
+    put(b, G.cyl, 2.2, cy - 2.1, sd * 5.6, 0xd8d8d8, 0, 1.0, 3.6, 1.0, 0, Math.PI / 2);
+    put(b, G.box, -16.5, cy + 0.6, sd * 3.6, liv.body, sd * 0.5, 2.6, 0.25, 6, 0, 0); // tailplane
+  }
+  put(b, G.box, -16, cy + 4.2, 0, liv.tail, 0, 6, 7, 0.4, 0, -0.5); // fin
+  // Landing gear.
+  b.box(L / 2 - 6, 0.5, 0, 0.4, 1.4, 0.4, 0x333333);
+  for (const sd of [-1, 1]) b.box(-1, 0.6, sd * 2.6, 1.2, 1.2, 0.6, 0x222222);
+}
+
+function airport(ctx, block) {
+  const { B, colliders, signs, group } = ctx;
+  const i = block.inner;
+  ctx.lawn(block, 0x8a9a50);
+  const stone = B.get('stone'), asphalt = B.get('junction'), plaza = B.get('plaza'), glass = B.get('glass'), roof = B.get('roof');
+  const W = i.maxX - i.minX, y = 0.17;
+  // Runway along the north of the site, taxiway and apron south of it.
+  const rz = i.minZ + 70, rw = 45, rx0 = i.minX + 30, rx1 = i.maxX - 30;
+  asphalt.rect(rx0, rx1, rz - rw / 2, rz + rw / 2, y, 0x4a4a4a, (x, z) => [x / 8, -z / 8]);
+  for (let x = rx0 + 60; x < rx1 - 60; x += 30) stone.box(x, y, rz, 15, 0.02, 0.9, 0xf2f2f2, { sides: false });
+  for (const end of [rx0 + 8, rx1 - 8]) for (let k = -4; k <= 4; k++) if (k) stone.box(end, y, rz + k * 4.4, 18, 0.02, 1.8, 0xf2f2f2, { sides: false });
+  for (const sd of [-1, 1]) stone.box((rx0 + rx1) / 2, y, rz + sd * (rw / 2 - 1), rx1 - rx0, 0.02, 0.5, 0xf2f2f2, { sides: false });
+  const tz = rz + 80;
+  asphalt.rect(rx0 + 40, rx1 - 40, tz - 12, tz + 12, y, 0x555555, (x, z) => [x / 8, -z / 8]);
+  for (let x = rx0 + 40; x < rx1 - 40; x += 6) stone.box(x, y, tz, 3, 0.02, 0.3, 0xf2c200, { sides: false });
+  for (const x of [rx0 + 60, (rx0 + rx1) / 2, rx1 - 60]) asphalt.rect(x - 12, x + 12, rz + rw / 2, tz - 12, y, 0x555555, (px, pz) => [px / 8, -pz / 8]);
+  const az0 = tz + 20, az1 = i.maxZ - 120;
+  plaza.rect(i.minX + 120, i.maxX - 120, az0, az1, y, 0xc8c4bc, (x, z) => [x / 6, -z / 6]);
+  // Terminal 1 and Terminal 2 along the south side, facing the forecourt road.
+  const termZ = i.maxZ - 70;
+  const t1x = i.minX + 260, t2x = i.minX + 560;
+  stone.box(t1x, 0.15, termZ, 220, 18, 46, 0xe8e4dc, { topBuilder: roof, topTile: 10 });
+  glass.box(t1x, 0.15, termZ + 23.05, 210, 15, 0.2, 0x9ab8d0, { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, top: false });
+  stone.box(t1x, 18.15, termZ + 8, 236, 1.2, 70, 0xf4f2ee); // the big canopy roof
+  for (let x = t1x - 105; x <= t1x + 105; x += 15) put(stone, G.cyl8, x, 9.6, termZ + 38, 0xdcdcdc, 0, 0.5, 18, 0.5);
+  colliders.addCentered(t1x, termZ, 220, 46, 19, 'building');
+  // T2: timber-and-glass, with a green roof garden and hanging plants.
+  glass.box(t2x, 0.15, termZ, 240, 16, 50, 0xb8d0c8, { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, top: false });
+  stone.box(t2x, 16.15, termZ, 252, 1.2, 62, 0x9a6a3a);
+  B.get('grass').rect(t2x - 120, t2x + 120, termZ - 28, termZ + 28, 17.4, 0x6a9a3a, (x, z) => [x / 6, -z / 6]);
+  for (let x = t2x - 110; x <= t2x + 110; x += 12) { put(stone, G.cyl8, x, 8, termZ + 26, 0xb08050, 0, 0.6, 16, 0.6); put(stone, G.sphere, x, 14.5, termZ + 26, 0x4a8a2a, 0, 2.2, 1.6, 2.2); }
+  colliders.addCentered(t2x, termZ, 240, 50, 17, 'building');
+  signs.push({ key: 'kia1', text: ['ಕೆಂಪೇಗೌಡ ಅಂತರರಾಷ್ಟ್ರೀಯ ವಿಮಾನ ನಿಲ್ದಾಣ', 'KEMPEGOWDA INTERNATIONAL AIRPORT BENGALURU'], x: t1x, y: 21.5, z: termZ + 43.1, w: 120, h: 6, face: 's', bg: '#0f2a4a', fg: '#ffffff' });
+  signs.push({ key: 'kia2', text: ['TERMINAL 2', 'ಟರ್ಮಿನಲ್ 2'], x: t2x, y: 19.2, z: termZ + 31.1, w: 40, h: 5, face: 's', bg: '#3a5a2a', fg: '#f4f0e0' });
+  signs.push({ key: 'kia3', text: ['TERMINAL 1 · DEPARTURES', 'ನಿರ್ಗಮನ'], x: t1x, y: 15, z: termZ + 23.3, w: 40, h: 4, face: 's', bg: '#1a1a1a', fg: '#f2c200' });
+  // Control tower.
+  const cx = i.minX + 410, cz = az1 - 30;
+  put(stone, G.cyl, cx, 26, cz, 0xe8e4dc, 0, 3.5, 52, 3.5);
+  put(glass, G.cyl8, cx, 55, cz, 0x406080, 0, 7, 6, 7);
+  put(stone, G.cyl8, cx, 58.5, cz, 0xf2f2f2, 0, 7.6, 1, 7.6);
+  colliders.addCentered(cx, cz, 8, 8, 60, 'building');
+  // Parked jets at the stands in front of the terminals.
+  const stands = [];
+  for (let k = 0; k < 9; k++) stands.push({ x: i.minX + 170 + k * 52, z: termZ - 62 });
+  stands.forEach((st, k) => {
+    const f = makeFrame(st.x, st.z, -Math.PI / 2); // nose towards the terminal (+z)
+    B.xf = f;
+    buildPlane(B.get('stone'), LIVERIES[k % LIVERIES.length]);
+    B.xf = null;
+    colliders.addCentered(st.x, st.z, 5, 36, 6, 'building');
+    colliders.addCentered(st.x, st.z - 1.5, 34, 6, 4, 'low');
+  });
+  // Perimeter fence with the gate on the forecourt side.
+  const fence = (x0, z0, x1, z1) => {
+    const len = Math.hypot(x1 - x0, z1 - z0);
+    B.xf = makeFrame((x0 + x1) / 2, (z0 + z1) / 2, Math.atan2(-(z1 - z0), x1 - x0));
+    B.get('metal').box(0, 0.15, 0, len, 2.6, 0.08, 0x9aa0a6);
+    B.xf = null;
+    colliders.addSegment(x0, z0, x1, z1, 0.3, 2.8, 'wall');
+  };
+  fence(i.minX, i.minZ, i.maxX, i.minZ); fence(i.maxX, i.minZ, i.maxX, i.maxZ); fence(i.minX, i.minZ, i.minX, i.maxZ);
+  fence(i.minX, az1 + 10, t1x - 120, az1 + 10); fence(t2x + 130, az1 + 10, i.maxX, az1 + 10);
+  // Departures: one jet at a time taxis onto the runway, rolls, rotates and climbs away.
+  const pb = new BuilderSet();
+  buildPlane(pb.get('m'), LIVERIES[0]);
+  const plane = new THREE.Group();
+  pb.buildAll({ m: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.2 }) }, plane);
+  group.add(plane);
+  let t = 20, liv = 0;
+  const paint = (k) => {
+    const L = LIVERIES[k], old = LIVERIES[(k + LIVERIES.length - 1) % LIVERIES.length];
+    plane.traverse((o) => {
+      if (!o.isMesh) return;
+      const c = o.geometry.attributes.color;
+      for (const [from, to] of [[old.tail, L.tail], [old.belly, L.belly]]) {
+        const a = new THREE.Color(from), b2 = new THREE.Color(to);
+        for (let q = 0; q < c.count; q++) if (Math.abs(c.getX(q) - a.r) < 0.004 && Math.abs(c.getY(q) - a.g) < 0.004 && Math.abs(c.getZ(q) - a.b) < 0.004) c.setXYZ(q, b2.r, b2.g, b2.b);
+      }
+      c.needsUpdate = true;
+    });
+  };
+  ctx.anims.push((dt) => {
+    t += dt;
+    const cycle = 90;
+    if (t > cycle) { t = 0; liv = (liv + 1) % LIVERIES.length; paint(liv); }
+    const roll = rx1 - rx0 - 200;
+    let x, yy = 0, pitch = 0, vis = true;
+    plane.rotation.order = 'YZX';
+    let yaw = 0;
+    if (t < 25) {
+      // Taxi north from the taxiway onto the runway, then line up facing east.
+      x = rx0 + 60; vis = t > 2;
+      plane.position.set(x, 0.17, tz + (rz - tz) * Math.min(1, t / 20));
+      yaw = t < 20 ? Math.PI / 2 : (Math.PI / 2) * (1 - (t - 20) / 5);
+    } else {
+      const tt = t - 25, a = 2.2, d = 0.5 * a * tt * tt;
+      x = rx0 + 60 + Math.min(d, roll + 3000);
+      if (d > roll) { const over = d - roll; yy = over * Math.tan(0.14); pitch = Math.min(0.16, over / 150); }
+      vis = yy < 900;
+      plane.position.set(x, 0.17 + yy, rz);
+    }
+    plane.rotation.set(0, yaw, pitch);
+    plane.visible = vis;
+  });
+  return { name: 'Kempegowda International Airport', x: t1x, z: termZ + 50 };
+}
+
+// International Tech Park Bangalore (ITPL), Whitefield: glass towers named after explorers.
+function itpl(ctx, block) {
+  const { B, colliders, signs, plaza } = ctx;
+  const { cx, cz, w, d } = centre(block);
+  plaza(block, 0xe4e0d8);
+  const glass = B.get('glass'), stone = B.get('stone'), roof = B.get('roof');
+  const names = ['DISCOVERER', 'INNOVATOR', 'CREATOR', 'VOYAGER'];
+  const cells = [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]];
+  cells.forEach(([fx, fz], k) => {
+    const x = cx + fx * w, z = cz + fz * d, H = 38 + k * 9;
+    const s = Math.min(w, d) * 0.32;
+    glass.box(x, 0.15, z, s, H, s * 0.8, [0xa8c4dc, 0xb8d4c8, 0xc0c8dc, 0xa0b8d0][k], { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, topBuilder: roof });
+    stone.box(x, H + 0.15, z, s + 0.6, 1.2, s * 0.8 + 0.6, 0xe8e8e8);
+    colliders.addCentered(x, z, s, s * 0.8, H + 2, 'building');
+    signs.push({ key: 'itpl' + k, text: [names[k]], x, y: H - 3, z: z + s * 0.4 + 0.05, w: s * 0.8, h: 2.4, face: 's', bg: '#0f2a4a', fg: '#ffffff' });
+  });
+  signs.push({ key: 'itplGate', text: ['ITPL', 'INTERNATIONAL TECH PARK BANGALORE'], x: cx, y: 4, z: block.inner.maxZ - 1, w: 16, h: 3, face: 's', bg: '#ffffff', fg: '#0f2a4a' });
+  stone.box(cx, 0.15, block.inner.maxZ - 1.2, 18, 2.4, 0.6, 0x2a2a2a);
+  return { name: 'ITPL', x: cx, z: block.inner.maxZ + 3 };
+}
+
 export const LANDMARKS = {
   vidhanaSoudha, highCourt, library, bandstand, stadium, cathedral, skyTower, statue,
-  ibcPlatinumCity, busStand, iskcon, wtc, glassHouse, forumMall, silkBoardOffice,
+  ibcPlatinumCity, busStand, airport, itpl, iskcon, wtc, glassHouse, forumMall, silkBoardOffice,
 };

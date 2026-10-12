@@ -124,7 +124,8 @@ export function buildCity(scene, layout, colliders, renderer) {
       trees.push({ x: cx + Math.cos(a) * radius, z: cz + Math.sin(a) * radius, s: rand(0.7, 1.0), t: k % 3 === 0 ? 1 : 0 });
     }
   };
-  const ctx = { B, colliders, signs, sign, lawn, plaza, pois, trees: scatterTrees, layout, mats, tex, group, roadMats };
+  const anims = []; // per-frame updates registered by landmarks (the airport's planes)
+  const ctx = { B, colliders, signs, sign, lawn, plaza, pois, trees: scatterTrees, layout, mats, tex, group, roadMats, anims };
 
   // ---------- Roads, underpasses, flyovers, railway ----------
   const infra = buildInfrastructure(ctx);
@@ -164,6 +165,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   function buildZone(block) {
     switch (block.zone) {
       case 'park': buildPark(block); break;
+      case 'rural': buildRural(block); break;
       case 'lake': buildLake(block); break;
       case 'landmark': pois.landmarks.push(LANDMARKS[block.landmark](ctx, block)); reserveInner(block); break;
       case 'towers': buildTowers(block); break;
@@ -624,8 +626,28 @@ export function buildCity(scene, layout, colliders, renderer) {
     }
   }
 
+  // Countryside: a patchwork of fields, the odd farmhouse, coconut and eucalyptus trees.
+  function buildRural(block) {
+    lawn(block, 0xb0b070);
+    const FIELDS = [0x8aa040, 0x9ab048, 0xb8a860, 0x7a9a3a, 0xa89858, 0xc0b878, 0x6a8a30];
+    const lots = lotsAlong(block, [40, 90], [35, 70], { gapChance: 0.5, rings: 2 });
+    const g = B.get('grass');
+    eachLot(lots, (lot) => {
+      g.rect(lot.minX + 0.5, lot.maxX - 0.5, lot.minZ + 0.5, lot.maxZ - 0.5, CURB_H + 0.02, pick(FIELDS), (x, z) => [x / 5, -z / 5]);
+      if (lot.road && rng() < 0.18) {
+        const w = Math.min(10, lot.maxX - lot.minX - 4);
+        building({ minX: (lot.minX + lot.maxX) / 2 - w / 2, maxX: (lot.minX + lot.maxX) / 2 + w / 2, minZ: lot.maxZ - 12, maxZ: lot.maxZ - 3, face: 's' }, { style: 'plaster', floors: rng() < 0.7 ? 1 : 2, tint: pick(PASTELS), block });
+        for (let k = 0; k < 4; k++) treeAt(lot.minX + rand(1, 6), lot.maxZ - rand(2, 14), rand(0.8, 1.2), 0);
+      } else if (rng() < 0.35) {
+        // A line of trees along the field boundary.
+        for (let x = lot.minX + 3; x < lot.maxX - 2; x += rand(6, 10)) treeAt(x, lot.minZ + 1.5, rand(0.8, 1.3), 0);
+      }
+    });
+    scatterInBlock(block, Math.min(40, Math.round(block.area / 6000)), 0.05, 8);
+  }
+
   function avenueTrees(block) {
-    if (block.zone === 'lake') return;
+    if (block.zone === 'lake' || block.zone === 'rural') return;
     const cbd = Math.abs(block.cx - 300) < 500 && Math.abs(block.cz) < 450;
     const base = block.zone === 'commercial' || block.zone === 'market' || block.zone === 'industrial' ? 30 : cbd ? 16 : 22;
     kerbRuns(block, 1.0, (k) => {
@@ -639,6 +661,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   }
 
   function streetLamps(block) {
+    if (block.zone === 'rural') return;
     kerbRuns(block, 0.4, (k) => {
       const spacing = k.w > 14 ? 36 : 58;
       for (let s = 12 + rand(0, 10); s < k.len - 8; s += spacing) {
@@ -668,6 +691,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   for (const m of cullable) { m.geometry.computeBoundingSphere(); m.userData.c = m.geometry.boundingSphere.center.clone(); m.userData.r = m.geometry.boundingSphere.radius; }
   let cullT = 0;
   const update = (dt, t, camera) => {
+    for (const a of anims) a(dt, t, camera);
     mats.water.normalMap.offset.set(t * 0.01, t * 0.006);
     treeLod(camera);
     if (camera && (cullT -= dt) <= 0) {

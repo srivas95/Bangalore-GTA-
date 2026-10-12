@@ -22,7 +22,11 @@ npm run dev        # open the printed URL (default http://localhost:5173)
 ```
 
 `npm run build` writes a static site to `dist/` that can be hosted anywhere (GitHub Pages, Netlify, etc.).
-On slower machines press **O** for performance mode.
+On slower machines open **Settings** on the pause screen (quality presets, resolution, shadows, draw distance,
+traffic density) or press **O** for the Low preset.
+
+**Phones and tablets** get touch controls automatically: a joystick on the left for walking and steering, drag on
+the right to look, and buttons that change between on foot and driving.
 
 ### Controls
 
@@ -46,17 +50,21 @@ On slower machines press **O** for performance mode.
 | R | Radio on/off |
 | K | Summon (or stop) the monsoon |
 | T | Fast-forward time ×30; on the metro, skip the wait or the ride |
-| O | Performance mode |
+| O | Quick switch to the Low graphics preset |
 | Esc | Pause |
 
 ## What's in the game
 
 ### The map: real Bengaluru
 
-- It's built from **real geography** at 1/5 scale around Majestic: about 4 km × 4.4 km of game world,
-  from Nagasandra and Peenya in the north-west to Electronic City Road in the south-east.
+- It's built from **real geography** at 1/5 scale around Majestic: about 6.3 km × 7.8 km of game world,
+  from Kengeri in the south-west to **Whitefield** in the east and **Kempegowda International Airport**
+  in the north.
+- The city proper gets a dense street grid. Yelahanka, Whitefield and K.R. Puram are built up too,
+  and the countryside in between has fields, farmhouses and village roads.
 - **About 36 arterials** follow their real alignments: Tumkur Road, Mysore Road, Bellary Road,
-  Hosur Road, Old Madras Road, both arcs of the Outer Ring Road, MG Road, Chord Road and more.
+  Hosur Road, Old Madras Road, the whole Outer Ring Road loop, MG Road, Chord Road, the **airport
+  road (NH 44)**, the Hennur–Bagalur road, ITPL Main Road, Whitefield Main Road and more.
   A street grid fills the neighbourhoods between them.
 - Blocks are real polygons, and buildings sit on lots that face their road.
 - About **60 neighbourhoods**, each with its own character: markets in Chickpete and K.R. Market,
@@ -65,21 +73,23 @@ On slower machines press **O** for performance mode.
   Bangalore University, and Ulsoor, Sankey, Hebbal, Madiwala, Agara and Yediyur lakes.
 - **Landmarks** sit at their real locations: Vidhana Soudha, the High Court, Chinnaswamy Stadium,
   St. Mark's Cathedral, ISKCON, WTC at Brigade Gateway, IBC Platinum City, the Forum, Central Silk
-  Board, the Lalbagh Glass House, the State Central Library and the **Kempegowda Bus Station**
-  at Majestic.
+  Board, the Lalbagh Glass House, the State Central Library, the **Kempegowda Bus Station**
+  at Majestic, **ITPL** in Whitefield, and the **airport** with both terminals, the control tower,
+  parked jets and departures taking off every minute and a half.
 - **Flyovers.** The Silk Board and Hebbal flyovers carry the inner lanes over the junction. The
   Hebbal one follows Bellary Road round the bend.
 - **Underpasses.** Underpasses run wherever a road crosses the railway, plus the K.R. Circle and
   Okalipuram underpasses. They flood in the monsoon.
-- **Railway.** Indian Railways lines run from KSR Bengaluru City to Yeshwanthpur and Cantonment,
-  with level crossings and three stations. Trains follow the curves.
+- **Railway.** Indian Railways lines run from KSR Bengaluru City to Yeshwanthpur, and via
+  Cantonment and K.R. Puram to Whitefield. Five stations; trains follow the curves. At level
+  crossings the booms come down when a train is near and traffic queues behind them.
 - **Signals.** About 35 signalised junctions where arterials meet. Approaches are grouped by
   direction, with an all-red pedestrian phase. Traffic constables stand at the named junctions.
 
 ### Namma Metro
 
-- The **Purple Line** (Kengeri to Baiyappanahalli) and the **Green Line** (Nagasandra to
-  Silk Institute) run through their real stations.
+- The **Purple Line** (Kengeri to Whitefield (Kadugodi), including the Whitefield extension) and
+  the **Green Line** (Nagasandra to Silk Institute) run through their real stations.
 - The lines are elevated over the arterials and go underground through the centre: Majestic,
   Cubbon Park, Chickpete and K.R. Market.
 - **Riding:**
@@ -107,6 +117,14 @@ On slower machines press **O** for performance mode.
   - Crashes dent the body, and the engine smokes as it weakens.
   - Past a point the engine dies and the vehicle won't move.
   - Keep hitting it and it catches fire, explodes, and leaves a scorched wreck.
+
+### Garages and your own vehicles
+
+- Puncture-and-service stalls all over town, and **Chikka Motors** in Gandhinagar.
+- Drive into the blue bay to **repair** the damage or **respray**. A new colour clears a wanted
+  level of up to 3 stars, as long as no Hoysala saw you drive in.
+- Chikka Motors **sells vehicles**: an Activa, a Bullet, an auto and real car models up to a Scorpio.
+  What you buy is saved, waits outside Chikka Motors when you load, and can be brought to any garage.
 
 ### Traffic, people and police
 

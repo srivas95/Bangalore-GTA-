@@ -115,7 +115,7 @@ async function init() {
   }
   const types = ['scooter', 'scooter', 'bike', 'auto', 'hatch', 'sedan', 'taxi', 'suv', 'delivery'];
   for (const b of layout.blocks) {
-    if (b.edge || b.zone === 'lake' || b.zone === 'park' || b.zone === 'industrial' || b.zone === 'landmark') continue;
+    if (b.edge || b.zone === 'lake' || b.zone === 'park' || b.zone === 'industrial' || b.zone === 'landmark' || b.zone === 'rural') continue;
     const cbd = Math.hypot(b.cx - 300, b.cz) < 650;
     if (Math.random() > (cbd ? 0.3 : 0.06)) continue;
     const k = Math.floor(Math.random() * b.poly.length);
