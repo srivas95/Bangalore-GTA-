@@ -379,6 +379,12 @@ export class Traffic {
           }
         }
       }
+      // Level crossing gates down: wait behind them.
+      for (const lc of this.layout.levelCrossings) {
+        if (!lc.closed || a.edge.und !== lc.edge) continue;
+        const d = (lc.x - v.x) * Math.sin(v.heading) + (lc.z - v.z) * Math.cos(v.heading);
+        if (d > 10.5 && d < look + 20) { target = Math.min(target, Math.max(0, (d - 11.5) * 1.2)); a.waitingSignal = true; } // already past the gate: clear the tracks
+      }
       if (a.ghost > 0) a.ghost -= dt;
       else if (gap < Infinity) {
         const safe = (two ? 1.0 : a.erratic ? 1.4 : 2.0) + a.speed * (a.erratic ? 0.4 : 0.55);

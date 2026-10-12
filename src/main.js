@@ -24,6 +24,9 @@ import { Gangs } from './entities/gangs.js';
 import { HUD } from './ui/hud.js';
 import { MetroRide } from './systems/metroRide.js';
 import { Story } from './systems/story.js';
+import { Settings } from './systems/settings.js';
+import { TouchControls } from './ui/touch.js';
+import { Garages } from './systems/garages.js';
 import { LINES, CURB_H } from './config.js';
 import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, geo } from './world/mapdata.js';
 
@@ -153,7 +156,11 @@ async function init() {
     setHour: (h) => { env.hour = h; },
     footpathNear, park, metroRide,
   };
+  world.free = free;
   const story = new Story(scene, hud, audio, missions, world);
+  world.saveGame = () => story.save();
+  const garages = new Garages(scene, layout, colliders, hud, audio, missions, world, city.pois);
+  world.garages = garages;
 
   // ---------- Crashes and explosions ----------
   world.onVehicleImpact = (a, b, speed, cx, cz) => {
@@ -313,6 +320,30 @@ async function init() {
     pending = null;
   };
 
+  // ---------- Settings and touch controls ----------
+  const settings = new Settings();
+  const touch = new TouchControls(input, settings);
+  settings.buildPanel(document.getElementById('help'));
+  settings.onReset = () => { story.reset(); missions.money = 500; hud.setMoney(500, true); world.garages?.reset?.(); };
+  document.getElementById('open-settings').addEventListener('click', () => settings.toggle(true));
+  settings.onChange((s) => {
+    pixelRatio = Math.min(devicePixelRatio, 1.5) * s.resScale;
+    renderer.setPixelRatio(pixelRatio);
+    composer.setPixelRatio(pixelRatio);
+    env.sun.castShadow = s.shadows;
+    useBloom = s.bloom;
+    env.drawDist = s.drawDist;
+    camera.far = 400 + 1000 * s.drawDist;
+    camera.updateProjectionMatrix();
+    traffic.target = Math.round(170 * s.traffic);
+    traffic.radius = 260 + 120 * Math.min(1, s.drawDist);
+    streetLife.walkerTarget = Math.round(110 * s.peds);
+    rig.sens = s.sensitivity;
+    rig.invert = s.invertY;
+    audio.setVolume?.(s.volume);
+    touch.setEnabled(settings.touchEnabled);
+  });
+
   // ---------- Start / pause ----------
   const startBtn = document.getElementById('start');
   document.getElementById('loading').style.display = 'none';
@@ -320,21 +351,27 @@ async function init() {
   let started = false, paused = true;
   const resume = () => {
     audio.start();
-    input.lock();
+    if (touch.enabled) {
+      // Phones: full screen, landscape, no pointer lock.
+      document.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
+    } else input.lock();
     hud.toggleHelp(false);
+    settings.toggle(false);
     paused = false;
     if (!started) {
       started = true;
       startBtn.textContent = 'Resume';
       hud.toast('Majestic', 'Bengaluru');
       hud.lastDistrict = layout.blockAt(player.x, player.z).district;
-      setTimeout(() => hud.say('Tip: grab the red scooter (F). Gigs ping your phone. The monsoon comes when it wants (or press K).', 7), 2500);
+      setTimeout(() => hud.say(touch.enabled ? 'Tip: tap CAR next to the red scooter. Gigs ping your phone.' : 'Tip: grab the red scooter (F). Gigs ping your phone. The monsoon comes when it wants (or press K).', 7), 2500);
     }
   };
+  const pause = () => { paused = true; hud.toggleHelp(true); };
+  touch.onPause = pause;
   startBtn.addEventListener('click', resume);
-  renderer.domElement.addEventListener('click', () => { if (!paused) input.lock(); });
+  renderer.domElement.addEventListener('click', () => { if (!paused && !touch.enabled) input.lock(); });
   document.addEventListener('pointerlockchange', () => {
-    if (!document.pointerLockElement && started && !hud.el.map.classList.contains('show')) { paused = true; hud.toggleHelp(true); }
+    if (!document.pointerLockElement && started && !touch.enabled && !hud.el.map.classList.contains('show')) pause();
   });
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
@@ -343,18 +380,11 @@ async function init() {
     composer.setSize(innerWidth, innerHeight);
   });
   let radioOn = true;
-  let perfMode = false;
-  const setPerf = (on) => {
-    perfMode = on;
-    pixelRatio = on ? Math.min(devicePixelRatio, 1) * 0.75 : Math.min(devicePixelRatio, 1.5);
-    renderer.setPixelRatio(pixelRatio);
-    composer.setPixelRatio(pixelRatio);
-    env.sun.castShadow = !on;
-    useBloom = !on;
-    traffic.target = on ? 100 : 170;
-    traffic.radius = on ? 300 : 380;
-    streetLife.walkerTarget = on ? 60 : 110;
-    hud.say(on ? 'Performance mode ON (lower resolution, no shadows/bloom, lighter traffic)' : 'Performance mode OFF', 2.5);
+  // O: quick switch between the Low preset and whatever you had.
+  let beforeLow = null;
+  const togglePerf = () => {
+    if (settings.get('quality') === 'low' && beforeLow) { settings.set(beforeLow); beforeLow = null; hud.say('Performance mode OFF', 2); }
+    else { beforeLow = { ...settings.values }; settings.preset('low'); hud.say('Performance mode ON (Low preset; see Settings)', 2.5); }
   };
 
   // ---------- Loop ----------
@@ -374,7 +404,7 @@ async function init() {
     if (input.hit('KeyR')) { radioOn = !radioOn; hud.say(radioOn ? 'Radio on' : 'Radio off', 1.2); }
     if (input.hit('KeyK')) { env.setRain(!env.raining); hud.say(env.raining ? 'Dark clouds roll in over Bengaluru…' : 'The rain eases off.', 2.5); }
     if (input.hit('KeyT') && !metroRide.active) { env.timeScale = env.timeScale > 1 ? 1 : 30; hud.say(env.timeScale > 1 ? 'Time ×30' : 'Time normal', 1.5); }
-    if (input.hit('KeyO')) setPerf(!perfMode);
+    if (input.hit('KeyO')) togglePerf();
 
     // Rush hour is real.
     const h = env.hour;
@@ -394,7 +424,10 @@ async function init() {
       if (screenT <= 0) respawn();
     } else if (metroRide.active) {
       metroRide.update(dt, input, world, missions, camera);
+    } else if (garages.menu) {
+      garages.update(dt, input);
     } else {
+      garages.update(dt, input);
       const wasIn = player.vehicle;
       player.update(dt, input, rig.yaw, world);
       if (player.vehicle && !free.includes(player.vehicle)) free.push(player.vehicle);
@@ -437,7 +470,8 @@ async function init() {
     story.update(dt, input);
     audio.setRain(env.rain);
 
-    if (metroRide.active) hud.prompt('');
+    if (metroRide.active || garages.menu) hud.prompt('');
+    else if (garages.nearStall) { /* the garage set its own prompt */ }
     else if (entrance) hud.prompt(`E  Namma Metro · ${entrance.st.en}`);
     else if (!player.vehicle && !pending) {
       let near = null;
@@ -454,6 +488,7 @@ async function init() {
     const markers = missions.markers.concat(story.markers);
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
     hud.update(dt, player, rig.yaw, markers);
+    touch.update({ driving: !!player.vehicle, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police, use: !!entrance || !!story.active || garages.nearStall || !!garages.menu, offer: !!missions.offer, metro: metroRide.active });
     { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
     world.rigPitch = rig.pitch;
     hud.setClock(env.clockString(), env.rain > 0.6 ? '⛈ Monsoon' : env.rain > 0.1 ? '🌧 Rain' : env.night > 0.5 ? '🌙 Clear' : '☀ Clear');

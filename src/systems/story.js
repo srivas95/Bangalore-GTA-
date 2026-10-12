@@ -15,7 +15,7 @@ const PLACES = {
   shop1: [12.9688, 77.5745], shop2: [12.9662, 77.5752], shop3: [12.9655, 77.578], shop4: [12.9645, 77.5758],
   krMarket: [12.9618, 77.5772],
   apmc: [13.0305, 77.5345], godown: [13.0335, 77.5185],
-  chikka: [12.9808, 77.5795], // Chikka's garage
+  chikka: [12.9765, 77.5786], // Chikka's garage (Chikka Motors)
   site: [12.9758, 77.5585], // half-built site off Magadi Road
 };
 

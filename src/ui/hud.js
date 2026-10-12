@@ -325,6 +325,9 @@ export class HUD {
     ctx.font = 'bold 11px sans-serif';
     for (const l of this.pois.landmarks) { if (!l) continue; ctx.strokeText('◆ ' + l.name, X(l.x), Zm(l.z) + 14); ctx.fillText('◆ ' + l.name, X(l.x), Zm(l.z) + 14); }
     ctx.fillStyle = '#9fd8ff';
+    ctx.fillStyle = '#ffb060';
+    for (const g of this.pois.garages || []) { ctx.strokeText('🔧 ' + g.name, X(g.x), Zm(g.z)); ctx.fillText('🔧 ' + g.name, X(g.x), Zm(g.z)); }
+    ctx.fillStyle = '#9fd8ff';
     for (const f of this.pois.fuel || []) { ctx.strokeText('⛽ ' + f.name, X(f.x), Zm(f.z)); ctx.fillText('⛽ ' + f.name, X(f.x), Zm(f.z)); }
     ctx.lineWidth = 1;
     for (const m of markers) {

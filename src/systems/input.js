@@ -6,6 +6,7 @@ export class Input {
     this.mouseDX = 0;
     this.mouseDY = 0;
     this.wheel = 0;
+    this.stick = null;
     this.locked = false;
     this.canvas = canvas;
     addEventListener('keydown', (e) => {
@@ -45,8 +46,16 @@ export class Input {
     return codes.some((c) => this.pressed.has(c));
   }
 
+  // -1..1. The touch joystick (this.stick, screen-space x right / y down) gives analog values.
   axis(neg, pos) {
-    return (this.down(...pos) ? 1 : 0) - (this.down(...neg) ? 1 : 0);
+    const d = (this.down(...pos) ? 1 : 0) - (this.down(...neg) ? 1 : 0);
+    const st = this.stick;
+    if (d || !st) return d;
+    if (pos.includes('KeyW')) return -st.y;
+    if (pos.includes('KeyS')) return st.y;
+    if (pos.includes('KeyD')) return st.x;
+    if (pos.includes('KeyA')) return -st.x;
+    return 0;
   }
 
   endFrame() {

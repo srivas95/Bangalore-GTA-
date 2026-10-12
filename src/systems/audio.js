@@ -29,13 +29,18 @@ export class Audio {
     this.enabled = false;
   }
 
+  setVolume(v) {
+    this.volume = v;
+    if (this.master) this.master.gain.value = 0.875 * v;
+  }
+
   start() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.7;
+    this.master.gain.value = 0.875 * (this.volume ?? 0.8);
     this.comp = this.ctx.createDynamicsCompressor();
     this.master.connect(this.comp).connect(this.ctx.destination);
     this.enabled = true;

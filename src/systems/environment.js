@@ -222,7 +222,8 @@ export class Environment {
     fc.lerp(new THREE.Color(day > 0.5 ? 0x8a9298 : 0x1a1e24), rain * 0.85);
     this.scene.fog.color.copy(fc);
     this.scene.fog.near = lerp(150, 25, rain);
-    this.scene.fog.far = lerp(lerp(800, 520, night), 240, rain);
+    this.scene.fog.far = lerp(lerp(800, 520, night), 240, rain) * (this.drawDist ?? 1);
+    this.scene.fog.near = Math.min(this.scene.fog.near, this.scene.fog.far * 0.5);
 
     this.sky.position.copy(this.camera.position);
     // Under monsoon clouds the sky is a flat grey: show the fog colour instead of the clear-sky model.

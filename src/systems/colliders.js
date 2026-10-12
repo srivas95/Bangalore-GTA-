@@ -92,7 +92,7 @@ export class Colliders {
     for (let iter = 0; iter < 3; iter++) {
       let moved = false;
       for (const b of hits) {
-        if (b.h < y + 0.3 || b.y0 > y + 1.2) continue; // low enough to step over, or overhead
+        if (b.off || b.h < y + 0.3 || b.y0 > y + 1.2) continue; // switched off (open gate), low enough to step over, or overhead
         if (b.rot) {
           const c = this.circleOBB(b.rot, x, z, r);
           if (!c) continue;
@@ -159,7 +159,7 @@ export class Colliders {
   // Is the point inside a box taller than y?
   pointBlocked(x, z, y, tag) {
     const hits = this.query(x, x, z, z, this._tmp2 || (this._tmp2 = []));
-    for (const b of hits) if (b.h > y && b.y0 < y && (!tag || b.tag === tag) && this.inside(b, x, z)) return true;
+    for (const b of hits) if (!b.off && b.h > y && b.y0 < y && (!tag || b.tag === tag) && this.inside(b, x, z)) return true;
     return false;
   }
 }

@@ -13,6 +13,8 @@ export class CameraRig {
     this.shakeAmt = 0;
     this.current = new THREE.Vector3();
     this.first = true;
+    this.sens = 1;
+    this.invert = false;
   }
 
   shake(a) {
@@ -22,8 +24,8 @@ export class CameraRig {
   update(dt, input, player, colliders) {
     const v = player.vehicle;
     if (input.mouseDX || input.mouseDY) this.idle = 0; else this.idle += dt;
-    this.yaw -= input.mouseDX * 0.0025;
-    this.pitch = THREE.MathUtils.clamp(this.pitch + input.mouseDY * 0.002, -0.15, 1.2);
+    this.yaw -= input.mouseDX * 0.0025 * this.sens;
+    this.pitch = THREE.MathUtils.clamp(this.pitch + input.mouseDY * 0.002 * this.sens * (this.invert ? -1 : 1), -0.15, 1.2);
     if (input.wheel) this.zoom = THREE.MathUtils.clamp(this.zoom + input.wheel * 0.1, 0.5, 2.2);
 
     let tx, ty, tz, baseDist;

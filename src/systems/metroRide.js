@@ -26,9 +26,16 @@ export class MetroRide {
   buildDom() {
     const el = document.createElement('div');
     el.id = 'metro-menu';
-    el.innerHTML = '<div class="mm-head"><span class="mm-logo">ⓜ</span> <b>NAMMA METRO</b> · ನಮ್ಮ ಮೆಟ್ರೋ<div class="mm-sub"></div></div><div class="mm-lines"></div><div class="mm-foot">W/S choose · A/D line · E buy token · Q cancel</div>';
+    el.innerHTML = '<div class="mm-head"><span class="mm-logo">ⓜ</span> <b>NAMMA METRO</b> · ನಮ್ಮ ಮೆಟ್ರೋ<div class="mm-sub"></div></div><div class="mm-lines"></div><div class="mm-foot">W/S choose · A/D line · E buy token · Q cancel <u>(tap here to cancel)</u></div>';
     document.getElementById('hud').appendChild(el);
     this.el = el;
+    // Tap a station to buy a token (touch screens), tap the line title to switch lines.
+    el.addEventListener('click', (e) => {
+      const st = e.target.closest('.mm-st');
+      if (st) { this.sel = +st.dataset.i; this.tapBuy = true; return; }
+      if (e.target.closest('.mm-title')) this.tapLine = true;
+      if (e.target.closest('.mm-foot')) this.tapCancel = true;
+    });
     const banner = document.createElement('div');
     banner.id = 'metro-banner';
     document.getElementById('hud').appendChild(banner);
@@ -83,7 +90,7 @@ export class MetroRide {
       const here = s.en === this.here.en;
       const fare = here ? '' : `₹${FARE(this.stops(legs))}`;
       const change = legs.length > 1 ? ' <i>change at Majestic</i>' : '';
-      return `<div class="mm-st${i === this.sel ? ' sel' : ''}${here ? ' here' : ''}"><span class="mm-dot" style="border-color:${col}"></span><span class="mm-name">${s.en}<small>${s.kn}</small>${change}</span><span class="mm-fare">${here ? 'YOU ARE HERE' : fare}</span></div>`;
+      return `<div data-i="${i}" class="mm-st${i === this.sel ? ' sel' : ''}${here ? ' here' : ''}"><span class="mm-dot" style="border-color:${col}"></span><span class="mm-name">${s.en}<small>${s.kn}</small>${change}</span><span class="mm-fare">${here ? 'YOU ARE HERE' : fare}</span></div>`;
     });
     this.el.querySelector('.mm-lines').innerHTML = `<div class="mm-line" style="--c:${col}"><div class="mm-title">${line.name} ${this.routes.length > 1 ? '◀ ▶' : ''}</div><div class="mm-list">${list.join('')}</div></div>`;
     this.el.querySelector('.mm-st.sel')?.scrollIntoView({ block: 'nearest' });
@@ -93,13 +100,15 @@ export class MetroRide {
     const line = this.routes[this.lineIdx];
     if (input.hit('KeyW', 'ArrowUp')) { this.sel = (this.sel - 1 + line.stations.length) % line.stations.length; this.renderMenu(); }
     if (input.hit('KeyS', 'ArrowDown')) { this.sel = (this.sel + 1) % line.stations.length; this.renderMenu(); }
-    if (input.hit('KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight')) {
+    const tapLine = this.tapLine, tapBuy = this.tapBuy, tapCancel = this.tapCancel;
+    this.tapLine = this.tapBuy = this.tapCancel = false;
+    if (input.hit('KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight') || tapLine) {
       this.lineIdx = (this.lineIdx + 1) % this.routes.length;
       this.sel = Math.min(this.sel, this.routes[this.lineIdx].stations.length - 1);
       this.renderMenu();
     }
-    if (input.hit('KeyQ', 'Backspace')) { this.close(); return; }
-    if (input.hit('KeyE', 'Enter')) {
+    if (input.hit('KeyQ', 'Backspace') || tapCancel) { this.close(); return; }
+    if (input.hit('KeyE', 'Enter') || tapBuy) {
       const to = this.routes[this.lineIdx].stations[this.sel];
       if (to.en === this.here.en) { this.hud.say('You\'re already here.', 1.5); return; }
       const from = this.here.line === to.line ? this.here : this.stationsByName(this.here.en).find((s) => s.line === to.line) || this.here;

@@ -89,21 +89,67 @@ export function buildRailway(ctx) {
     }
   }
 
-  // Level crossing booms (raised) on both sides of the track.
+  // Level crossings: a full-width boom on each side that comes down when a train is near, with
+  // flashing red lamps. Closed booms block the road (and traffic waits for them).
+  const boomMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 });
+  const lampOn = new THREE.MeshBasicMaterial({ color: 0xff2010, toneMapped: false }), lampOff = new THREE.MeshBasicMaterial({ color: 0x401010 });
+  const crossings = [];
   for (const lc of layout.levelCrossings) {
     const e = lc.edge, ux = (e.b.x - e.a.x) / e.len, uz = (e.b.z - e.a.z) / e.len, hw = e.r.width / 2;
     const f = makeFrame(lc.x, lc.z, Math.atan2(ux, uz));
+    const line = lines.find((l) => l.name === lc.rail.name) || lines[0];
+    const c = { lc, s: line.path.project(lc.x, lc.z).s, line, open: 1, booms: [], lamps: [], cols: [] };
     B.xf = f;
-    for (const s of [-1, 1]) {
-      const side = s * (hw + 0.8);
-      put(st, CYL, side, 0.8, s * 9, 0x333333, 0, 0.18, 1.6, 0.18);
-      for (let k = 0; k < 5; k++) put(st, BOX, side - s * 0.3, 2.0 + k * 0.85, s * 9, k % 2 ? 0xf2f2f2 : 0xd02020, 0, 0.12, 0.85, 0.12);
-      colliders.framed(f).addCentered(side, s * 9, 0.4, 0.4, 3, 'pole');
+    for (const sd of [-1, 1]) {
+      const side = sd * (hw + 0.8);
+      put(st, CYL, side, 0.8, sd * 9, 0x333333, 0, 0.18, 1.6, 0.18);
+      st.box(side, 1.6, sd * 9, 0.5, 0.5, 0.5, 0x222222);
+      colliders.framed(f).addCentered(side, sd * 9, 0.4, 0.4, 3, 'pole');
+      // The boom: a pivot at the post, striped arm reaching across the road.
+      const L = hw * 2 + 0.6;
+      const bb = new BuilderSet();
+      const n = Math.max(3, Math.round(L / 1.2));
+      for (let k = 0; k < n; k++) bb.get('m').box(-sd * (0.3 + (k + 0.5) * (L / n)), -0.07, 0, L / n, 0.14, 0.12, k % 2 ? 0xf2f2f2 : 0xd02020);
+      const arm = new THREE.Group();
+      bb.buildAll({ m: boomMat }, arm, { m: { castShadow: true } });
+      const pivot = new THREE.Group();
+      const [px, pz] = [f.ox + side * f.c + sd * 9 * f.s, f.oz - side * f.s + sd * 9 * f.c];
+      pivot.position.set(px, 1.25, pz);
+      pivot.rotation.y = f.ang;
+      pivot.add(arm);
+      group.add(pivot);
+      c.booms.push({ arm, sd });
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), lampOff);
+      lamp.position.set(px, 2.0, pz);
+      group.add(lamp);
+      c.lamps.push(lamp);
+      const box = colliders.framed(f).addCentered(0, sd * 9, L, 0.4, 1.5, 'wall');
+      box.off = true;
+      c.cols.push(box);
     }
     ctx.sign({ key: 'lc', text: ['LEVEL CROSSING', 'ಲೆವೆಲ್ ಕ್ರಾಸಿಂಗ್ · STOP LOOK GO'], bg: '#f2c200', fg: '#111', x: hw + 1.2, y: 2.2, z: -12, w: 2.6, h: 1.0, face: 's' });
     ctx.sign({ key: 'lc', text: ['LEVEL CROSSING', 'ಲೆವೆಲ್ ಕ್ರಾಸಿಂಗ್ · STOP LOOK GO'], bg: '#f2c200', fg: '#111', x: -hw - 1.2, y: 2.2, z: 12, w: 2.6, h: 1.0, face: 'n' });
     B.xf = null;
+    crossings.push(c);
   }
+  const updateCrossings = (dt) => {
+    const blink = Math.floor(performance.now() / 400) % 2;
+    for (const c of crossings) {
+      // Closed while a train is within 110 m of the crossing (either end of it).
+      let closed = false;
+      for (const t of trains) {
+        if (t.line !== c.line) continue;
+        const a = t.s, b = t.s - t.dir * t.len;
+        if (c.s > Math.min(a, b) - 110 && c.s < Math.max(a, b) + 110) { closed = true; break; }
+      }
+      c.lc.closed = closed;
+      const target = closed ? 0 : 1;
+      c.open += Math.sign(target - c.open) * Math.min(Math.abs(target - c.open), dt * 0.5);
+      for (const b of c.booms) b.arm.rotation.z = -b.sd * (Math.PI / 2) * 0.92 * c.open;
+      for (const box of c.cols) box.off = c.open > 0.35;
+      c.lamps.forEach((l, i) => { l.material = closed && (blink + i) % 2 ? lampOn : lampOff; });
+    }
+  };
 
   // Stations: two platforms, a station building and yellow name boards.
   for (const sn of stations) {
@@ -146,6 +192,7 @@ export function buildRailway(ctx) {
   });
   const tmp = {};
   const update = (dt, world) => {
+    updateCrossings(dt);
     for (const t of trains) {
       const P = t.line.path;
       if (t.wait > 0) { t.wait -= dt; } else {
