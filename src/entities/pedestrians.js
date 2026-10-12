@@ -108,7 +108,7 @@ export class StreetLife {
   }
 
   buildChaiStalls() {
-    const B = new BuilderSet();
+    const B = new BuilderSet({ chunk: 320, release: true });
     const cyl = new THREE.CylinderGeometry(1, 1, 1, 10), cone = new THREE.ConeGeometry(1, 1, 10);
     const candidates = this.loops.filter((l) => ['commercial', 'market', 'mixed', 'towers', 'industrial'].includes(l.zone));
     candidates.forEach((L, k) => {
@@ -123,7 +123,7 @@ export class StreetLife {
       this.colliders.addCentered(q.x, q.z, 1.4, 0.8, 1.2, 'prop');
       this.stalls.push({ x: q.x, z: q.z, peds: [] });
     });
-    B.buildAll({ m: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }) }, this.scene, {}, 320);
+    B.buildAll({ m: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }) }, this.scene);
   }
 
   spawnCow(focus) {

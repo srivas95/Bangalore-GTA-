@@ -222,29 +222,164 @@ export function worldToFrame(f, x, z) {
   return [dx * f.c - dz * f.s, dx * f.s + dz * f.c];
 }
 
+// Growable typed array.
+class Grow {
+  constructor(Type, cap = 1024) { this.Type = Type; this.a = new Type(cap); this.n = 0; }
+  reserve(k) {
+    if (this.n + k <= this.a.length) return;
+    let cap = this.a.length * 2;
+    while (cap < this.n + k) cap *= 2;
+    const b = new this.Type(cap); b.set(this.a.subarray(0, this.n)); this.a = b;
+  }
+  view() { return this.a.slice(0, this.n); }
+}
+
+// Compact builder for the static world: indexed quads (4 vertices, not 6), 8-bit colours and
+// normals, and geometry routed into square chunks as it's added (no copying to split later).
+// Same drawing API as MeshBuilder (box, quad, quad4, tri, rect, addGeometry).
+export class ChunkBuilder extends MeshBuilder {
+  constructor(opts = {}) {
+    super(opts);
+    this.size = opts.chunk || 0;
+    this.chunks = new Map();
+    this.cur = null;
+  }
+
+  get empty() { for (const c of this.chunks.values()) if (c.count) return false; return true; }
+
+  // Pick the chunk for a primitive whose first vertex is at local (x, z).
+  begin(x, z) {
+    const f = this.ref && this.ref.xf;
+    const wx = f ? f.ox + x * f.c + z * f.s : x, wz = f ? f.oz - x * f.s + z * f.c : z;
+    const key = this.size ? `${Math.floor(wx / this.size)},${Math.floor(wz / this.size)}` : '0';
+    let c = this.chunks.get(key);
+    if (!c) this.chunks.set(key, (c = { pos: new Grow(Float32Array), nor: new Grow(Int8Array), uv: new Grow(Float32Array), col: new Grow(Uint8Array), idx: new Grow(Uint32Array), count: 0 }));
+    this.cur = c;
+    return c;
+  }
+
+  _vert(p, n, u, v, col) {
+    const c = this.cur, f = this.ref && this.ref.xf;
+    c.pos.reserve(3); c.nor.reserve(3); c.uv.reserve(2); c.col.reserve(3);
+    let px = p[0], pz = p[2], nx = n[0], nz = n[2];
+    if (f) { const x = px; px = f.ox + x * f.c + pz * f.s; pz = f.oz - x * f.s + pz * f.c; const q = nx; nx = q * f.c + nz * f.s; nz = -q * f.s + nz * f.c; }
+    const P = c.pos.a, k = c.pos.n; P[k] = px; P[k + 1] = p[1]; P[k + 2] = pz; c.pos.n += 3;
+    const N = c.nor.a, j = c.nor.n; N[j] = Math.round(nx * 127); N[j + 1] = Math.round(n[1] * 127); N[j + 2] = Math.round(nz * 127); c.nor.n += 3;
+    const U = c.uv.a, i = c.uv.n; U[i] = u; U[i + 1] = v; c.uv.n += 2;
+    const C = c.col.a, h = c.col.n; C[h] = Math.round(Math.min(1, col.r) * 255); C[h + 1] = Math.round(Math.min(1, col.g) * 255); C[h + 2] = Math.round(Math.min(1, col.b) * 255); c.col.n += 3;
+    return c.count++;
+  }
+
+  _index(...ids) {
+    const I = this.cur.idx; I.reserve(ids.length);
+    for (const id of ids) I.a[I.n++] = id;
+  }
+
+  quad(a, b, c, d, n, uv, color) {
+    const col = color instanceof THREE.Color ? color : _c.set(color ?? 0xffffff);
+    const [u0, v0, u1, v1] = uv;
+    this.begin(a[0], a[2]);
+    const i = this._vert(a, n, u0, v0, col); this._vert(b, n, u1, v0, col); this._vert(c, n, u1, v1, col); this._vert(d, n, u0, v1, col);
+    this._index(i, i + 1, i + 2, i, i + 2, i + 3);
+  }
+
+  quad4(a, b, c, d, n, ua, ub, uc, ud, color) {
+    const col = color instanceof THREE.Color ? color : _c.set(color ?? 0xffffff);
+    this.begin(a[0], a[2]);
+    const i = this._vert(a, n, ua[0], ua[1], col); this._vert(b, n, ub[0], ub[1], col); this._vert(c, n, uc[0], uc[1], col); this._vert(d, n, ud[0], ud[1], col);
+    this._index(i, i + 1, i + 2, i, i + 2, i + 3);
+  }
+
+  tri(a, b, c, n, ua, ub, uc, color) {
+    const col = color instanceof THREE.Color ? color : _c.set(color ?? 0xffffff);
+    this.begin(a[0], a[2]);
+    const i = this._vert(a, n, ua[0], ua[1], col); this._vert(b, n, ub[0], ub[1], col); this._vert(c, n, uc[0], uc[1], col);
+    this._index(i, i + 1, i + 2);
+  }
+
+  rect(minX, maxX, minZ, maxZ, y, color, uvFn = (x, z) => [x, -z]) {
+    const col = color instanceof THREE.Color ? color : _c.set(color ?? 0xffffff);
+    const n = [0, 1, 0];
+    this.begin(minX, maxZ);
+    const pts = [[minX, maxZ], [maxX, maxZ], [maxX, minZ], [minX, minZ]];
+    const i = this.cur.count;
+    for (const [x, z] of pts) { const [u, v] = uvFn(x, z); this._vert([x, y, z], n, u, v, col); }
+    this._index(i, i + 1, i + 2, i, i + 2, i + 3);
+  }
+
+  addGeometry(geo, matrix, color) {
+    const p = geo.attributes.position, nm = geo.attributes.normal, uv = geo.attributes.uv;
+    const col = color instanceof THREE.Color ? color : _c.set(color ?? 0xffffff);
+    _m3.getNormalMatrix(matrix);
+    this.begin(matrix.elements[12], matrix.elements[14]);
+    const base = this.cur.count;
+    const vp = [0, 0, 0], vn = [0, 0, 0];
+    for (let k = 0; k < p.count; k++) {
+      _v.fromBufferAttribute(p, k).applyMatrix4(matrix);
+      _n.fromBufferAttribute(nm, k).applyMatrix3(_m3).normalize();
+      vp[0] = _v.x; vp[1] = _v.y; vp[2] = _v.z; vn[0] = _n.x; vn[1] = _n.y; vn[2] = _n.z;
+      this._vert(vp, vn, uv ? uv.getX(k) : 0, uv ? uv.getY(k) : 0, col);
+    }
+    const I = this.cur.idx;
+    if (geo.index) { const src = geo.index.array; I.reserve(src.length); for (let k = 0; k < src.length; k++) I.a[I.n++] = base + src[k]; }
+    else { I.reserve(p.count); for (let k = 0; k < p.count; k++) I.a[I.n++] = base + k; }
+  }
+
+  split() { return [this]; }
+
+  // One geometry per chunk.
+  geometries() {
+    const out = [];
+    for (const c of this.chunks.values()) {
+      if (!c.count) continue;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(c.pos.view(), 3));
+      g.setAttribute('normal', new THREE.BufferAttribute(c.nor.view(), 3, true));
+      g.setAttribute('uv', new THREE.BufferAttribute(c.uv.view(), 2));
+      g.setAttribute('color', new THREE.BufferAttribute(c.col.view(), 3, true));
+      const idx = c.count < 65536 ? Uint16Array.from(c.idx.a.subarray(0, c.idx.n)) : c.idx.view();
+      g.setIndex(new THREE.BufferAttribute(idx, 1));
+      g.computeBoundingSphere();
+      g.computeBoundingBox();
+      out.push(g);
+    }
+    this.chunks.clear();
+    return out;
+  }
+}
+
+// Frees the CPU copy of a geometry's data once it's on the GPU.
+const release = function () { this.array = null; };
+
 export class BuilderSet {
-  constructor() {
+  // opts.chunk: route geometry into square cells of this size (frustum/distance culling).
+  // opts.release: drop the CPU-side arrays after upload (static geometry nobody edits later).
+  constructor(opts = {}) {
     this.map = new Map();
     this.ref = { xf: null }; // shared by every builder in the set
+    this.opts = opts;
   }
   get xf() { return this.ref.xf; }
   set xf(f) { this.ref.xf = f; }
   get(key) {
-    if (!this.map.has(key)) this.map.set(key, new MeshBuilder({ ref: this.ref }));
+    if (!this.map.has(key)) this.map.set(key, new ChunkBuilder({ ref: this.ref, chunk: this.opts.chunk }));
     return this.map.get(key);
   }
-  // chunk: split large builders into square cells of this size so meshes can be frustum-culled.
-  buildAll(materials, group, shadowOpts = {}, chunk = 0) {
+  buildAll(materials, group, shadowOpts = {}) {
     for (const [key, b] of this.map) {
       if (b.empty) continue;
       const mat = materials[key];
       if (!mat) throw new Error(`No material for builder "${key}"`);
-      const parts = chunk ? b.split(chunk) : [b];
-      for (const part of parts) {
-        const mesh = part.build(mat, shadowOpts[key] || {});
+      for (const g of b.geometries()) {
+        if (this.opts.release) for (const a of [...Object.values(g.attributes), g.index]) a.onUpload(release);
+        const mesh = new THREE.Mesh(g, mat);
+        const so = shadowOpts[key] || {};
+        mesh.castShadow = so.castShadow ?? true;
+        mesh.receiveShadow = so.receiveShadow ?? true;
         mesh.name = key;
         group.add(mesh);
       }
     }
+    this.map.clear();
   }
 }

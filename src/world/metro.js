@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { BuilderSet, makeFrame } from './meshBuilder.js';
 import { put } from './landmarks.js';
 import { textTexture } from './textures.js';
+import { textScale } from './detail.js';
 import { Path } from './path.js';
 import { METRO } from './mapdata.js';
 
@@ -83,7 +84,7 @@ export function buildMetro(scene, layout, colliders) {
     glow: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
   };
   const routes = metroRoutes();
-  const B = new BuilderSet();
+  const B = new BuilderSet({ chunk: 320, release: true });
   const con = B.get('concrete'), paint = B.get('paint'), metal = B.get('metal'), glass = B.get('glass'), glow = B.get('glow');
   const cyl = new THREE.CylinderGeometry(1, 1, 1, 16);
   const concrete = 0xbfbab0;
@@ -217,7 +218,7 @@ export function buildMetro(scene, layout, colliders) {
   const boardMats = new Map();
   for (const bd of boards) {
     const key = bd.text.join('|') + bd.bg;
-    if (!boardMats.has(key)) boardMats.set(key, new THREE.MeshBasicMaterial({ map: textTexture(bd.text, { bg: bd.bg, fg: bd.fg || '#ffffff', w: 1024, h: Math.round(1024 * bd.h / bd.w) }), toneMapped: false }));
+    if (!boardMats.has(key)) boardMats.set(key, new THREE.MeshBasicMaterial({ map: textTexture(bd.text, { bg: bd.bg, fg: bd.fg || '#ffffff', w: 1024, h: Math.round(1024 * bd.h / bd.w), scale: textScale(bd.w) }), toneMapped: false }));
     const m = new THREE.Mesh(new THREE.PlaneGeometry(bd.w, bd.h), boardMats.get(key));
     const f = bd.f;
     m.position.set(f.ox + bd.x * f.c + bd.z * f.s, bd.y, f.oz - bd.x * f.s + bd.z * f.c);

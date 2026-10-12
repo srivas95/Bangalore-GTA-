@@ -8,6 +8,7 @@ import { fanPoly, quadPts } from './geom.js';
 import * as T from './textures.js';
 import { CURB_H } from '../config.js';
 import { buildRailway } from './railway.js';
+import { DETAIL } from './detail.js';
 
 const SHRUB = new THREE.IcosahedronGeometry(1, 0);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 12);
@@ -137,7 +138,7 @@ export function buildInfrastructure(ctx) {
         B.xf = f;
         sw.box(0, 0, 0, mw, 0.35, l, 0xb0aaa0, { tileW: 2, tileH: 2, topBuilder: grass, topTile: 4 });
         colliders.framed(f).addCentered(0, 0, mw, l, 0.9, 'median');
-        for (let k = -l / 2 + 4; k < l / 2 - 3; k += 9) put(stone, SHRUB, 0, 0.75, k, 0x4f7a32, k, 0.8, 0.55, 0.8);
+        if (!DETAIL.lite) for (let k = -l / 2 + 4; k < l / 2 - 3; k += 9) put(stone, SHRUB, 0, 0.75, k, 0x4f7a32, k, 0.8, 0.55, 0.8);
         B.xf = null;
       }
       s = Math.max(s, c1);

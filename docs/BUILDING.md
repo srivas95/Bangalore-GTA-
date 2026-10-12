@@ -75,3 +75,8 @@ CI then builds a signed `assembleRelease` APK instead.
   back briefly.
 - Version numbers live in `package.json`, `apps/desktop/package.json` and
   `apps/mobile/android/app/build.gradle` (`versionCode` / `versionName`).
+- Phones build the city at **Lite** world detail: no roof parapets, rail sleepers or median shrubs,
+  simpler lamps and trees, and smaller sign textures. If a start crashes before the city is drawn
+  (usually the phone running out of memory), the next start drops one level automatically, to
+  Lite and then Minimum. You can change it under **Settings → World detail**; it applies after a
+  restart.

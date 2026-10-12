@@ -4,12 +4,12 @@ const ZONE_COLOURS = {
   park: '#5d8a46', lake: '#5d8a46', rural: '#9aa66a', landmark: '#b8ad98', gov: '#a8a090', residential: '#bfb29a',
   commercial: '#c9b9a0', market: '#d0b48c', towers: '#b0b8c0', mixed: '#c4b8a4', industrial: '#a8a4a0',
 };
-const MAP_SCALE = 0.32; // minimap texture pixels per metre
 
 const $ = (id) => document.getElementById(id);
 
 export class HUD {
-  constructor(layout, pois, { metro = [], rails = [] } = {}) {
+  constructor(layout, pois, { metro = [], rails = [], mapScale = 0.32 } = {}) {
+    this.mapScale = mapScale;
     this.layout = layout;
     this.pois = pois;
     this.metro = metro;
@@ -39,7 +39,7 @@ export class HUD {
     this.el.cross.id = 'crosshair';
     document.getElementById('hud').appendChild(this.el.cross);
     this.miniCtx = this.mini.getContext('2d');
-    this.mapCanvas = this.renderMap(MAP_SCALE);
+    this.mapCanvas = this.renderMap(this.mapScale);
     this.lastDistrict = null;
     this.toastT = 0;
     this.subT = 0;
@@ -267,8 +267,9 @@ export class HUD {
     // Rotate so the camera's view direction, -(sin yaw, cos yaw), points up.
     ctx.rotate(camYaw);
     ctx.scale(scale, scale);
-    ctx.scale(1 / MAP_SCALE, 1 / MAP_SCALE);
-    ctx.translate(-(p.x - this.W.minX) * MAP_SCALE, -(p.z - this.W.minZ) * MAP_SCALE);
+    const S0 = this.mapScale;
+    ctx.scale(1 / S0, 1 / S0);
+    ctx.translate(-(p.x - this.W.minX) * S0, -(p.z - this.W.minZ) * S0);
     ctx.drawImage(this.mapCanvas, 0, 0);
     ctx.restore();
     // Markers.

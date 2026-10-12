@@ -24,17 +24,34 @@ import { Gangs } from './entities/gangs.js';
 import { HUD } from './ui/hud.js';
 import { MetroRide } from './systems/metroRide.js';
 import { Story } from './systems/story.js';
-import { Settings } from './systems/settings.js';
+import { Settings, PRESETS } from './systems/settings.js';
 import { TouchControls } from './ui/touch.js';
 import { Garages } from './systems/garages.js';
 import { LINES, CURB_H } from './config.js';
-import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, geo } from './world/mapdata.js';
+import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, WORLD, geo } from './world/mapdata.js';
+import { DETAIL, setDetail } from './world/detail.js';
+
+const BOOT_KEY = 'namma-bengaluru-boot';
 
 async function init() {
   // Wait for the Kannada font so the canvas-painted signs render the script.
   try { await Promise.race([document.fonts.load('26px "Noto Sans Kannada"'), document.fonts.load('40px "Oswald"'), new Promise((r) => setTimeout(r, 2500))]); } catch { /* offline */ }
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  // World detail is fixed at build time. If the last start never got as far as drawing the city
+  // (a phone running out of memory kills the page), step down a level automatically.
+  const settings = new Settings();
+  let level = settings.detailLevel, fellBack = false;
+  try {
+    if (localStorage.getItem(BOOT_KEY) === 'starting' && level !== 'min') {
+      level = level === 'full' ? 'lite' : 'min';
+      fellBack = true;
+      settings.set({ detail: level, quality: 'low', ...PRESETS.low }, true);
+    }
+    localStorage.setItem(BOOT_KEY, 'starting');
+  } catch { /* storage blocked */ }
+  setDetail(level);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: !DETAIL.lite, powerPreference: 'high-performance' });
   let pixelRatio = Math.min(devicePixelRatio, 1.5);
   renderer.setPixelRatio(pixelRatio);
   renderer.setSize(innerWidth, innerHeight);
@@ -57,14 +74,23 @@ async function init() {
   traffic.prewarm(150, 16.5);
   const streetLife = new StreetLife(scene, layout, colliders, signals);
   const env = new Environment(scene, renderer, camera, layout, city);
+  if (DETAIL.lite) env.sun.shadow.mapSize.set(1024, 1024);
 
-  // Bloom makes lamps, signals and headlights glow at night.
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.2, 0.5, 0.9);
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass());
-  let useBloom = true;
+  // Bloom makes lamps, signals and headlights glow at night. Its render targets are only
+  // allocated once it's switched on.
+  let composer = null, bloom = null, useBloom = false;
+  const getComposer = () => {
+    if (!composer) {
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.2, 0.5, 0.9);
+      composer.addPass(bloom);
+      composer.addPass(new OutputPass());
+      composer.setPixelRatio(pixelRatio);
+      composer.setSize(innerWidth, innerHeight);
+    }
+    return composer;
+  };
 
   // Points on a footpath near a place, and kerbside spots along the nearest road.
   const footpathNear = (x, z) => {
@@ -130,7 +156,7 @@ async function init() {
   const rig = new CameraRig(camera);
   rig.yaw = 0;
   const audio = new Audio();
-  const hud = new HUD(layout, city.pois, { metro: metro.routes, rails: city.rail.lines });
+  const hud = new HUD(layout, city.pois, { metro: metro.routes, rails: city.rail.lines, mapScale: DETAIL.lite ? 0.26 : 0.32 });
   const missions = new Missions(scene, layout, city.pois, hud, audio);
   const police = new Police(scene, layout, colliders, hud, audio);
   env.onThunder = (delay) => audio.thunder(delay, 0.6 + Math.random() * 0.4);
@@ -321,7 +347,6 @@ async function init() {
   };
 
   // ---------- Settings and touch controls ----------
-  const settings = new Settings();
   const touch = new TouchControls(input, settings);
   settings.buildPanel(document.getElementById('help'));
   settings.onReset = () => { story.reset(); missions.money = 500; hud.setMoney(500, true); world.garages?.reset?.(); };
@@ -329,7 +354,7 @@ async function init() {
   settings.onChange((s) => {
     pixelRatio = Math.min(devicePixelRatio, 1.5) * s.resScale;
     renderer.setPixelRatio(pixelRatio);
-    composer.setPixelRatio(pixelRatio);
+    composer?.setPixelRatio(pixelRatio);
     env.sun.castShadow = s.shadows;
     useBloom = s.bloom;
     env.drawDist = s.drawDist;
@@ -363,7 +388,8 @@ async function init() {
       startBtn.textContent = 'Resume';
       hud.toast('Majestic', 'Bengaluru');
       hud.lastDistrict = layout.blockAt(player.x, player.z).district;
-      setTimeout(() => hud.say(touch.enabled ? 'Tip: tap CAR next to the red scooter. Gigs ping your phone.' : 'Tip: grab the red scooter (F). Gigs ping your phone. The monsoon comes when it wants (or press K).', 7), 2500);
+      if (fellBack) hud.say(`The last start ran out of memory, so the city is now built with ${level === 'min' ? 'minimum' : 'lite'} detail (Settings → World detail).`, 6);
+      setTimeout(() => hud.say(touch.enabled ? 'Tip: tap CAR next to the red scooter. Gigs ping your phone.' : 'Tip: grab the red scooter (F). Gigs ping your phone. The monsoon comes when it wants (or press K).', 7), fellBack ? 6500 : 2500);
     }
   };
   const pause = () => { paused = true; hud.toggleHelp(true); };
@@ -377,7 +403,7 @@ async function init() {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
-    composer.setSize(innerWidth, innerHeight);
+    composer?.setSize(innerWidth, innerHeight);
   });
   let radioOn = true;
   // O: quick switch between the Low preset and whatever you had.
@@ -394,7 +420,9 @@ async function init() {
     requestAnimationFrame(tick);
     const dt = Math.min(clock.getDelta(), 1 / 20);
     if (!paused) update(dt);
-    if (useBloom) { bloom.strength = 0.15 + env.night * 0.6; composer.render(); } else renderer.render(scene, camera);
+    if (useBloom) { const c = getComposer(); bloom.strength = 0.15 + env.night * 0.6; c.render(); } else renderer.render(scene, camera);
+    // A few seconds of drawing the city means this start worked.
+    if (bootOk && ++frames > 10 && performance.now() - bootT > 6000) { bootOk(); bootOk = null; }
   };
   const update = (dt) => {
     elapsed += dt;
@@ -494,10 +522,30 @@ async function init() {
     hud.setClock(env.clockString(), env.rain > 0.6 ? '⛈ Monsoon' : env.rain > 0.1 ? '🌧 Rain' : env.night > 0.5 ? '🌙 Clear' : '☀ Clear');
     input.endFrame();
   };
+  // Push all the static city geometry to the GPU once, from above, so the CPU-side copies can be
+  // dropped (BuilderSet release) instead of waiting for each chunk to come into view.
+  {
+    const cam = new THREE.OrthographicCamera(-(WORLD.maxX - WORLD.minX) / 2, (WORLD.maxX - WORLD.minX) / 2, (WORLD.maxZ - WORLD.minZ) / 2, -(WORLD.maxZ - WORLD.minZ) / 2, 1, 2000);
+    cam.position.set((WORLD.minX + WORLD.maxX) / 2, 900, (WORLD.minZ + WORLD.maxZ) / 2);
+    cam.up.set(0, 0, -1);
+    cam.lookAt(cam.position.x, 0, cam.position.z);
+    cam.updateMatrixWorld();
+    const rt = new THREE.WebGLRenderTarget(4, 4);
+    const auto = renderer.shadowMap.autoUpdate;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.setRenderTarget(rt);
+    renderer.render(scene, cam);
+    renderer.setRenderTarget(null);
+    renderer.shadowMap.autoUpdate = auto;
+    rt.dispose();
+  }
+  const bootT = performance.now();
+  let frames = 0;
+  let bootOk = () => { try { localStorage.removeItem(BOOT_KEY); } catch { /* ignore */ } };
   tick();
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, composer };
+  window.__game = { story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, get composer() { return getComposer(); } };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.

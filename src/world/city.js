@@ -12,6 +12,7 @@ import { HOTEL_SITES } from './mapdata.js';
 import { metroRoutes } from './metro.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CURB_H, SHOP_SIGNS, FUEL_BRANDS } from '../config.js';
+import { DETAIL, textScale } from './detail.js';
 
 const rng = T.mulberry32(20240607);
 const rand = (a = 0, b = 1) => a + (b - a) * rng();
@@ -29,7 +30,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   const group = new THREE.Group();
   group.name = 'city';
   scene.add(group);
-  const B = new BuilderSet();
+  const B = new BuilderSet({ chunk: CHUNK, release: true });
   const trees = [];
   const lamps = [];
   const tanks = [];
@@ -93,7 +94,7 @@ export function buildCity(scene, layout, colliders, renderer) {
 
   // ---------- Ground: soil everywhere, with holes where roads dip into underpasses ----------
   {
-    const gb = new BuilderSet();
+    const gb = new BuilderSet({ release: true });
     const Wd = layout.world, pad = 1600;
     const outer = [[Wd.minX - pad, Wd.minZ - pad], [Wd.maxX + pad, Wd.minZ - pad], [Wd.maxX + pad, Wd.maxZ + pad], [Wd.minX - pad, Wd.maxZ + pad]];
     const holes = layout.underpasses.map((u) => {
@@ -282,15 +283,20 @@ export function buildCity(scene, layout, colliders, renderer) {
     const top = y + h;
     if (floors > 0 && style !== 'glass') {
       const p = 0.25, ph = 0.9, st = B.get('stone');
-      st.box(cx, top, lot.minZ + p / 2, w, ph, p, tint);
-      st.box(cx, top, lot.maxZ - p / 2, w, ph, p, tint);
-      st.box(lot.minX + p / 2, top, cz, p, ph, d - 2 * p, tint);
-      st.box(lot.maxX - p / 2, top, cz, p, ph, d - 2 * p, tint);
+      // Roof parapets: about a third of the city's triangles, so phones skip them.
+      if (!DETAIL.lite) {
+        st.box(cx, top, lot.minZ + p / 2, w, ph, p, tint);
+        st.box(cx, top, lot.maxZ - p / 2, w, ph, p, tint);
+        st.box(lot.minX + p / 2, top, cz, p, ph, d - 2 * p, tint);
+        st.box(lot.maxX - p / 2, top, cz, p, ph, d - 2 * p, tint);
+      }
       // Black Sintex water tanks and the stair headroom: a Bengaluru skyline staple.
       const n = rng() < 0.8 ? 1 + Math.floor(rand(0, 2.5)) : 0;
       for (let k = 0; k < n; k++) { const [x, z] = W(rand(lot.minX + 1.2, lot.maxX - 1.2), rand(lot.minZ + 1.2, lot.maxZ - 1.2)); tanks.push([x, top, z, rand(0.8, 1.1)]); }
       if (rng() < 0.5 && w > 6 && d > 6) {
-        B.get('plaster').box(cx + rand(-w / 4, w / 4), top, cz + rand(-d / 4, d / 4), 3, 2.6, 3, tint, { tileW: T.FACADE_TILE.w, tileH: T.FACADE_TILE.h, topBuilder: roofB, topTile: 10 });
+        // (Random numbers drawn either way so the city is the same at every detail level.)
+        const hx = cx + rand(-w / 4, w / 4), hz = cz + rand(-d / 4, d / 4);
+        if (!DETAIL.lite) B.get('plaster').box(hx, top, hz, 3, 2.6, 3, tint, { tileW: T.FACADE_TILE.w, tileH: T.FACADE_TILE.h, topBuilder: roofB, topTile: 10 });
       }
     }
     col().add(lot.minX, lot.maxX, lot.minZ, lot.maxZ, top + 1, 'building');
@@ -587,7 +593,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     fillPoly(B.get('grass'), block.innerPoly, CURB_H + 0.01, 0xffffff, (x, z) => [x / 6, -z / 6], [water]);
     polyWalls(B.get('stone'), water, -0.6, CURB_H + 0.02, 0x8a8478, { inward: true, tile: 2 });
     fillPoly(B.get('stone'), water, -0.6, 0x5a5448);
-    const wb = new BuilderSet();
+    const wb = new BuilderSet({ release: true });
     fillPoly(wb.get('water'), water, 0.05, 0xffffff, (x, z) => [x / 40, -z / 40]);
     wb.buildAll({ water: mats.water }, group, { water: { castShadow: false } });
     for (let i = 0; i < water.length; i++) {
@@ -677,12 +683,12 @@ export function buildCity(scene, layout, colliders, renderer) {
   B.buildAll(mats, group, {
     junction: { castShadow: false }, zebra: { castShadow: false }, grass: { castShadow: false }, plaza: { castShadow: false },
     signs: { castShadow: false }, glow: { castShadow: false }, sidewalk: { castShadow: false },
-  }, CHUNK);
+  });
   for (const m of group.children) if (m.name.startsWith('road_')) m.castShadow = false;
 
   const treeLod = buildInstancedTrees(group, trees, colliders);
   const lampPools = buildLamps(group, lamps, colliders);
-  buildTanks(group, tanks);
+  buildTanks(group, DETAIL.min ? [] : tanks);
   const textSignMats = buildTextSigns(group, signs);
   for (const m of textSignMats) nightMats.push([m, 0.05, 0.8]);
 
@@ -759,7 +765,7 @@ function buildInstancedTrees(group, trees, colliders) {
     g.computeVertexNormals();
     return g;
   };
-  const hi = [canopy(true, 1, 6), canopy(false, 1, 5), canopy(false, 1, 4)];
+  const hi = DETAIL.lite ? [canopy(true, 1, 4), canopy(false, 1, 3), canopy(false, 0, 3)] : [canopy(true, 1, 6), canopy(false, 1, 5), canopy(false, 1, 4)];
   const lo = [canopy(true, 0, 3), canopy(false, 0, 3), canopy(false, 0, 2)];
   const trunkH = [4.2, 3.2, 1.8];
   const colours = [
@@ -823,10 +829,12 @@ function buildInstancedTrees(group, trees, colliders) {
 
 // Lamps: [x, z, armDirX, armDirZ] with the arm reaching out over the road.
 function buildLamps(group, lamps, colliders) {
-  const b = new BuilderSet();
+  const b = new BuilderSet({ chunk: CHUNK, release: true });
   const pole = b.get('metal');
   const head = b.get('glow');
-  const cyl = new THREE.CylinderGeometry(0.08, 0.12, 1, 6);
+  // Open-ended: the caps are never seen.
+  const cyl = new THREE.CylinderGeometry(0.08, 0.12, 1, DETAIL.lite ? 4 : 6, 1, true);
+  if (DETAIL.min) lamps = lamps.filter((_, k) => k % 2 === 0);
   for (const [x, z, ax, az] of lamps) {
     put(pole, cyl, x, 4.15, z, 0x6a6e72, 0, 1, 8, 1);
     b.xf = makeFrame(x, z, Math.atan2(ax, az));
@@ -835,7 +843,7 @@ function buildLamps(group, lamps, colliders) {
     b.xf = null;
     colliders.addCentered(x, z, 0.3, 0.3, 8, 'pole');
   }
-  b.buildAll({ metal: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.6 }), glow: new THREE.MeshBasicMaterial({ vertexColors: true }) }, group, { glow: { castShadow: false } }, CHUNK);
+  b.buildAll({ metal: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.6 }), glow: new THREE.MeshBasicMaterial({ vertexColors: true }) }, group, { glow: { castShadow: false } });
   // Pools of sodium light on the road, only visible at night.
   const poolMat = new THREE.MeshBasicMaterial({ map: T.lightPoolTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false });
   const geo = new THREE.PlaneGeometry(1, 1);
@@ -855,6 +863,7 @@ function buildLamps(group, lamps, colliders) {
 }
 
 function buildTanks(group, tanks) {
+  if (!tanks.length) return;
   const geo = new THREE.CylinderGeometry(0.6, 0.6, 1.3, 10);
   geo.translate(0, 0.65, 0);
   const inst = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6 }), tanks.length);
@@ -870,7 +879,7 @@ function buildTextSigns(group, signs) {
   for (const sg of signs) {
     let mat = cache.get(sg.key);
     if (!mat) {
-      const t = T.textTexture(sg.text, { bg: sg.bg || '#2a2622', fg: sg.fg || '#f2e6c8', w: 1024, h: Math.max(64, Math.round(1024 * sg.h / sg.w)), ...(sg.font && { font: sg.font }), fonts: sg.fonts });
+      const t = T.textTexture(sg.text, { bg: sg.bg || '#2a2622', fg: sg.fg || '#f2e6c8', w: 1024, h: Math.max(64, Math.round(1024 * sg.h / sg.w)), scale: textScale(sg.w), ...(sg.font && { font: sg.font }), fonts: sg.fonts });
       mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.7, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.05 });
       cache.set(sg.key, mat);
     }

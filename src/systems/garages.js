@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { BuilderSet, makeFrame } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 import { textTexture } from '../world/textures.js';
+import { textScale } from '../world/detail.js';
 import { geo } from '../world/mapdata.js';
 
 const SAVE_KEY = 'namma-bengaluru-garage-v1';
@@ -53,7 +54,7 @@ export class Garages {
     this.cool = 0;
     this.live = new Map(); // owned record -> the vehicle currently in the world
     this.buildDom();
-    const B = new BuilderSet();
+    const B = new BuilderSet({ release: true });
     for (const s of SITES) {
       const site = this.place(s);
       if (!site) continue;
@@ -112,7 +113,7 @@ export class Garages {
     B.xf = null;
     this.colliders.framed(f).addCentered(-W / 2 + 1, -0.1, 1.9, 1.2, 1.2, 'prop');
     // Sign board over the stall.
-    const tex = textTexture([s.kn, s.name.toUpperCase(), s.dealer ? 'SALES · SERVICE · RESPRAY' : 'PUNCTURE · SERVICE · RESPRAY'], { bg: s.dealer ? '#c0182a' : '#f2c200', fg: s.dealer ? '#ffffff' : '#111111', w: 1024, h: 300 });
+    const tex = textTexture([s.kn, s.name.toUpperCase(), s.dealer ? 'SALES · SERVICE · RESPRAY' : 'PUNCTURE · SERVICE · RESPRAY'], { bg: s.dealer ? '#c0182a' : '#f2c200', fg: s.dealer ? '#ffffff' : '#111111', w: 1024, h: 300, scale: textScale(W) });
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(W, W * 300 / 1024), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.15 }));
     const [wx, wz] = [s.x + s.nx * 1.25, s.z + s.nz * 1.25];
     sign.position.set(wx, 3.0 + W * 150 / 1024 + 0.1, wz);

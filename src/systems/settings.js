@@ -12,7 +12,7 @@ export const isTouchDevice = () => typeof window !== 'undefined' && (matchMedia?
 
 const defaults = () => ({
   quality: isTouchDevice() ? 'low' : 'high', ...PRESETS[isTouchDevice() ? 'low' : 'high'],
-  sensitivity: 1, invertY: false, volume: 0.8, touch: 'auto',
+  sensitivity: 1, invertY: false, volume: 0.8, touch: 'auto', detail: 'auto',
 });
 
 export class Settings {
@@ -38,6 +38,12 @@ export class Settings {
 
   onChange(f) { this.listeners.push(f); f(this.values); }
 
+  // World detail for the next start: 'full' on computers, 'lite' on phones (see world/detail.js).
+  get detailLevel() {
+    const d = this.values.detail;
+    return d === 'full' || d === 'lite' || d === 'min' ? d : isTouchDevice() ? 'lite' : 'full';
+  }
+
   get touchEnabled() { return this.values.touch === 'on' || (this.values.touch === 'auto' && isTouchDevice()); }
 
   // The panel: built on demand inside the pause screen.
@@ -61,6 +67,7 @@ export class Settings {
       ${row('Look sensitivity', slider('sensitivity', 0.3, 2.5, 0.05))}
       ${row('Invert look up/down', check('invertY'))}
       ${row('Volume', slider('volume', 0, 1, 0.05))}
+      ${row('World detail <small>(after restart)</small>', `<select data-k="detail"><option value="auto">Auto</option><option value="full">Full</option><option value="lite">Lite (phones)</option><option value="min">Minimum</option></select>`)}
       ${row('Touch controls', `<select data-k="touch"><option value="auto">Auto</option><option value="on">On</option><option value="off">Off</option></select>`)}
       <div class="sbtns"><button data-act="close">Done</button><button data-act="reset" class="ghost">Reset save game</button></div>`;
     const sync = () => {

@@ -68,7 +68,7 @@ export class Signals {
   }
 
   buildVisuals(scene) {
-    const B = new BuilderSet();
+    const B = new BuilderSet({ chunk: 320, release: true });
     const pole = B.get('metal');
     const cyl = new THREE.CylinderGeometry(1, 1, 1, 6);
     this.heads = []; // {node, axis, base index}
@@ -89,7 +89,7 @@ export class Signals {
       }
       if (n.name) this.addTrafficCop(scene, n);
     }
-    B.buildAll({ metal: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 }) }, scene, {}, 320);
+    B.buildAll({ metal: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 }) }, scene);
     const geo = new THREE.SphereGeometry(0.13, 8, 6);
     this.bulbs = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ toneMapped: false }), bulbs.length);
     const m = new THREE.Matrix4();

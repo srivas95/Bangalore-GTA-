@@ -8,6 +8,7 @@ import { Path } from './path.js';
 import { FACADE_TILE } from './textures.js';
 import { RAIL_STATIONS } from './mapdata.js';
 import { CURB_H } from '../config.js';
+import { DETAIL } from './detail.js';
 
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 8);
 const CONE4 = new THREE.ConeGeometry(1, 1, 4);
@@ -57,7 +58,7 @@ export function buildRailway(ctx) {
       } else {
         st.box(0, CURB_H, 0, l + 0.05, 0.28, 10, 0x6e665e);
         for (const tz of TRACKS) {
-          for (let x = -l / 2 + 0.5; x < l / 2; x += 1.2) st.box(x, CURB_H + 0.28, tz, 0.25, 0.12, 2.5, 0x5a4a3a, { sides: false });
+          if (!DETAIL.lite) for (let x = -l / 2 + 0.5; x < l / 2; x += 1.2) st.box(x, CURB_H + 0.28, tz, 0.25, 0.12, 2.5, 0x5a4a3a, { sides: false });
           for (const o of [-0.72, 0.72]) metal.box(0, CURB_H + 0.4, tz + o, l + 0.05, 0.14, 0.08, 0x8a8a8a);
         }
         for (const tz of TRACKS) metal.box(0, CURB_H + 6.3, tz, l + 0.05, 0.03, 0.03, 0x333333);
