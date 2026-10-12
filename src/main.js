@@ -571,3 +571,8 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
 }
 
 init();
+
+// Offline caching for the browser version (the desktop and Android apps already ship the files).
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.Capacitor && location.hostname !== 'localhost') {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}

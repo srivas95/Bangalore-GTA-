@@ -28,6 +28,13 @@ traffic density) or press **O** for the Low preset.
 **Phones and tablets** get touch controls automatically: a joystick on the left for walking and steering, drag on
 the right to look, and buttons that change between on foot and driving.
 
+### Windows and Android apps
+
+The game also ships as a **Windows installer (.exe)** and an **Android app (.apk)**. Every push builds
+both on GitHub Actions: download them from the **Build apps** run's artifacts, or from a release when
+a version is tagged. See **[docs/BUILDING.md](docs/BUILDING.md)** for building them yourself, installing,
+and signing.
+
 ### Controls
 
 | Key | Action |
@@ -208,8 +215,15 @@ src/
     signals.js         Signal phases by approach, heads, traffic constables
     environment.js     Day/night, sky, rain, lightning, wetness, flooding, headlights
     audio.js           Synthesised engines, horns, siren, gunshots, rain, thunder
+    settings.js        Graphics/control settings and presets
+    garages.js         Repair stalls, Chikka Motors, owned vehicles
     missions.js        Gigs; also cameraRig.js, colliders.js (incl. oriented boxes), particles.js, input.js
   ui/hud.js            Minimap, health ring, wanted stars, clock/weather, map, mission panel
+  ui/touch.js          On-screen joystick, look drag and context buttons for phones
+apps/
+  desktop/             Electron wrapper → Windows installer / portable exe
+  mobile/              Capacitor wrapper → Android APK
+.github/workflows/     CI that builds the web, Windows and Android versions
 ```
 
 `window.__game.step(n)` advances the simulation without rendering, which is how the automated checks drive the game.

@@ -1,0 +1,102 @@
+# Builds the game for the web, Windows (installer + portable .exe) and Android (.apk).
+# Every push uploads the builds as workflow artifacts; pushing a tag like v0.2.0 also
+# publishes them on a GitHub release.
+name: Build apps
+
+on:
+  push:
+    branches: ['main', 'master', 'claude/**']
+    tags: ['v*']
+    paths-ignore: ['docs/**', '**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with: { name: web-dist, path: dist, retention-days: 14 }
+
+  windows:
+    needs: web
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/download-artifact@v4
+        with: { name: web-dist, path: dist }
+      - name: Build the Windows installer and portable exe
+        working-directory: apps/desktop
+        run: |
+          npm install --no-audit --no-fund
+          npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: apps/desktop/release/*.exe
+          retention-days: 14
+
+  android:
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: android-actions/setup-android@v3
+      - uses: actions/download-artifact@v4
+        with: { name: web-dist, path: dist }
+      - name: Copy the web build into the Android project
+        working-directory: apps/mobile
+        run: |
+          npm install --no-audit --no-fund
+          npx cap sync android
+      # Signed release APK when the keystore secrets are set; otherwise a debug-signed APK
+      # (installable by sideloading).
+      - name: Build the APK
+        working-directory: apps/mobile/android
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/release.keystore"
+            ./gradlew --no-daemon assembleRelease
+            cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/NammaBengaluru.apk"
+          else
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/NammaBengaluru.apk"
+          fi
+      - uses: actions/upload-artifact@v4
+        with: { name: android-apk, path: NammaBengaluru.apk, retention-days: 14 }
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/windows-exe/*.exe
+            out/android-apk/*.apk
+          generate_release_notes: true

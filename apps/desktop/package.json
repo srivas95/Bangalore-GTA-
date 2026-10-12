@@ -1,0 +1,39 @@
+{
+  "name": "namma-bengaluru-desktop",
+  "productName": "Namma Bengaluru",
+  "version": "0.2.0",
+  "description": "An open-world game set in Bengaluru",
+  "author": "Namma Bengaluru",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "web": "node copy-web.cjs",
+    "start": "npm run web && electron .",
+    "dist:win": "npm run web && electron-builder --win nsis portable --x64 --publish never",
+    "dist:linux": "npm run web && electron-builder --linux AppImage --publish never",
+    "dist:mac": "npm run web && electron-builder --mac dmg --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "in.nammabengaluru.game",
+    "productName": "Namma Bengaluru",
+    "copyright": "Namma Bengaluru",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": ["main.cjs", "web/**/*", "build/icon.png"],
+    "win": { "icon": "build/icon.png", "artifactName": "NammaBengaluru-${version}-${arch}-${target}.${ext}" },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Namma Bengaluru",
+      "artifactName": "NammaBengaluru-Setup-${version}.${ext}"
+    },
+    "portable": { "artifactName": "NammaBengaluru-Portable-${version}.${ext}" },
+    "linux": { "icon": "build/icon.png", "category": "Game", "artifactName": "NammaBengaluru-${version}.${ext}" },
+    "mac": { "icon": "build/icon.png", "category": "public.app-category.games" }
+  }
+}

@@ -1,13 +1,16 @@
 {
   "name": "namma-bengaluru",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "An open-world GTA-style game set in Bengaluru, built with Three.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "app:windows": "npm run build && npm --prefix apps/desktop install && npm --prefix apps/desktop run dist:win",
+    "app:desktop": "npm run build && npm --prefix apps/desktop install && npm --prefix apps/desktop start",
+    "app:android": "npm run build && npm --prefix apps/mobile install && npm --prefix apps/mobile run apk"
   },
   "dependencies": {
     "three": "0.170.0"
