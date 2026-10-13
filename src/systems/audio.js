@@ -455,14 +455,13 @@ export class Audio {
   }
 
   // ---------- the player's engine ----------
-  engine(vehicle) {
+  // dt: game time since the last call.
+  engine(vehicle, dt = 1 / 60) {
     if (!this.enabled) return;
     if (!vehicle) { this.stopEngine(); this.synth.engine(null); return; }
     const cls = vehicle.spec.engine;
     if (!this.has(`eng_${cls}_0`, `eng_${cls}_1`, `eng_${cls}_2`)) { this.synth.engine(vehicle); return; }
     if (!this.synth.quiet) this.synth.engine(null);
-    const now = performance.now() / 1000, dt = Math.min(0.1, now - (this.engT || now));
-    this.engT = now;
     if (vehicle.stalled || vehicle.engineDead || vehicle.wrecked) {
       if (this.pEng) { this.pEng.stop(0.4); this.pEng = null; }
       return;
@@ -475,7 +474,7 @@ export class Audio {
     }
     const thr = Math.abs(vehicle.throttleIn ?? 0);
     const target = revs(vehicle.spec, cls, vehicle.forwardSpeed, thr);
-    this.rpm += (target - this.rpm) * Math.min(1, dt * (target > this.rpm ? 7 : 5));
+    this.rpm += (target - this.rpm) * Math.min(1, Math.min(0.1, dt) * (target > this.rpm ? 7 : 5));
     const E = ENG[cls];
     const f = E.idle * Math.pow(E.max / E.idle, this.rpm);
     const load = 0.35 + 0.65 * thr;

@@ -552,7 +552,7 @@ async function init() {
 
     if (!window.__freeCam && !metroRide.active) rig.update(dt, input, player, colliders);
     if (!metroRide.active) metroRide.banner.classList.remove('show');
-    audio.engine(player.vehicle);
+    audio.engine(player.vehicle, dt);
     audio.update?.(dt, { world, camera, env, player, metro: metroRide.state });
     const markers = missions.markers.concat(story.markers);
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
