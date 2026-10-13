@@ -53,7 +53,7 @@ and signing.
 | G | Siren, when you're driving a Hoysala |
 | E | At a metro station entrance: buy a token and ride |
 | J | Accept the gig on your phone |
-| M | City map (scroll or pinch to zoom, drag to move) |
+| M | City map (scroll or pinch to zoom, drag to move, click or tap to set a GPS waypoint) |
 | R | Radio on/off |
 | K | Summon (or stop) the monsoon |
 | T | Fast-forward time ×30; on the metro, skip the wait or the ride |

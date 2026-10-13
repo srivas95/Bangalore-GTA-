@@ -211,6 +211,7 @@ export class HUD {
   toggleMap() {
     const on = this.el.map.classList.toggle('show');
     document.body.classList.toggle('map-open', on); // hides the touch controls underneath
+    this.onMapToggle?.(on);
     if (on) {
       this.initBigMap();
       // Open on the player, zoomed in enough to read the streets.
@@ -234,11 +235,16 @@ export class HUD {
     const ptrs = new Map();
     let pinch = null;
     const local = (e) => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * this.dpr, (e.clientY - r.top) * this.dpr]; };
-    c.addEventListener('pointerdown', (e) => { c.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, local(e)); pinch = null; });
+    let tap = null; // a quick press without dragging sets (or clears) the GPS waypoint
+    c.addEventListener('pointerdown', (e) => {
+      c.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, local(e)); pinch = null;
+      tap = ptrs.size === 1 && e.button === 0 ? { p: local(e), t: performance.now() } : null;
+    });
     c.addEventListener('pointermove', (e) => {
       if (!ptrs.has(e.pointerId)) return;
       const prev = ptrs.get(e.pointerId), cur = local(e);
       ptrs.set(e.pointerId, cur);
+      if (tap && Math.hypot(cur[0] - tap.p[0], cur[1] - tap.p[1]) > 10 * this.dpr) tap = null;
       if (ptrs.size === 1) this.panBy(cur[0] - prev[0], cur[1] - prev[1]);
       else if (ptrs.size === 2) {
         const [a, b] = [...ptrs.values()];
@@ -247,7 +253,14 @@ export class HUD {
         pinch = { d, mid };
       }
     });
-    const up = (e) => { ptrs.delete(e.pointerId); pinch = null; };
+    const up = (e) => {
+      ptrs.delete(e.pointerId); pinch = null;
+      if (tap && e.type === 'pointerup' && performance.now() - tap.t < 450) {
+        const v = this.view, [sx, sy] = tap.p;
+        this.onMapTap?.(v.cx + (sx - c.width / 2) / v.ppm, v.cz + (sy - c.height / 2) / v.ppm, 18 * this.dpr / v.ppm);
+      }
+      tap = null;
+    };
     c.addEventListener('pointerup', up);
     c.addEventListener('pointercancel', up);
     c.addEventListener('wheel', (e) => { e.preventDefault(); this.zoomAt(Math.exp(-e.deltaY * 0.0015), local(e)); }, { passive: false });
@@ -264,7 +277,20 @@ export class HUD {
     });
     this.el.map.appendChild(bar);
     const hint = this.el.map.querySelector('.hint');
-    if (hint) hint.textContent = matchMedia('(pointer: coarse)').matches ? 'Pinch to zoom · drag to move' : 'Scroll to zoom · drag to move · M to close';
+    if (hint) hint.textContent = matchMedia('(pointer: coarse)').matches ? 'Pinch to zoom · drag to move · tap to set a waypoint' : 'Scroll to zoom · drag to move · click to set a waypoint · M to close';
+  }
+
+  // The GPS route as a thick purple line (X, Z: world to canvas; w: line width in canvas units).
+  drawRoute(ctx, X, Z, w) {
+    const R = this.gps?.route;
+    if (!R || R.length < 2) return;
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    R.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z))));
+    ctx.strokeStyle = 'rgba(30,0,40,0.8)'; ctx.lineWidth = w * 1.6; ctx.stroke();
+    ctx.strokeStyle = '#c050ff'; ctx.lineWidth = w; ctx.stroke();
+    ctx.restore();
   }
 
   fitScale() {
@@ -363,7 +389,17 @@ export class HUD {
     ctx.scale(1 / S0, 1 / S0);
     ctx.translate(-(p.x - this.W.minX) * S0, -(p.z - this.W.minZ) * S0);
     ctx.drawImage(this.mapCanvas, 0, 0);
+    this.drawRoute(ctx, (x) => (x - this.W.minX) * S0, (z) => (z - this.W.minZ) * S0, 5 * S0 / scale);
     ctx.restore();
+    // GPS distance to the waypoint.
+    if (this.gps?.route) {
+      const d = this.gps.length;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.fillStyle = '#e8b8ff';
+      const t = d > 950 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d / 10) * 10} m`;
+      ctx.strokeText(t, W / 2, H - 16); ctx.fillText(t, W / 2, H - 16);
+    }
     // Markers.
     const R = W / 2 - 10;
     for (const m of markers) {
@@ -417,6 +453,13 @@ export class HUD {
         this.renderMap(S, { minX: v.cx - c.width / 2 / S, minZ: v.cz - c.height / 2 / S, w: c.width, h: c.height }, canvas);
         this.base = { key, canvas };
       }
+    }
+    this.drawRoute(ctx, X, Zm, 5 * k);
+    if (this.gps?.target) {
+      // Waypoint flag.
+      const wx = X(this.gps.target.x), wy = Zm(this.gps.target.z);
+      ctx.fillStyle = '#c050ff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2 * k;
+      ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx, wy - 22 * k); ctx.lineTo(wx + 14 * k, wy - 16 * k); ctx.lineTo(wx, wy - 10 * k); ctx.closePath(); ctx.fill(); ctx.stroke();
     }
     ctx.textAlign = 'center';
     ctx.lineWidth = 3 * k;

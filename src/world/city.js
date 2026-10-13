@@ -146,8 +146,22 @@ export function buildCity(scene, layout, colliders, renderer) {
   const railPts = layout.rails.map((r) => r.pts);
   // Keep the railway corridor clear, and the ground under metro viaducts and stations.
   const metroSegs = [];
-  for (const line of metroRoutes()) {
-    for (const seg of line.elevated) metroSegs.push({ pts: seg, r: 5.5 });
+  for (const line of metroRoutes(layout)) {
+    // Along the track itself (it bends off the road where a ramp needs land), between any two
+    // stations that aren't both underground.
+    for (let i = 0; i < line.stations.length - 1; i++) {
+      const a = line.stations[i], b = line.stations[i + 1];
+      if (a.underground && b.underground) continue;
+      const pts = [];
+      for (let s = a.s; s <= b.s + 1e-6; s += 10) { const p = line.path.at(Math.min(s, b.s)); pts.push([p.x, p.z]); }
+      metroSegs.push({ pts, r: 5.5 });
+    }
+    // The covered ramp down to the tunnel is wider than the viaduct.
+    for (const r of line.ramps) {
+      const pts = [];
+      for (let s = r.s1 - 20; s <= r.s1 + r.L + 20; s += 10) { const p = line.path.at(s); pts.push([p.x, p.z]); }
+      metroSegs.push({ pts, r: 9 });
+    }
     for (const st of line.stations) {
       if (st.underground) continue;
       // Same orientation as the station box (see metro.js).

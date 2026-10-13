@@ -21,35 +21,122 @@ const DWELL = 11;
 
 // Route data without any geometry: shared with the city (to keep buildings clear of viaducts)
 // and the ride system.
-export function metroRoutes() {
-  return METRO.map((line) => {
+// Ramps between elevated and underground track: a steady grade, placed where the low part of
+// the ramp (the covered cutting and the tunnel mouth) sits on land rather than in a road.
+const RAMP_GRADE = 0.05;
+const PORTAL_Y = 3.5; // deck height where the covered ramp (tunnel mouth) begins
+const NEAR_GROUND = [-7, 6]; // track heights where the ramp structure is at street level
+
+export function metroRoutes(layout = null) {
+  if (layout && layout._metroRoutes) return layout._metroRoutes;
+  const onLand = (x, z) => { const b = layout.blockContaining(x, z); return b && !b.island; };
+  const routes = METRO.map((line) => {
     const st0 = line.stations;
     const n = st0.length;
-    // Each station sits on a straight run of track (real platforms are straight): the route
-    // passes through two points either side of it instead of bending at the station itself.
-    const pts = [], sAt = [];
     const dirs = st0.map((s, i) => {
       const a = st0[Math.max(0, i - 1)], b = st0[Math.min(n - 1, i + 1)];
       const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1;
       return { x: dx / l, z: dz / l };
     });
-    const push = (x, z) => pts.push([x, z]);
-    const tail = 70;
-    push(st0[0].x - dirs[0].x * (ST_HALF + tail), st0[0].z - dirs[0].z * (ST_HALF + tail));
-    st0.forEach((s, i) => {
-      const gap = (j) => (j < 0 || j >= n ? Infinity : Math.hypot(st0[j].x - s.x, st0[j].z - s.z));
-      const L = Math.min(ST_HALF + 6, 0.35 * Math.min(gap(i - 1), gap(i + 1)));
-      sAt.push(pts.length);
-      push(s.x - dirs[i].x * L, s.z - dirs[i].z * L);
-      push(s.x + dirs[i].x * L, s.z + dirs[i].z * L);
-      dirs[i].L = L;
-    });
-    push(st0[n - 1].x + dirs[n - 1].x * (ST_HALF + tail), st0[n - 1].z + dirs[n - 1].z * (ST_HALF + tail));
-    const path = new Path(pts);
-    const stations = st0.map((s, i) => ({ ...s, idx: i, s: path.cum[sAt[i]] + dirs[i].L, dir: { x: dirs[i].x, z: dirs[i].z }, line }));
-    const ug = stations.map((s) => s.underground);
+    const ug = st0.map((s) => s.underground);
     // Two lines cross at Majestic, one above the other.
     const UG = line.short === 'green' ? UG_Y - 8 : UG_Y;
+    function rampY(r, s, s1 = r.s1) {
+      const k = Math.min(1, Math.max(0, (s - s1) / r.L));
+      return r.up ? UG + (DECK_Y - UG) * k : DECK_Y + (UG - DECK_Y) * k;
+    }
+    // Lateral clearance of a stretch of track [sA, sB] shifted sideways by d: points off the land.
+    const offLand = (path, sA, sB, d = 0) => {
+      let bad = 0;
+      for (let s = sA; s <= sB + 1e-6; s += 5) {
+        const p = path.at(s), px = -p.dz, pz = p.dx;
+        for (const o of [-5.5, 0, 5.5]) if (!onLand(p.x + px * (o + d), p.z + pz * (o + d))) bad++;
+      }
+      return bad;
+    };
+    // The street-level part of a ramp starting at s1: track between NEAR_GROUND heights.
+    const lowPart = (r, s1) => {
+      const at = (h) => { const k = (h - (r.up ? UG : DECK_Y)) / ((r.up ? DECK_Y : UG) - (r.up ? UG : DECK_Y)); return s1 + Math.min(1, Math.max(0, k)) * r.L; };
+      const a = at(NEAR_GROUND[0]), b = at(NEAR_GROUND[1]);
+      return [Math.min(a, b), Math.max(a, b)];
+    };
+
+    // Build the route through the stations; legs[i] = extra points between station i and i+1.
+    const build = (legs = {}, fixed = {}) => {
+      // Each station sits on a straight run of track (real platforms are straight): the route
+      // passes through two points either side of it instead of bending at the station itself.
+      const pts = [], sAt = [];
+      const push = (x, z) => pts.push([x, z]);
+      const tail = 70;
+      push(st0[0].x - dirs[0].x * (ST_HALF + tail), st0[0].z - dirs[0].z * (ST_HALF + tail));
+      st0.forEach((s, i) => {
+        const gap = (j) => (j < 0 || j >= n ? Infinity : Math.hypot(st0[j].x - s.x, st0[j].z - s.z));
+        const L = Math.min(ST_HALF + 6, 0.35 * Math.min(gap(i - 1), gap(i + 1)));
+        sAt.push(pts.length);
+        push(s.x - dirs[i].x * L, s.z - dirs[i].z * L);
+        push(s.x + dirs[i].x * L, s.z + dirs[i].z * L);
+        dirs[i].L = L;
+        for (const p of legs[i] || []) push(p[0], p[1]);
+      });
+      push(st0[n - 1].x + dirs[n - 1].x * (ST_HALF + tail), st0[n - 1].z + dirs[n - 1].z * (ST_HALF + tail));
+      const path = new Path(pts);
+      const stations = st0.map((s, i) => ({ ...s, idx: i, s: path.cum[sAt[i]] + dirs[i].L, dir: { x: dirs[i].x, z: dirs[i].z }, line }));
+      // Ramps between an underground and an elevated station: where each starts (s1), how long
+      // it is, which way it climbs; placed so its street-level part is on land if possible.
+      const ramps = [];
+      for (let i = 0; i < n - 1; i++) {
+        if (ug[i] === ug[i + 1]) continue;
+        const sA = stations[i].s + ST_HALF + 15, sB = stations[i + 1].s - ST_HALF - 15;
+        const L = Math.min((DECK_Y - UG) / RAMP_GRADE, Math.max(40, sB - sA));
+        const ramp = { i, L, up: ug[i], s1: (sA + sB - L) / 2, bad: 0 };
+        if (fixed[i]) { const p = path.project(fixed[i][0], fixed[i][1]).s; ramp.s1 = Math.max(sA, Math.min(sB - L, p)); }
+        else if (layout && sB - sA > L) {
+          let best = Infinity;
+          for (let s1 = sA; s1 <= sB - L + 1e-6; s1 += 10) {
+            const [la, lb] = lowPart(ramp, s1);
+            const score = offLand(path, la, lb) * 100 + Math.abs(s1 - (sA + sB - L) / 2) / 100;
+            if (score < best) { best = score; ramp.s1 = s1; }
+          }
+        }
+        if (layout) { const [la, lb] = lowPart(ramp, ramp.s1); ramp.bad = offLand(path, la, lb); }
+        ramps.push(ramp);
+      }
+      return { path, stations, ramps };
+    };
+
+    let { path, stations, ramps } = build();
+    // A ramp whose street-level part would sit in a road: bend the line sideways into the
+    // neighbouring block for that stretch (underground it can curve back under the road).
+    if (layout) {
+      const legs = {}, fixed = {};
+      for (const r of ramps) {
+        if (!r.bad) continue;
+        const lo = stations[r.i].s + ST_HALF + 5, hi = stations[r.i + 1].s - ST_HALF - 5;
+        // Every ramp position along the run, with every sideways shift: the least off-land wins
+        // (then the smallest shift).
+        let bestD = null, bestBad = r.bad, bestS1 = r.s1;
+        for (let s1 = lo + 10; s1 <= hi - 10 - r.L + 1e-6; s1 += 10) {
+          const [la, lb] = lowPart(r, s1);
+          for (const d of [12, -12, 16, -16, 20, -20, 25, -25, 30, -30]) {
+            const bad = offLand(path, la, lb, d);
+            if (bad < bestBad) { bestBad = bad; bestD = d; bestS1 = s1; }
+          }
+        }
+        if (bestD === null) continue;
+        r.s1 = bestS1;
+        const [la, lb] = lowPart(r, r.s1);
+        const a = Math.max(lo, la - 45), b = Math.min(hi, lb + 45);
+        const shifted = (s, d) => { const p = path.at(s); return [p.x - p.dz * d, p.z + p.dx * d]; };
+        const leg = [shifted(a, 0)];
+        for (let s = la; s <= lb + 1e-6; s += 10) leg.push(shifted(s, bestD));
+        leg.push(shifted(lb, bestD), shifted(b, 0));
+        legs[r.i] = leg;
+        const p1 = path.at(r.s1);
+        fixed[r.i] = [p1.x, p1.z];
+      }
+      if (Object.keys(legs).length) ({ path, stations, ramps } = build(legs, fixed));
+    }
+
     // Track height along the route: deck height, or underground, ramping between.
     const yAt = (s) => {
       if (s <= stations[0].s) return ug[0] ? UG : DECK_Y;
@@ -58,16 +145,16 @@ export function metroRoutes() {
       let i = 0;
       while (i < last - 1 && stations[i + 1].s <= s) i++;
       if (ug[i] === ug[i + 1]) return ug[i] ? UG : DECK_Y;
-      const t = (s - stations[i].s) / (stations[i + 1].s - stations[i].s || 1);
-      const k = Math.min(1, Math.max(0, (t - 0.3) / 0.45)); // ramp in the middle of the run
-      return ug[i] ? UG + (DECK_Y - UG) * k : DECK_Y + (UG - DECK_Y) * k;
+      return rampY(ramps.find((r) => r.i === i), s);
     };
     const elevated = [];
     for (let i = 0; i < stations.length - 1; i++) if (!ug[i] || !ug[i + 1]) elevated.push([[stations[i].x, stations[i].z], [stations[i + 1].x, stations[i + 1].z]]);
-    const route = { ...line, path, stations, yAt, elevated, ugY: UG };
+    const route = { ...line, path, stations, yAt, elevated, ramps, ugY: UG };
     for (const st of stations) st.line = route;
     return route;
   });
+  if (layout) layout._metroRoutes = routes;
+  return routes;
 }
 
 // Where a train's head stops so the whole rake sits at the platform.
@@ -84,7 +171,7 @@ export function buildMetro(scene, layout, colliders) {
     glass: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.1, metalness: 0.6, transparent: true, opacity: 0.55 }),
     glow: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
   };
-  const routes = metroRoutes();
+  const routes = metroRoutes(layout);
   // Piers stand on land, or in a road's median: never in a traffic lane. Null if neither.
   const pierSpot = (x, z) => {
     if (layout.blockContaining(x, z)) return [x, z];
@@ -111,22 +198,72 @@ export function buildMetro(scene, layout, colliders) {
     const P = line.path;
     const at = {};
     const isStation = (s) => line.stations.some((st) => Math.abs(st.s - s) < ST_HALF);
+    // Each ramp's covered section: from the portal (where the deck is PORTAL_Y up, or lower if a
+    // street crosses there, so the street passes under the deck) until the track is underground.
+    const landAt = (x, z) => { const b = layout.blockContaining(x, z); return b && !b.island; };
+    for (const r of line.ramps) {
+      const sAtY = (h) => { const k = (h - (r.up ? line.ugY : DECK_Y)) / ((r.up ? DECK_Y : line.ugY) - (r.up ? line.ugY : DECK_Y)); return r.s1 + Math.min(1, Math.max(0, k)) * r.L; };
+      r.sAtY = sAtY;
+      let portalY = PORTAL_Y;
+      const a = sAtY(PORTAL_Y), b = sAtY(1), step = Math.sign(b - a) * 2;
+      for (let s = a; step && (b - s) * step >= 0; s += step) {
+        P.at(s, at);
+        if (!landAt(at.x, at.z)) portalY = Math.min(portalY, line.yAt(s) - 0.6);
+      }
+      r.portalY = Math.max(0.5, portalY);
+      r.sHi = sAtY(r.portalY); r.sLo = sAtY(-5.5);
+    }
+    const covered = (s) => line.ramps.some((r) => (s - r.sHi) * (s - r.sLo) <= 0);
+
     // ---------- Viaduct ----------
     const PIECE = 10;
     for (let s = 0; s < P.length - 1e-6; s += PIECE) {
       const l = Math.min(PIECE, P.length - s);
       const y = line.yAt(s + l / 2);
-      if (y < 0.5) continue;
+      if (y < 0.5 || covered(s + l / 2)) continue; // inside a covered ramp, or underground
       P.at(s + l / 2, at);
-      B.xf = makeFrame(at.x, at.z, Math.atan2(-at.dz, at.dx));
+      const f = makeFrame(at.x, at.z, Math.atan2(-at.dz, at.dx));
+      B.xf = f;
       con.box(0, y, 0, l + 0.05, 1.6, 9.5, concrete, { bottom: true });
+      if (y < 6) {
+        // Too low for piers near the portal: a solid wall carries the deck on land; over a street
+        // it's a short bridge (cars pass under, the deck itself still blocks anything taller).
+        if (landAt(at.x, at.z)) { con.box(0, 0, 0, l + 0.05, y, 6.5, 0xb4afa5); colliders.framed(f).addCentered(0, 0, l, 6.5, y, 'wall'); }
+        else colliders.framed(f).addCentered(0, 0, l, 9.5, y + 1.6, 'wall', y);
+      }
       for (const sd of [-1, 1]) {
         con.box(0, y + 1.6, sd * 4.6, l + 0.05, 1.1, 0.3, 0xd8d4cc);
         paint.box(0, y + 1.0, sd * 4.76, l + 0.05, 0.35, 0.02, line.color, { top: false });
       }
       for (const tz of [-TRACK, TRACK]) for (const o of [-0.75, 0.75]) metal.box(0, y + 1.6, tz + o, l + 0.05, 0.15, 0.1, 0x7a7a7a);
-      // Tunnel portal where the ramp meets the ground.
-      if (y < 3) { con.box(0, 0, 0, 1.2, 6.5, 10.5, 0x9a958c); con.box(0, 6.5, 0, 1.6, 0.8, 11, line.color); }
+      B.xf = null;
+    }
+    // ---------- Covered ramps and tunnel portals ----------
+    // From where the deck gets low (PORTAL_Y) until the track is below ground, it runs inside a
+    // concrete box whose roof follows it down; trains vanish into a dark portal at the high end.
+    for (const r of line.ramps) {
+      const yOf = (s) => line.yAt(s);
+      const { sHi, sLo } = r;
+      const dir = sLo > sHi ? 1 : -1; // from the portal into the tunnel
+      const len = Math.abs(sLo - sHi), n = Math.max(1, Math.ceil(len / 4));
+      for (let k = 0; k < n; k++) {
+        const sm = sHi + dir * (k + 0.5) * (len / n);
+        const roof = Math.max(0.5, yOf(sm) + 6.4);
+        P.at(sm, at);
+        const f = makeFrame(at.x, at.z, Math.atan2(-at.dz, at.dx));
+        B.xf = f;
+        con.box(0, 0, 0, len / n + 0.1, roof, 11, 0xb8b3a8);
+        for (const sd of [-1, 1]) paint.box(0, Math.max(0, roof - 0.9), sd * 5.52, len / n + 0.1, 0.4, 0.04, line.color, { top: false });
+        colliders.framed(f).addCentered(0, 0, len / n, 11, roof, 'wall');
+      }
+      // The portal: a dark opening the size of a train, framed, with the line's colour on the lintel.
+      const yHi = yOf(sHi);
+      P.at(sHi, at);
+      B.xf = makeFrame(at.x, at.z, Math.atan2(-at.dz, at.dx));
+      glow.box(-dir * 0.06, yHi + 1.5, 0, 0.12, 4.9, 8.6, 0x040404);
+      con.box(-dir * 0.35, yHi + 6.4, 0, 0.7, 1.2, 11.6, 0xc8c3b8);
+      paint.box(-dir * 0.72, yHi + 6.7, 0, 0.04, 0.6, 9, line.color, { top: false });
+      for (const sd of [-1, 1]) con.box(-dir * 0.35, 0, sd * 5.1, 0.7, yHi + 6.4, 1.4, 0xc8c3b8);
       B.xf = null;
     }
     // Piers, kept out of junctions and traffic lanes.

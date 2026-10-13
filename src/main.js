@@ -32,6 +32,7 @@ import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, WORLD, geo } from './wor
 import { DETAIL, setDetail } from './world/detail.js';
 import { bakeAO, aoUniforms } from './world/ao.js';
 import { BlobShadows } from './world/blobs.js';
+import { GPS } from './systems/gps.js';
 import { Halos } from './world/halos.js';
 
 const BOOT_KEY = 'namma-bengaluru-boot';
@@ -370,6 +371,20 @@ async function init() {
 
   // ---------- Settings and touch controls ----------
   const touch = new TouchControls(input, settings);
+  // The map needs the mouse: free it from the game while the map is open, take it back after.
+  // GPS: tap the big map to set a waypoint (tap it again to clear).
+  const gps = new GPS(layout);
+  hud.gps = gps;
+  hud.onMapTap = (x, z, slop) => {
+    if (gps.target && Math.hypot(gps.target.x - x, gps.target.z - z) < Math.max(25, slop)) { gps.clear(); hud.say('Waypoint cleared', 1.5); return; }
+    gps.set(x, z);
+    hud.say('Waypoint set. Follow the purple line.', 2);
+  };
+  hud.onMapToggle = (on) => {
+    if (touch.enabled) return;
+    if (on) document.exitPointerLock?.();
+    else if (!paused) input.lock();
+  };
   settings.buildPanel(document.getElementById('help'));
   settings.onReset = () => { story.reset(); missions.money = 500; hud.setMoney(500, true); world.garages?.reset?.(); };
   document.getElementById('open-settings').addEventListener('click', () => settings.toggle(true));
@@ -540,6 +555,8 @@ async function init() {
     audio.engine(player.vehicle);
     const markers = missions.markers.concat(story.markers);
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
+    if (gps.update(dt, player.x, player.z) === 'arrived') { hud.say('You have arrived.', 2.5); audio.click?.(); }
+    if (gps.target) markers.push({ x: gps.target.x, z: gps.target.z, color: '#c050ff' });
     hud.update(dt, player, rig.yaw, markers);
     touch.update({ driving: !!player.vehicle, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police, use: !!entrance || !!story.active || garages.nearStall || !!garages.menu, offer: !!missions.offer, metro: metroRide.active });
     { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
@@ -606,43 +623,48 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
           const bvx = b.vx + (b.angVel || 0) * pbz, bvz = b.vz - (b.angVel || 0) * pbx;
           const vn = (avx - bvx) * nx + (avz - bvz) * nz;
           const ta = (paz * nx - pax * nz) ** 2 / a.inertia;
+          const ia = 1 / a.mass, ib = 1 / b.mass;
+          const tb = (pbz * nx - pbx * nz) ** 2 / b.inertia;
+          // Momentum shared by mass: a bus that clips a scooter barely notices; the scooter flies.
+          const j = vn < 0 ? (-1.25 * vn) / (ia + ib + ta + tb) : 0;
+          let dvA = j * ia; // how hard this shoves us (drives shake and noise)
           if (ai) {
-            a.x += nx * pen; a.z += nz * pen;
-            if (vn < 0) a.applyImpulse(nx * (-1.3 * vn) / (1 / a.mass + ta), nz * (-1.3 * vn) / (1 / a.mass + ta), pax, paz);
+            // Traffic is on rails until something knocks it hard enough to lose control.
             const agent = traffic.findAgent(b);
-            if (agent) {
-              if (-vn > 9 && !['bus', 'lorry', 'tanker', 'schoolBus'].includes(b.type)) {
-                traffic.release(agent);
-                const k = (a.mass / (a.mass + b.mass)) * -vn * 1.4;
-                b.vx -= nx * k; b.vz -= nz * k;
-                b.angVel = (pbz * -nx - pbx * -nz) * k * b.mass / b.inertia;
-                if (b.rider && b.spec.twoWheeler) {
-                  const opts = { outfit: b.rider.outfit, helmet: true };
-                  b.removeRider();
-                  const p = world.streetLife.spawnFleeing(b.x, b.z, a.x, a.z, opts);
-                  world.streetLife.knock(p, -nx * 6, -nz * 6, world.audio);
-                }
-                free.push(b);
-                if (a.driver === 'player') world.crime('Reckless driving', a.x, a.z, 1);
-              } else {
-                agent.stunned = 2;
-                if (a.driver === 'player' && -vn > 3 && Math.random() < 0.5) world.hud.say(`"${LINES.bumped[Math.floor(Math.random() * LINES.bumped.length)]}"`, 2.5);
+            const dvB = j * ib;
+            const heavy = ['bus', 'lorry', 'tanker', 'schoolBus'].includes(b.type);
+            // (A much heavier hitter always shoves it: otherwise it acts as a wall, hit again every frame.)
+            const loses = agent && !heavy && (dvB > 4 || (b.spec.twoWheeler && dvB > 2) || (a.mass > 2.5 * b.mass && -vn > 1.5));
+            a.x += nx * pen * (loses ? ia / (ia + ib) : 1); a.z += nz * pen * (loses ? ia / (ia + ib) : 1);
+            if (vn < 0) a.applyImpulse(nx * j, nz * j, pax, paz);
+            if (loses) {
+              traffic.release(agent);
+              b.x -= nx * pen * ib / (ia + ib); b.z -= nz * pen * ib / (ia + ib);
+              b.applyImpulse(-nx * j, -nz * j, pbx, pbz);
+              if (b.rider && b.spec.twoWheeler) {
+                const opts = { outfit: b.rider.outfit, helmet: true };
+                b.removeRider();
+                const p = world.streetLife.spawnFleeing(b.x, b.z, a.x, a.z, opts);
+                world.streetLife.knock(p, -nx * Math.min(9, 3 + dvB), -nz * Math.min(9, 3 + dvB), world.audio);
               }
+              free.push(b);
+              if (a.driver === 'player') world.crime('Reckless driving', a.x, a.z, 1);
+            } else if (agent) {
+              agent.stunned = 2;
+              if (a.driver === 'player' && -vn > 3 && Math.random() < 0.5) world.hud.say(`"${LINES.bumped[Math.floor(Math.random() * LINES.bumped.length)]}"`, 2.5);
             }
           } else {
-            const ia = 1 / a.mass, ib = 1 / b.mass;
             a.x += nx * pen * ia / (ia + ib); a.z += nz * pen * ia / (ia + ib);
             b.x -= nx * pen * ib / (ia + ib); b.z -= nz * pen * ib / (ia + ib);
             if (vn < 0) {
-              const tb = (pbz * nx - pbx * nz) ** 2 / b.inertia;
-              const j = (-1.3 * vn) / (ia + ib + ta + tb);
               a.applyImpulse(nx * j, nz * j, pax, paz);
               b.applyImpulse(-nx * j, -nz * j, pbx, pbz);
             }
+            if (b.driver === 'player') dvA = j * ib;
             if (a.driver === 'player' && b.driver === 'police' && -vn > 5) world.crime('Ramming a Hoysala', a.x, a.z, 1);
           }
           if (-vn > 2) world.onVehicleImpact?.(a, b, -vn, cx, cz);
-          if (-vn > 3) { world.audio.thud(Math.min(1, -vn / 15)); if (a.driver === 'player' || b.driver === 'player') world.shake(Math.min(0.5, -vn / 30)); }
+          if (-vn > 3) { world.audio.thud(Math.min(1, -vn / 15)); if (a.driver === 'player' || b.driver === 'player') world.shake(Math.min(0.5, dvA / 20)); }
           a.circles(_ca); b.circles(_cb);
         }
       }
