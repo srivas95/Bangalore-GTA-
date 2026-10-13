@@ -158,6 +158,7 @@ export class Vehicle {
     if (depth > s.stall && this.driver === 'player') this.stalled = true;
     else if (depth < 0.05) this.stalled = false;
     if (this.stalled || dead) thr = Math.min(0, thr) * (dead ? 0.6 : 0.15); // can still brake
+    this.throttleIn = thr; // for the engine sound
 
     const m = this.mass, L = s.wheelbase, a = L * 0.47, b = L - a, g = 9.81;
     const I = this.inertia;

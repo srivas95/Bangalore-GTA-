@@ -1,0 +1,54 @@
+# name|Sonniss GDC bundle year|path inside the archive.org item sonniss-gdc-<year>-game-audio-bundle-normalized
+auto_drive|2020|Pole Position - Piaggio Ape tm P703V 1993/Ape_P703V_t3_Onbrd_Start_Fast_Drive_Stop_Reverse_Stop_Drive_Stop_Off_Engine_Intake_DPA4062.mp3
+bullet_slow|2020|Bombay Sonic - Royal Enfield Classic 350/56_Royal Enfield,Bullet,Very Slow,Approach,Squeak,Idle,Stop.mp3
+rajdoot_ride|2016|Bombay Sonic - Yamaha Rajdoot 175cc/Rajdoot,motorcycle,ride,engine POV 02.mp3
+moped_onboard|2017|Soundreorganized - Keeway TX50 Moped/Keeway_OnBoard_Drive_SpeedUp_SlowDown_Shutdown_Engine.mp3
+car_octavia|2016|Pole Position Production - Skoda Octavia 1.6 (2008)/Skoda_Octavia_1.6_t1_onboard_start_stop_idle_blip_steadies_Exhaust_Catalysator.mp3
+car_golf|2023|Pole Position Production - Golf Variant TDI 2019/VW Golf Diesel - t10 - ONBRD - MEDIUM - Drive - ENGINE - Center - MKH8020.mp3
+ural_drive|2017|Pole Position - Ural 4320/Ural_4320_t12_onbrd_various_driving_manouvers_interior.mp3
+ural_horn|2017|Pole Position - Ural 4320/Ural_4320_t15_ext_horn_passby_XY.mp3
+horn_ram|2020|Pole Position - Dodge Ram 1500 HEMI SUV 2014/Dodge_Ram_t11_Var_SFX_Horn_Honk_Various_Exhaust_Right_RE50.mp3
+horn_mini|2018|Erik Gendron - 2007 Mini-Cooper S/EG_2007 Mini Cooper Sidewalk_Double Honk 02.mp3
+horn_fiat|2020|Pole Position - Fiat Abarth 595 2016/fiat_500_t17_ext_horn_short_XY_RSM191.mp3
+horn_coach|2024|Pole Position - The Vehicle Doors and More Library/Man Lions Coach - VAR SFX - Horn Various - Mono - RSM191.mp3
+horn_toyota|2020|Pole Position - Toyota Corolla 1998 Rally car/Toyota Rally Car, t11, Var SFX, Horn, Various, Interior, AMBEO2.mp3
+horn_kodiak|2023|Pole Position Production - Yamaha Kodiak EPS Grizzly 2019/Yamaha Kodiak - t10 - VAR SFX - Horn - ENGINE - VP88.mp3
+siren_close|2020|FLYSOUND - Siren/SR2201 Police Siren Type 1 Close.mp3
+siren_far|2020|FLYSOUND - Siren/SR2002 Police Siren Type 1 Distant.mp3
+amb_mumbai|2017|Creative Audio Pool - INCREDIBLE SOUNDS OF INDIA COLLECTION/DAYTIME, JUNCTION WITH BUSY TRAFFIC, CARS, MOTORBIKES, TRUCKS, HORNING, PEOPLE ON THE STREET, BIG CITY LIFE, BOMBAY, MUMBAI_INCREDIBLE_INDIA_VOL_II_14.mp3
+amb_park|2017|Charlie Atanasyan - North India sound library by Faunethic/City park birds traffic bell of a temple and muezzin from a mosque the evening_120513_02.mp3
+amb_night|2017|Charlie Atanasyan - South India sound library by Faunethic/Rice field frogs and insects close, wide at night 376.mp3
+amb_station|2017|Charlie Atanasyan - North India sound library by Faunethic/Train station announcement train horn and crowd away wide_120502_00.mp3
+amb_crickets|2017|Articulated Sounds - Quiet Streets/QUIET STREET Night fast chirp crickets, distant activities, slight wind, ST.mp3
+rain_loop|2023|InspectorJ - Essentials 06 Rain/RAINConc_InsJ_Ambience_Rain_Moderate_03_LOOP.mp3
+rain_hard|2017|Double Trouble Audio - Rain and Thunder/RATH - Rain Hard Loop 08.mp3
+thunder_far|2023|InspectorJ - Essentials 01 Thunder/THUN_InsJ_Thunder_Distant_01_EQ.mp3
+thunder_close|2023|InspectorJ - Essentials 01 Thunder/THUN_InsJ_Thunder_Extremely-Close_03.mp3
+punch1|2017|Gamemaster Audio -  Punch Sound Pack/punch_general_body_impact_03.mp3
+punch2|2017|Gamemaster Audio -  Punch Sound Pack/punch_grit_wet_impact_05.mp3
+punch3|2017|Gamemaster Audio -  Punch Sound Pack/punch_blocked_02.mp3
+punch4|2020|PMSFX - Lethal Blow/PM_LB_SOURCE_PUNCH_SMACK_LETTUCE_WITHCONTACTMIC_ENHANCED_MKH8040_16.mp3
+punch5|2020|PMSFX - Lethal Blow/PM_LB_DESIGNED_PUNCH_SIMPLE_CLEAN_DEEP_48.mp3
+gun_revolver|2017|Gamemaster Audio -  Gun Sound Pack/gun_revolver_pistol_shot_04.mp3
+gun_flintlock|2023|Pole Position Production - The Black Powder Guns Library/Rifled Flintlock Pistol M1820 - FIRING - Close - MS Decoded - VP88.mp3
+gun_dry|2020|Pole Position - Colt M1911A1 semi-automatic pistol/M1911A1, Handling, Dry Fire, MKH416.mp3
+gun_warehouse|2016|Audiobeast - The London Warehouse Firearms Library/Audiobeast_Large_Warehouse_Colt_M1911_.45_ACP_Pistol_10m_MKH8040_Pair_001_Single_Shot_x6.mp3
+crash_drop|2017|Pole Position - Car Debris, Impacts & Crashes/mercedes_benz_dropped_1m_on_concrete_ls-5_2.mp3
+crash_plates|2017|Pole Position - Car Debris, Impacts & Crashes/peugeot_106_dropped_5m_on_metal_plates_zaxcom_holophone_1.mp3
+crash_chassis|2020|Pole Position - Car Destruction/Car_Destruction_Chassis_Impact_t36_Ext_Drop_on_Ground_Metal_Crash_Bounce_Various_MKH8060.mp3
+crash_metal1|2017|SoundBits - Just Impacts - Extension II/Metal_Hit_Crash_090.mp3
+crash_metal2|2017|SoundBits - Just Impacts - Extension II/Metal_Hit_Crash_199.mp3
+glass1|2023|BluezoneCorp - Broken Glass/Bluezone_BC0274_glass_impact_break_002.mp3
+glass2|2023|BluezoneCorp - Broken Glass/Bluezone_BC0274_glass_impact_break_small_014.mp3
+explosion1|2023|BluezoneCorp - Detonation - Explosion/Bluezone_BC0277_explosion_urban_004_02.mp3
+explosion2|2023|BluezoneCorp - Detonation - Explosion/Bluezone_BC0277_explosion_mortar_002_01.mp3
+skid_circles|2018|Pole Position - Skids & Screeches Tarmac/Skids_Tarmac_t4_exterior_skidding_in_circles_MKH8060_stand.mp3
+door_car|2026|SoundBits - Cars - Mad Mustang Mercury/VEHDoor_Car Foley Car Door Open and Close Exterior 04 Perspective A_SNDBTS_CRS-MMM.mp3
+door_opel|2023|Justsoundeffects - Doors/VEHDoor-INT_Opel Zafira Open Close Drivers Door_JSE_DO_Near Mono.mp3
+splash1|2020|Articulated Sounds - Magic Elements vol.2/LIQUID HIT Lake, Branch, Splash, Lake, Seaweed in Water, Small, CU 04.mp3
+cow|2016|Sound Ex Machina -  Animal Farm/Cow moo, variety of versions, barn ambience 01.mp3
+steps_asphalt|2017|Tovusound - Edward – Foleyart Collection Add-On Extended Footsteps/015_Foley_Footsteps_Asphalt_Boot_Walk_Fast_Run_Jog_Close.mp3
+whoosh1|2023|InspectorJ - 96 General Library/WHSH_InsJ_Whooshing_Low_Double_01-01.mp3
+whoosh2|2023|Justsoundeffects - Transition Whooshes Vol. 1/SWSH_Woodstick Swish 03_JSE_TW1.mp3
+train_door|2023|InspectorJ - 96 General Library/TRNMech_InsJ_Train-Door_Closing-Beeping_Distant_02.mp3
+metro_inside|2018|George Karagioules - The Source. Ambiences from Athens/Athens Metro. Inside the moving Train..mp3

@@ -553,6 +553,7 @@ async function init() {
     if (!window.__freeCam && !metroRide.active) rig.update(dt, input, player, colliders);
     if (!metroRide.active) metroRide.banner.classList.remove('show');
     audio.engine(player.vehicle);
+    audio.update?.(dt, { world, camera, env, player, metro: metroRide.state });
     const markers = missions.markers.concat(story.markers);
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
     if (gps.update(dt, player.x, player.z) === 'arrived') { hud.say('You have arrived.', 2.5); audio.click?.(); }
@@ -595,7 +596,7 @@ async function init() {
   tick();
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
+  window.__game = { audio, story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.

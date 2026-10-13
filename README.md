@@ -1,7 +1,9 @@
 # Namma Bengaluru
 
 An open-world, GTA-style game set in Bengaluru, built for the browser with [Three.js](https://threejs.org).
-No downloads and no asset packs: the city, vehicles, people, textures and sound are all generated in code.
+No downloads and no 3D asset packs: the city, vehicles, people and textures are all generated in code.
+The sound is real: recorded Indian autos, Bullets, buses, horns and street ambience (see
+[SOUND_CREDITS.md](SOUND_CREDITS.md)).
 
 ![The map: real roads, Namma Metro, the railway, lakes and landmarks](docs/map.png)
 
@@ -159,6 +161,21 @@ and signing.
 - **Monsoon.** Rain showers come on their own, with lightning, wet roads and flooded underpasses.
   Traffic slows down and wades through; drive into the deep end and your engine can drown.
 
+### Sound
+
+- **Recorded engines.** A real Piaggio Ape auto, a Royal Enfield Bullet and a Rajdoot, a moped, a
+  1.6 petrol hatchback and an Ural diesel truck, three RPM layers each. They're crossfaded and
+  re-pitched through a gearbox model, so you hear the revs climb and drop on every gear change.
+- **Living traffic.** The nearest vehicles each get their own engine, panned, muffled with distance
+  and Doppler-shifted as they pass. Horns are real recordings: small two-wheeler and auto horns,
+  car horns, a coach air horn, a lorry's musical horn and an Indian train horn.
+- **The city around you.** An Indian junction by day, birds and temple bells in the parks at dawn
+  and dusk, crickets at night, frogs by the lakes, rain that builds into a downpour, the inside of
+  a metro train. A closed car muffles it all.
+- **Hits, guns and the rest** are recordings too: punches, crashes, glass, a revolver and a
+  country-made katta, doors, footsteps, tyre screech, thunder and cows. Underpasses and the metro
+  add an echo.
+
 ### Brands
 
 - **Shops.** 26 real Bengaluru names, many in their home neighbourhoods: A2B, MTR, Vidyarthi
@@ -219,7 +236,9 @@ src/
     weapons.js         Weapon table, raycasts, pickups
     signals.js         Signal phases by approach, heads, traffic constables
     environment.js     Day/night, sky, rain, lightning, wetness, flooding, headlights
-    audio.js           Synthesised engines, horns, siren, gunshots, rain, thunder
+    audio.js           Sample-based sound: engines, traffic, horns, siren, ambience, reverb
+    audioSynth.js      Synthesised fallbacks, UI cues and the radio
+    soundBank.json     Loop points and pitches for public/audio/*.mp3 (built by tools/sounds)
     settings.js        Graphics/control settings and presets
     garages.js         Repair stalls, Chikka Motors, owned vehicles
     missions.js        Gigs; also cameraRig.js, colliders.js (incl. oriented boxes), particles.js, input.js

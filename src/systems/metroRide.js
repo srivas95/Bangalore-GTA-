@@ -171,7 +171,7 @@ export class MetroRide {
     this.train = t;
     this.state = 'riding';
     world.player.human.group.visible = false;
-    this.audio.click?.();
+    (this.audio.metroDoors || this.audio.click)?.call(this.audio);
     this.hud.say(`Doors closing. ${this.leg.line.name} towards ${this.leg.dir > 0 ? this.leg.line.stations[this.leg.line.stations.length - 1].en : this.leg.line.stations[0].en}.`, 3);
   }
 

@@ -429,6 +429,7 @@ export class Player {
 
   // Two-wheelers are mounted with a leg over; cars and autos are climbed into.
   mounts(v) { return !!v.spec.twoWheeler; }
+  doorless(v) { return this.mounts(v) || v.spec.engine === 'auto'; }
 
   // Where you stand to get in: the driver's door on the right (India drives on the left), the
   // left of a scooter or bike. Falls back to the other side if that's blocked.
@@ -461,7 +462,7 @@ export class Player {
       let dh = want - this.heading; while (dh > Math.PI) dh -= Math.PI * 2; while (dh < -Math.PI) dh += Math.PI * 2;
       this.heading += dh * Math.min(1, dt * 14);
       animateWalk(h, dt, 3.2);
-      if (k >= 1) { tr.phase = 'enter'; tr.t = 0; if (!tr.mount) world.audio?.door(); }
+      if (k >= 1) { tr.phase = 'enter'; tr.t = 0; if (!this.doorless(v)) world.audio?.door('open'); }
     } else if (tr.kind === 'in') {
       const dur = tr.mount ? 0.55 : 0.75, k = Math.min(1, tr.t / dur);
       const door = this.doorPoint(v, world, tr.side), seat = this.seatPoint(v);
@@ -488,7 +489,7 @@ export class Player {
     this.vehicle = v;
     v.driver = 'player';
     this.seat(v);
-    if (this.mounts(v)) world.audio?.door();
+    world.audio?.door(this.doorless(v) ? 'mount' : 'close');
     world.hud.vehicleEntered(v);
   }
 
@@ -525,7 +526,7 @@ export class Player {
     world.audio?.hornHold(v.spec.horn, false);
     this.vehicle = null;
     if (this.human.weaponMesh) this.human.weaponMesh.visible = true;
-    world.audio?.door();
+    world.audio?.door(this.doorless(v) ? 'mount' : 'exit');
     world.hud.vehicleExited();
   }
 

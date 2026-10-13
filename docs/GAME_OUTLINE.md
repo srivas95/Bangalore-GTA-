@@ -75,7 +75,7 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 | --- | --- |
 | On foot | Walk, run, jump, swim through floods, punch, kick, melee weapons and rare guns |
 | Driving | Tyre-model physics (slip angles, load transfer, handbrake turns, stability assist), body roll, chase camera that follows your line, look-behind |
-| Vehicles | Real car models (Alto, WagonR, Swift, Dzire, i10, Etios, City, Verna, Ertiga, Innova, Creta, Nexon, Scorpio, Bolero), Etios/Dzire/Innova/Ertiga taxis, the **Hoysala Ertiga**, scooters, Bullet, autos, BMTC buses in five liveries, tempo, mini truck, lorry, tanker, school bus. Per-type horns and engine notes |
+| Vehicles | Real car models (Alto, WagonR, Swift, Dzire, i10, Etios, City, Verna, Ertiga, Innova, Creta, Nexon, Scorpio, Bolero), Etios/Dzire/Innova/Ertiga taxis, the **Hoysala Ertiga**, scooters, Bullet, autos, BMTC buses in five liveries, tempo, mini truck, lorry, tanker, school bus. Recorded per-class engines (auto, Bullet, scooter, car, diesel) and per-type horns |
 | Damage | Dents, smoke, dead engines, fire, explosions and wrecks; police cars are tougher |
 | Weapons | Fists, lathi, cricket bat, chain, chaaku, kudugolu, machete; country-made katta (misfires) and a revolver. Pickups around markets, parks and yards |
 | Traffic | ~170 vehicles streamed on the real road graph, rush-hour scaling, lorries at night, lane-keeping cars and buses, weaving autos and two-wheelers that sometimes ride on the wrong side, signal jumpers, honking, wading through floods |
@@ -86,6 +86,7 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 | Namma Metro | Purple and Green Lines on real alignments; elevated and underground stations; trains both ways; buy a token, wait, ride, change at Majestic, skip with T |
 | Railway | KSR–Yeshwanthpur and KSR–Cantonment lines, level crossings, stations, trains |
 | Day/night & monsoon | 24-minute day, night glow and bloom; rain, lightning, wet roads, flooded underpasses, drowned engines |
+| Sound | Recorded sounds (Sonniss GDC bundles): RPM-layered engines for you and the nearest traffic (panned, distance-muffled, Doppler), real horns and siren, ambience by time of day, weather, parks and lakes, cabin muffling, underpass and metro reverb, footsteps, tyre screech, hits, guns, crashes |
 | Brands | 26 real Bengaluru brands, fuel stations, hotels and malls with lit crowns |
 | Story | Act I (five missions), mission givers, dialogue, saving to localStorage, daily Majestic collections after Act I |
 | Garages | Puncture/service stalls citywide and Chikka Motors: repairs, resprays that can shed up to 3 stars, buying vehicles, owned vehicles saved and delivered to any garage |
