@@ -206,20 +206,21 @@ export class Environment {
       this.sun.intensity = 2.8 * smooth(-2, 10, elev) * (1 - rain * 0.8);
       this.lightDir = this.sunDir;
     } else {
-      this.sun.color.set(0x9db4e8);
-      this.sun.intensity = 0.35 * (1 - rain * 0.7);
+      // A bright, blue moon: night should read as night but stay playable (on phones too).
+      this.sun.color.set(0xa8c0f0);
+      this.sun.intensity = 0.9 * (1 - rain * 0.6);
       this.lightDir = this.sunDir.clone().negate();
       this.lightDir.y = Math.abs(this.lightDir.y) + 0.3;
       this.lightDir.normalize();
     }
-    this.hemi.intensity = lerp(0.22, 0.75, day) * (1 - rain * 0.35) + this.flash * 2.5;
-    this.hemi.color.setHSL(0.6, lerp(0.35, 0.4, day), lerp(0.35, 0.78, day));
-    this.hemi.groundColor.setHSL(0.08, 0.25, lerp(0.08, 0.35, day));
-    this.scene.environmentIntensity = lerp(0.12, 0.55, day) * (1 - rain * 0.4) + this.flash;
-    this.renderer.toneMappingExposure = lerp(0.9, 1.25, night) + this.flash * 0.6;
+    this.hemi.intensity = lerp(0.55, 0.75, day) * (1 - rain * 0.35) + this.flash * 2.5;
+    this.hemi.color.setHSL(0.6, lerp(0.45, 0.4, day), lerp(0.5, 0.78, day));
+    this.hemi.groundColor.setHSL(0.08, 0.25, lerp(0.2, 0.35, day));
+    this.scene.environmentIntensity = lerp(0.3, 0.55, day) * (1 - rain * 0.4) + this.flash;
+    this.renderer.toneMappingExposure = lerp(0.9, 1.45, night) + this.flash * 0.6;
 
     // Fog: hazy blue by day, warm at dusk, deep blue at night, grey and close in the rain.
-    const fc = new THREE.Color(0xaebdcc).lerp(new THREE.Color(0xd0a888), low * day * 0.7).lerp(new THREE.Color(0x0c1220), night);
+    const fc = new THREE.Color(0xaebdcc).lerp(new THREE.Color(0xd0a888), low * day * 0.7).lerp(new THREE.Color(0x1e2a40), night);
     fc.lerp(new THREE.Color(day > 0.5 ? 0x8a9298 : 0x1a1e24), rain * 0.85);
     this.scene.fog.color.copy(fc);
     this.scene.fog.near = lerp(150, 25, rain);

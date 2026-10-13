@@ -2,7 +2,7 @@
 // (and jaywalk), chai-stall regulars, cows, and how people react when you hit them.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { createHuman, animateWalk, poseIdle, poseDown, poseWait, posePunch, poseFight, poseHandsUp } from './human.js';
+import { createHuman, animateWalk, poseIdle, poseDown, poseWait, posePunch, poseFight, poseHandsUp, poseStagger } from './human.js';
 import { MeshBuilder, BuilderSet } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 import { mulberry32 } from '../world/textures.js';
@@ -380,8 +380,7 @@ export class StreetLife {
         case 'stagger':
           p.x += p.vx * dt; p.z += p.vz * dt; p.vx *= 0.9; p.vz *= 0.9;
           p.timer -= dt;
-          poseIdle(p.h, t);
-          p.h.bones.spine.rotation.x = -0.4;
+          poseStagger(p.h, 1 - p.timer / 0.45);
           if (p.timer <= 0) {
             if (p.afterStagger === 'angry') { p.state = 'angry'; p.timer = 15; hud?.say(`"${pickLine(LINES.fightBack)}"`, 2); }
             else this.scare(p, world.player.x, world.player.z);

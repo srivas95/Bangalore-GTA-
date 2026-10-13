@@ -49,8 +49,11 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 #district { font-size: 15px; color: #ddd; letter-spacing: 2px; text-transform: uppercase; }
 
 #bigmap { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(0, 0, 0, 0.75); }
-#bigmap.show { display: flex; }
-#bigmap canvas { width: min(86vh, 90vw); height: min(86vh, 90vw); border: 3px solid #222; }
+#bigmap.show { display: flex; pointer-events: auto; }
+#bigmap canvas { width: 94vw; height: 84vh; border: 3px solid #222; touch-action: none; cursor: grab; }
+#bigmap .mapbtns { position: absolute; top: calc(8vh + 10px); right: calc(3vw + 10px); display: flex; flex-direction: column; gap: 8px; }
+#bigmap .mapbtns button { width: 44px; height: 44px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(20, 20, 20, 0.75); color: #fff; font-size: 22px; line-height: 1; cursor: pointer; }
+#bigmap .mapbtns button:active { background: rgba(80, 80, 80, 0.9); }
 #bigmap .hint { margin-top: 8px; color: #aaa; }
 
 .key { display: inline-block; min-width: 26px; padding: 1px 7px; border: 1px solid rgba(255, 255, 255, 0.6); border-bottom-width: 3px; border-radius: 5px; font-family: var(--hud-font); font-size: 13px; text-align: center; color: #fff; background: rgba(255, 255, 255, 0.08); text-shadow: none; }
@@ -153,7 +156,7 @@ body.touch #subtitle { bottom: 150px; font-size: 16px; padding: 0 10%; }
 body.touch #prompt { bottom: auto; top: 52px; font-size: 15px; }
 body.touch #help .panel { padding: 18px; }
 body.touch .controls { display: none; }
-#help.show ~ #touch, #bigmap.show ~ #touch { display: none; }
+#help.show ~ #touch, #bigmap.show ~ #touch, body.map-open #touch { display: none !important; }
 body.touch #health { top: 46px; bottom: auto; left: 4px; width: 136px; height: 136px; }
 #touch .t-btn.big { font-size: 15px; }
 #touch .t-btn.big[data-id="attack"] { font-size: 30px; }

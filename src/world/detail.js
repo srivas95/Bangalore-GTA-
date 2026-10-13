@@ -8,7 +8,7 @@ export function setDetail(level) {
   DETAIL.level = level;
   DETAIL.lite = level !== 'full';
   DETAIL.min = level === 'min';
-  DETAIL.textPx = level === 'full' ? 96 : level === 'lite' ? 48 : 32;
+  DETAIL.textPx = level === 'full' ? 96 : level === 'lite' ? 72 : 40;
 }
 
 // Canvas scale for a sign texture painted on a 1024 px wide layout, sized to the sign's width in metres.

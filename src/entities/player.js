@@ -1,7 +1,7 @@
 // The player: walking, running, jumping, punching, kicking, swimming through floods,
 // and getting in and out of any vehicle.
 import * as THREE from 'three';
-import { createHuman, animateWalk, poseIdle, poseSit, posePunch, poseKick, poseDown, poseLathi, poseSwing, poseAim } from './human.js';
+import { createHuman, animateWalk, poseIdle, poseSit, posePunch, poseKick, poseDown, poseLathi, poseSwing, poseAim, poseFight, poseEnterCar, poseMount } from './human.js';
 import { LINES } from '../config.js';
 import { WEAPONS, WEAPON_ORDER, equip, muzzle, raycast } from '../systems/weapons.js';
 
@@ -22,6 +22,8 @@ export class Player {
     this.health = 100;
     this.hurtCooldown = 0;
     this.attack = null; // {kind, t, side, landed}
+    this.transition = null; // getting into or out of a vehicle
+    this.fightT = 0; // keep the guard up for a moment after a blow
     this.punchSide = -1;
     this.knock = 0;
     this.dead = false;
@@ -174,6 +176,8 @@ export class Player {
     if (this.hurtCooldown > 0) this.hurtCooldown -= dt;
     else if (this.health < 100) this.health = Math.min(100, this.health + dt * 4);
 
+    if (this.transition) { this.updateTransition(dt, world); return; }
+    if (this.fightT > 0) this.fightT -= dt;
     if (input.hit('KeyF', 'KeyE', 'Enter') && !this.attack && this.knock <= 0) {
       if (this.vehicle) this.exitVehicle(world);
       else this.tryEnter(world);
@@ -235,7 +239,15 @@ export class Player {
     const len = Math.hypot(mx, mz);
     let speed = len > 0 ? (running && !this.aiming ? RUN : WALK) : 0;
     if (depth > 0.3) speed *= swimming ? 0.6 : 0.55;
-    if (this.attack) speed *= 0.15;
+    if (this.attack) {
+      speed *= 0.15;
+      // Step into the blow: a short lunge during the strike.
+      const a = this.attack, dur = a.kind === 'kick' ? KICK_T : PUNCH_T, k = a.t / dur;
+      if (a.kind !== 'weapon' && k > 0.18 && k < 0.36) {
+        const v = (a.kind === 'kick' ? 0.2 : 0.3) / (0.18 * dur);
+        this.x += Math.sin(this.heading) * v * dt; this.z += Math.cos(this.heading) * v * dt;
+      }
+    }
     if (this.aiming) {
       // Strafe, always facing where the camera looks.
       this.heading = camYaw + Math.PI;
@@ -266,6 +278,7 @@ export class Player {
       poseAim(h, -(world.rigPitch ?? 0.3) + 0.25, this.recoil);
       if (speed > 0) [h.bones.thL.rotation.x, h.bones.knL.rotation.x, h.bones.thR.rotation.x, h.bones.knR.rotation.x] = legs;
     } else if (speed > 0) animateWalk(h, dt, speed);
+    else if (this.fightT > 0) poseFight(h, performance.now() / 1000);
     else poseIdle(h, performance.now() / 1000);
     if (gun && this.reloadT > 0) { h.bones.shR.rotation.x = -0.8; h.bones.elR.rotation.x = -1.2; h.bones.shL.rotation.x = -0.9; h.bones.elL.rotation.x = -1.4; }
     if (!this.grounded && !this.attack) { h.bones.thL.rotation.x = -0.7; h.bones.knL.rotation.x = 0.9; h.bones.thR.rotation.x = 0.3; }
@@ -349,7 +362,7 @@ export class Player {
       }
       if (!any) world.audio?.whoosh();
     }
-    if (k >= 1) this.attack = null;
+    if (k >= 1) { this.attack = null; this.fightT = 1.6; }
   }
 
   drive(dt, input, world) {
@@ -405,14 +418,78 @@ export class Player {
       world.crime?.(v.spec.police ? 'Stealing a Hoysala' : 'Vehicle theft', v.x, v.z, v.spec.police ? 2 : 1);
     }
     v.removeRider();
-    v.driver = 'player';
-    this.vehicle = v;
-    if (this.human.weaponMesh) this.human.weaponMesh.visible = false;
+    v.driver = 'player'; // reserved while we walk up to it
     this.attack = null;
-    this.seat(v);
-    world.audio?.door();
-    world.hud.vehicleEntered(v);
+    if (this.human.weaponMesh) this.human.weaponMesh.visible = false;
+    const door = this.doorPoint(v, world);
+    const dist = Math.hypot(door.x - this.x, door.z - this.z);
+    this.transition = { kind: 'in', v, t: 0, phase: dist > 0.25 ? 'walk' : 'enter', fromX: this.x, fromZ: this.z, walk: Math.min(0.8, Math.max(0.15, dist / 3.4)), mount: this.mounts(v), side: door.side };
     return true;
+  }
+
+  // Two-wheelers are mounted with a leg over; cars and autos are climbed into.
+  mounts(v) { return !!v.spec.twoWheeler; }
+
+  // Where you stand to get in: the driver's door on the right (India drives on the left), the
+  // left of a scooter or bike. Falls back to the other side if that's blocked.
+  doorPoint(v, world, side = null) {
+    const lx = Math.cos(v.heading), lz = -Math.sin(v.heading), fx = Math.sin(v.heading), fz = Math.cos(v.heading);
+    const two = this.mounts(v);
+    const off = v.spec.width / 2 + (two ? 0.45 : 0.5), fwd = two ? 0 : v.type === 'auto' || v.type === 'goodsAuto' ? 0.25 * v.spec.length : 0.08 * v.spec.length;
+    const at = (s) => ({ x: v.x + lx * off * s + fx * fwd, z: v.z + lz * off * s + fz * fwd, side: s });
+    if (side) return at(side);
+    const first = at(two ? 1 : -1);
+    return world.colliders.pointBlocked(first.x, first.z, v.y + 0.5) ? at(-first.side) : first;
+  }
+
+  // Seat position in world space: the driver's side of a car, the middle of anything else.
+  seatPoint(v) {
+    const lx = Math.cos(v.heading), lz = -Math.sin(v.heading), fx = Math.sin(v.heading), fz = Math.cos(v.heading);
+    const lat = this.mounts(v) || v.type === 'auto' || v.type === 'goodsAuto' ? 0 : -0.38, fwd = this.mounts(v) ? 0 : 0.08 * v.spec.length;
+    return { x: v.x + lx * lat + fx * fwd, z: v.z + lz * lat + fz * fwd };
+  }
+
+  // Walking up and climbing in, or climbing out: input waits until it's done.
+  updateTransition(dt, world) {
+    const tr = this.transition, h = this.human, v = tr.v;
+    tr.t += dt;
+    const ease = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
+    if (tr.kind === 'in' && tr.phase === 'walk') {
+      const door = this.doorPoint(v, world, tr.side), k = Math.min(1, tr.t / tr.walk);
+      this.x = tr.fromX + (door.x - tr.fromX) * k; this.z = tr.fromZ + (door.z - tr.fromZ) * k;
+      const want = Math.atan2(door.x - tr.fromX, door.z - tr.fromZ);
+      let dh = want - this.heading; while (dh > Math.PI) dh -= Math.PI * 2; while (dh < -Math.PI) dh += Math.PI * 2;
+      this.heading += dh * Math.min(1, dt * 14);
+      animateWalk(h, dt, 3.2);
+      if (k >= 1) { tr.phase = 'enter'; tr.t = 0; if (!tr.mount) world.audio?.door(); }
+    } else if (tr.kind === 'in') {
+      const dur = tr.mount ? 0.55 : 0.75, k = Math.min(1, tr.t / dur);
+      const door = this.doorPoint(v, world, tr.side), seat = this.seatPoint(v);
+      const m = ease((k - 0.3) / 0.6);
+      this.x = door.x + (seat.x - door.x) * m; this.z = door.z + (seat.z - door.z) * m;
+      let dh = v.heading - this.heading; while (dh > Math.PI) dh -= Math.PI * 2; while (dh < -Math.PI) dh += Math.PI * 2;
+      this.heading += dh * Math.min(1, dt * 12);
+      if (tr.mount) poseMount(h, k); else poseEnterCar(h, k);
+      this.y = v.y;
+      if (k >= 1) { this.transition = null; this.finishEnter(v, world); return; }
+    } else {
+      // Out: from the seat to beside the door, standing up as we go.
+      const dur = tr.mount ? 0.5 : 0.55, k = Math.min(1, tr.t / dur);
+      const m = ease(k);
+      this.x = tr.fromX + (tr.toX - tr.fromX) * m; this.z = tr.fromZ + (tr.toZ - tr.fromZ) * m;
+      if (tr.mount) poseMount(h, 1 - k); else poseEnterCar(h, 1 - k);
+      if (k >= 1) { this.transition = null; poseIdle(h, 0); }
+    }
+    h.group.position.set(this.x, this.y, this.z);
+    h.group.rotation.y = this.heading;
+  }
+
+  finishEnter(v, world) {
+    this.vehicle = v;
+    v.driver = 'player';
+    this.seat(v);
+    if (this.mounts(v)) world.audio?.door();
+    world.hud.vehicleEntered(v);
   }
 
   seat(v) {
@@ -431,13 +508,18 @@ export class Player {
     this.scene.add(h.group);
     h.group.visible = true;
     h.group.rotation.set(0, 0, 0);
-    // India is right-hand drive: get out on the right (-left) side, else the left.
+    // India is right-hand drive: get out on the right, else the left (scooters: the left).
+    const door = this.doorPoint(v, world);
+    const seat = this.seatPoint(v);
     const lx = Math.cos(v.heading), lz = -Math.sin(v.heading);
-    const off = v.spec.width / 2 + 0.6;
-    let x = v.x - lx * off, z = v.z - lz * off;
-    if (world.colliders.pointBlocked(x, z, v.y + 0.5)) { x = v.x + lx * off; z = v.z + lz * off; }
-    this.x = x; this.z = z; this.y = v.y;
+    const x = door.x + lx * 0.25 * door.side, z = door.z + lz * 0.25 * door.side;
+    this.y = v.y;
     this.heading = v.heading;
+    if (force) { this.x = x; this.z = z; }
+    else {
+      this.x = seat.x; this.z = seat.z;
+      this.transition = { kind: 'out', v, t: 0, mount: this.mounts(v), fromX: seat.x, fromZ: seat.z, toX: x, toZ: z };
+    }
     v.driver = null;
     v.siren = false;
     world.audio?.hornHold(v.spec.horn, false);
@@ -449,10 +531,12 @@ export class Player {
 
   respawn(x, z) {
     if (this.vehicle) { this.vehicle.driver = null; this.vehicle = null; }
+    if (this.transition?.kind === 'in') this.transition.v.driver = null;
     this.scene.add(this.human.group);
     this.human.group.visible = true;
     this.human.group.rotation.set(0, 0, 0);
     this.x = x; this.z = z; this.y = 0.15; this.vy = 0;
     this.health = 100; this.dead = false; this.knock = 0; this.attack = null; this.kx = this.kz = 0;
+    this.transition = null;
   }
 }

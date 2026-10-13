@@ -56,7 +56,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   // Facades get a normal map from their own painting, so window recesses and ledges catch the light.
   const facade = (style, map, extra = {}, bump = 0) => std({
     map: tex(map), vertexColors: true, emissiveMap: T.windowGlow(style), emissive: 0xffe2b0, emissiveIntensity: 0,
-    ...(bump && { normalMap: tex(T.normalFromTexture(map, bump, DETAIL.lite ? 256 : 512)), normalScale: new THREE.Vector2(1, 1) }), ...extra,
+    ...(bump && { normalMap: tex(T.normalFromTexture(map, bump, DETAIL.min ? 256 : 512)), normalScale: new THREE.Vector2(1, 1) }), ...extra,
   });
   const mats = {
     ground: std({ map: tex(T.soilTexture()), roughness: 1 }),

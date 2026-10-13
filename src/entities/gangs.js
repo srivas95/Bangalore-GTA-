@@ -1,7 +1,7 @@
 // Armed hostiles: rowdy-sheeters with machetes and chains, and the odd one with a katta.
 // Missions spawn them as targets and crews; a few loiter around markets at night and only
 // turn on you when provoked.
-import { createHuman, animateWalk, poseIdle, poseFight, posePunch, poseLathi, poseSwing, poseAim, poseDown } from './human.js';
+import { createHuman, animateWalk, poseIdle, poseFight, posePunch, poseLathi, poseSwing, poseAim, poseDown, poseStagger } from './human.js';
 import { WEAPONS, equip, npcFire } from '../systems/weapons.js';
 import { LINES } from '../config.js';
 
@@ -71,8 +71,8 @@ export class Gangs {
       if (m.weapon !== 'fists') world.pickups?.add(m.weapon, m.x + fx * 0.8, m.z + fz * 0.8, m.y);
       m.h.weaponMesh && (m.h.weaponMesh.visible = false);
       world.onGangDown?.(m);
-    } else if (knock) { m.state = 'stagger'; m.timer = 0.6; m.vx = fx * 4; m.vz = fz * 4; }
-    else { m.state = 'stagger'; m.timer = 0.3; m.vx = fx * 2; m.vz = fz * 2; }
+    } else if (knock) { m.state = 'stagger'; m.timer = m.staggerT = 0.6; m.vx = fx * 4; m.vz = fz * 4; }
+    else { m.state = 'stagger'; m.timer = m.staggerT = 0.4; m.vx = fx * 2; m.vz = fz * 2; }
   }
 
   update(dt, world) {
@@ -113,7 +113,7 @@ export class Gangs {
       if (m.state === 'stagger') {
         m.timer -= dt;
         m.x += m.vx * dt; m.z += m.vz * dt; m.vx *= 0.9; m.vz *= 0.9;
-        poseIdle(h, t); h.bones.spine.rotation.x = -0.4;
+        poseStagger(h, 1 - m.timer / (m.staggerT || 0.5));
         if (m.timer <= 0) m.state = 'chase';
       } else if (m.state === 'idle') {
         poseIdle(h, t);

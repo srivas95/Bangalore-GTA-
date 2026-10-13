@@ -1,7 +1,7 @@
 // Bengaluru City Police: wanted level, Hoysala (Maruti Ertiga) pursuit units that route through
 // the road graph and ram on sight, and lathi-wielding constables who chase you on foot.
 import { Vehicle } from '../entities/vehicle.js';
-import { createHuman, animateWalk, poseLathi, poseDown, poseIdle, poseAim } from '../entities/human.js';
+import { createHuman, animateWalk, poseLathi, poseDown, poseIdle, poseAim, poseStagger } from '../entities/human.js';
 import { WEAPONS, equip, npcFire } from './weapons.js';
 import { LINES } from '../config.js';
 
@@ -223,7 +223,7 @@ export class Police {
     this.audio?.grunt(false);
     if (lethal && c.health <= 0) { c.dead = true; c.state = 'down'; c.timer = 1e9; c.vx = fx * 4; c.vz = fz * 4; c.h.weaponMesh && (c.h.weaponMesh.visible = false); }
     else if (c.health <= 0 || kick) { c.state = 'down'; c.timer = 5; c.vx = fx * (kick ? 6 : 3); c.vz = fz * (kick ? 6 : 3); }
-    else { c.x += fx * 0.6; c.z += fz * 0.6; }
+    else { c.x += fx * 0.6; c.z += fz * 0.6; c.flinch = 0.35; }
   }
 
   updateCop(c, dt, world) {
@@ -282,6 +282,8 @@ export class Police {
       c.shout -= dt;
       if (c.shout <= 0 && target === pl && d < 20) { c.shout = 4 + Math.random() * 4; world.hud.say(`Constable: "${LINES.cop[Math.floor(Math.random() * LINES.cop.length)]}"`, 2); }
     }
+    // Reel from a punch for a moment, whatever they were doing.
+    if (c.flinch > 0 && c.state !== 'down') { c.flinch -= dt; poseStagger(h, 1 - c.flinch / 0.35); }
     c.y = this.layout.groundHeight(c.x, c.z, c.y);
     h.group.position.set(c.x, c.y, c.z);
   }

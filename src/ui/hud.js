@@ -47,18 +47,25 @@ export class HUD {
     this.shownMoney = 0;
   }
 
-  renderMap(scale) {
+  // The map picture at `scale` px per metre: the whole world, or just `region` ({minX, minZ, w, h}
+  // with w, h in pixels) drawn into `into` (the zoomed big map).
+  renderMap(scale, region = null, into = null) {
     const Wd = this.W;
-    const c = document.createElement('canvas');
-    c.width = Math.ceil((Wd.maxX - Wd.minX) * scale);
-    c.height = Math.ceil((Wd.maxZ - Wd.minZ) * scale);
+    const c = into || document.createElement('canvas');
+    const r = region || { minX: Wd.minX, minZ: Wd.minZ, w: Math.ceil((Wd.maxX - Wd.minX) * scale), h: Math.ceil((Wd.maxZ - Wd.minZ) * scale) };
+    if (c.width !== r.w) c.width = r.w;
+    if (c.height !== r.h) c.height = r.h;
     const ctx = c.getContext('2d');
-    const X = (x) => (x - Wd.minX) * scale, Z = (z) => (z - Wd.minZ) * scale;
+    const X = (x) => (x - r.minX) * scale, Z = (z) => (z - r.minZ) * scale;
+    const maxX = r.minX + r.w / scale, maxZ = r.minZ + r.h / scale;
+    const visible = (b) => !region || (b.bb ||= bbox(b.poly), b.bb[2] >= r.minX && b.bb[0] <= maxX && b.bb[3] >= r.minZ && b.bb[1] <= maxZ);
+    const lw = Math.max(1, scale / 0.32); // line widths grow as you zoom in
     const poly = (P) => { ctx.beginPath(); P.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.closePath(); };
     const line = (P) => { ctx.beginPath(); P.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.stroke(); };
     ctx.fillStyle = '#3a3a3c';
     ctx.fillRect(0, 0, c.width, c.height);
     for (const b of [...this.layout.blocks, ...this.layout.islands]) {
+      if (!visible(b)) continue;
       ctx.fillStyle = '#9a9690';
       poly(b.poly); ctx.fill();
       if (!b.innerPoly || b.island) continue;
@@ -73,25 +80,25 @@ export class HUD {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     // Railway: brown with sleepers.
-    for (const r of this.rails) {
-      ctx.strokeStyle = '#5a3a2a'; ctx.lineWidth = 4; ctx.setLineDash([]); line(r.pts);
-      ctx.strokeStyle = '#c8b090'; ctx.lineWidth = 2; ctx.setLineDash([3, 5]); line(r.pts);
+    for (const rl of this.rails) {
+      ctx.strokeStyle = '#5a3a2a'; ctx.lineWidth = 4 * lw; ctx.setLineDash([]); line(rl.pts);
+      ctx.strokeStyle = '#c8b090'; ctx.lineWidth = 2 * lw; ctx.setLineDash([3 * lw, 5 * lw]); line(rl.pts);
     }
     ctx.setLineDash([]);
     // Metro: solid where elevated, dashed underground; station dots.
     for (const m of this.metro) {
       const col = '#' + m.color.toString(16).padStart(6, '0');
       ctx.strokeStyle = col;
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 4 * lw;
       const st = m.stations;
       for (let i = 0; i < st.length - 1; i++) {
-        ctx.setLineDash(st[i].underground && st[i + 1].underground ? [6, 4] : []);
+        ctx.setLineDash(st[i].underground && st[i + 1].underground ? [6 * lw, 4 * lw] : []);
         line([[st[i].x, st[i].z], [st[i + 1].x, st[i + 1].z]]);
       }
       ctx.setLineDash([]);
       for (const s of st) {
-        ctx.fillStyle = '#fff'; ctx.strokeStyle = col; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(X(s.x), Z(s.z), 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = col; ctx.lineWidth = 2 * lw;
+        ctx.beginPath(); ctx.arc(X(s.x), Z(s.z), 4 * lw, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       }
     }
     ctx.fillStyle = '#2a5a9a';
@@ -202,8 +209,92 @@ export class HUD {
   }
 
   toggleMap() {
-    this.el.map.classList.toggle('show');
-    return this.el.map.classList.contains('show');
+    const on = this.el.map.classList.toggle('show');
+    document.body.classList.toggle('map-open', on); // hides the touch controls underneath
+    if (on) {
+      this.initBigMap();
+      // Open on the player, zoomed in enough to read the streets.
+      const p = this._lastP || { x: 0, z: 0 };
+      this.view = { cx: p.x, cz: p.z, ppm: this.fitScale() * 3 };
+      this.clampView();
+      this.base = null;
+    }
+    return on;
+  }
+
+  // ---------- Big map: zoom (wheel, pinch, buttons) and pan (drag) ----------
+  initBigMap() {
+    const c = this.el.map.querySelector('canvas');
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; this.base = null; }
+    this.dpr = dpr;
+    if (this._mapInit) return;
+    this._mapInit = true;
+    const ptrs = new Map();
+    let pinch = null;
+    const local = (e) => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * this.dpr, (e.clientY - r.top) * this.dpr]; };
+    c.addEventListener('pointerdown', (e) => { c.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, local(e)); pinch = null; });
+    c.addEventListener('pointermove', (e) => {
+      if (!ptrs.has(e.pointerId)) return;
+      const prev = ptrs.get(e.pointerId), cur = local(e);
+      ptrs.set(e.pointerId, cur);
+      if (ptrs.size === 1) this.panBy(cur[0] - prev[0], cur[1] - prev[1]);
+      else if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()];
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1]), mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        if (pinch) { this.zoomAt(d / pinch.d, mid); this.panBy(mid[0] - pinch.mid[0], mid[1] - pinch.mid[1]); }
+        pinch = { d, mid };
+      }
+    });
+    const up = (e) => { ptrs.delete(e.pointerId); pinch = null; };
+    c.addEventListener('pointerup', up);
+    c.addEventListener('pointercancel', up);
+    c.addEventListener('wheel', (e) => { e.preventDefault(); this.zoomAt(Math.exp(-e.deltaY * 0.0015), local(e)); }, { passive: false });
+    const bar = document.createElement('div');
+    bar.className = 'mapbtns';
+    bar.innerHTML = '<button data-z="in">+</button><button data-z="out">−</button><button data-z="me" title="Centre on me">⌖</button><button data-z="close" title="Close">✕</button>';
+    bar.addEventListener('click', (e) => {
+      const z = e.target.dataset?.z;
+      const mid = [c.width / 2, c.height / 2];
+      if (z === 'in') this.zoomAt(1.6, mid);
+      if (z === 'out') this.zoomAt(1 / 1.6, mid);
+      if (z === 'me' && this._lastP) { this.view.cx = this._lastP.x; this.view.cz = this._lastP.z; this.clampView(); }
+      if (z === 'close') this.toggleMap();
+    });
+    this.el.map.appendChild(bar);
+    const hint = this.el.map.querySelector('.hint');
+    if (hint) hint.textContent = matchMedia('(pointer: coarse)').matches ? 'Pinch to zoom · drag to move' : 'Scroll to zoom · drag to move · M to close';
+  }
+
+  fitScale() {
+    const c = this.el.map.querySelector('canvas'), Wd = this.W;
+    return Math.min(c.width / (Wd.maxX - Wd.minX), c.height / (Wd.maxZ - Wd.minZ));
+  }
+
+  clampView() {
+    const v = this.view, Wd = this.W;
+    v.ppm = Math.max(this.fitScale(), Math.min(6 * this.dpr, v.ppm));
+    v.cx = Math.max(Wd.minX, Math.min(Wd.maxX, v.cx));
+    v.cz = Math.max(Wd.minZ, Math.min(Wd.maxZ, v.cz));
+    this.viewT = performance.now();
+  }
+
+  zoomAt(k, [sx, sy]) {
+    const c = this.el.map.querySelector('canvas'), v = this.view;
+    // Keep the world point under (sx, sy) fixed.
+    const wx = v.cx + (sx - c.width / 2) / v.ppm, wz = v.cz + (sy - c.height / 2) / v.ppm;
+    v.ppm *= k;
+    this.clampView();
+    v.cx = wx - (sx - c.width / 2) / v.ppm;
+    v.cz = wz - (sy - c.height / 2) / v.ppm;
+    this.clampView();
+  }
+
+  panBy(dx, dy) {
+    this.view.cx -= dx / this.view.ppm;
+    this.view.cz -= dy / this.view.ppm;
+    this.clampView();
   }
 
   toggleHelp(force) {
@@ -249,6 +340,7 @@ export class HUD {
       if (Math.abs(this.money - this.shownMoney) < 1) this.shownMoney = this.money;
       this.el.money.textContent = '₹' + Math.round(this.shownMoney).toLocaleString('en-IN');
     }
+    this._lastP = p;
     this.drawMinimap(p, camYaw, player, markers);
     if (this.el.map.classList.contains('show')) this.drawBigMap(p, markers);
   }
@@ -309,37 +401,64 @@ export class HUD {
   drawBigMap(p, markers) {
     const c = this.el.map.querySelector('canvas');
     const ctx = c.getContext('2d');
-    const Wd = this.W;
-    const S = Math.min(c.width / (Wd.maxX - Wd.minX), c.height / (Wd.maxZ - Wd.minZ));
-    const ox = (c.width - (Wd.maxX - Wd.minX) * S) / 2, oz = (c.height - (Wd.maxZ - Wd.minZ) * S) / 2;
+    const Wd = this.W, v = this.view, S = v.ppm, k = this.dpr;
+    const ox = c.width / 2 - (v.cx - Wd.minX) * S, oz = c.height / 2 - (v.cz - Wd.minZ) * S;
+    const X = (x) => ox + (x - Wd.minX) * S, Zm = (z) => oz + (z - Wd.minZ) * S;
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, c.width, c.height);
-    ctx.drawImage(this.mapCanvas, ox, oz, (Wd.maxX - Wd.minX) * S, (Wd.maxZ - Wd.minZ) * S);
-    const X = (v) => ox + (v - Wd.minX) * S, Zm = (v) => oz + (v - Wd.minZ) * S;
+    // Base map: redrawn sharp at this zoom once the view has settled; the low-res overview
+    // stands in while you drag or pinch.
+    const key = `${v.cx.toFixed(1)},${v.cz.toFixed(1)},${S.toFixed(4)},${c.width}x${c.height}`;
+    if (this.base && this.base.key === key) ctx.drawImage(this.base.canvas, 0, 0);
+    else {
+      ctx.drawImage(this.mapCanvas, ox, oz, (Wd.maxX - Wd.minX) * S, (Wd.maxZ - Wd.minZ) * S);
+      if (performance.now() - (this.viewT || 0) > 120) {
+        const canvas = this.base?.canvas || document.createElement('canvas');
+        this.renderMap(S, { minX: v.cx - c.width / 2 / S, minZ: v.cz - c.height / 2 / S, w: c.width, h: c.height }, canvas);
+        this.base = { key, canvas };
+      }
+    }
     ctx.textAlign = 'center';
-    ctx.font = 'bold 15px "Oswald", sans-serif';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 * k;
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    // Labels never overlap (first come, first served), and smaller places appear as you zoom in.
+    const taken = [];
+    const label = (t, x, z, dy = 0, size = 11) => {
+      const sx = X(x), sy = Zm(z) + dy * k;
+      if (sx < -200 || sx > c.width + 200 || sy < -40 || sy > c.height + 40) return;
+      const w = ctx.measureText(t).width / 2 + 3 * k, h = size * 0.6 * k + 2 * k;
+      if (taken.some((r) => Math.abs(r[0] - sx) < r[2] + w && Math.abs(r[1] - sy) < r[3] + h)) return;
+      taken.push([sx, sy, w, h]);
+      ctx.strokeText(t, sx, sy); ctx.fillText(t, sx, sy);
+    };
+    const zoom = S / k; // CSS px per metre
+    ctx.font = `bold ${15 * k}px "Oswald", sans-serif`;
     ctx.fillStyle = '#fff';
-    for (const d of this.districtLabels) { ctx.strokeText(d.name.toUpperCase(), X(d.x), Zm(d.z)); ctx.fillText(d.name.toUpperCase(), X(d.x), Zm(d.z)); }
-    ctx.fillStyle = '#ffe9a8';
-    ctx.font = 'bold 11px sans-serif';
-    for (const l of this.pois.landmarks) { if (!l) continue; ctx.strokeText('◆ ' + l.name, X(l.x), Zm(l.z) + 14); ctx.fillText('◆ ' + l.name, X(l.x), Zm(l.z) + 14); }
-    ctx.fillStyle = '#9fd8ff';
-    ctx.fillStyle = '#ffb060';
-    for (const g of this.pois.garages || []) { ctx.strokeText('🔧 ' + g.name, X(g.x), Zm(g.z)); ctx.fillText('🔧 ' + g.name, X(g.x), Zm(g.z)); }
-    ctx.fillStyle = '#9fd8ff';
-    for (const f of this.pois.fuel || []) { ctx.strokeText('⛽ ' + f.name, X(f.x), Zm(f.z)); ctx.fillText('⛽ ' + f.name, X(f.x), Zm(f.z)); }
-    ctx.lineWidth = 1;
+    for (const d of this.districtLabels) label(d.name.toUpperCase(), d.x, d.z, 0, 15);
+    ctx.font = `bold ${11 * k}px sans-serif`;
+    if (zoom > 0.25) { ctx.fillStyle = '#ffe9a8'; for (const l of this.pois.landmarks) if (l) label('◆ ' + l.name, l.x, l.z, 14); }
+    if (zoom > 0.6) {
+      ctx.fillStyle = '#ffb060';
+      for (const g of this.pois.garages || []) label('🔧 ' + g.name, g.x, g.z);
+      ctx.fillStyle = '#9fd8ff';
+      for (const f of this.pois.fuel || []) label('⛽ ' + f.name, f.x, f.z);
+    }
+    ctx.lineWidth = k;
     for (const m of markers) {
       ctx.fillStyle = m.color || '#ffd400';
-      ctx.beginPath(); ctx.arc(X(m.x), Zm(m.z), 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(X(m.x), Zm(m.z), 7 * k, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#000'; ctx.stroke();
     }
     ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(X(p.x), Zm(p.z), 6, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#e02020'; ctx.lineWidth = 3; ctx.stroke(); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(X(p.x), Zm(p.z), 6 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#e02020'; ctx.lineWidth = 3 * k; ctx.stroke(); ctx.lineWidth = 1;
   }
+}
+
+function bbox(P) {
+  let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+  for (const [x, z] of P) { a = Math.min(a, x); b = Math.min(b, z); c = Math.max(c, x); d = Math.max(d, z); }
+  return [a, b, c, d];
 }
 
 function formatTime(s) {

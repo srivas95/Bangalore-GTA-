@@ -4,7 +4,9 @@ const KEY = 'namma-bengaluru-settings-v1';
 
 export const PRESETS = {
   // shadows: 'off', 'near' (a small area round the player, cheap enough for phones) or 'full'.
-  low: { resScale: 0.6, shadows: 'near', bloom: false, drawDist: 0.55, traffic: 0.55, peds: 0.5 },
+  // Phones default to Low: sharp (most of the frame cost was rooftop tanks, since fixed), with
+  // the savings in shadow range, haze distance and crowds.
+  low: { resScale: 0.85, shadows: 'near', bloom: false, drawDist: 0.7, traffic: 0.6, peds: 0.5 },
   medium: { resScale: 0.8, shadows: 'full', bloom: false, drawDist: 0.75, traffic: 0.8, peds: 0.75 },
   // Bloom is optional everywhere: lights get their glow from halos, so every device looks alike.
   high: { resScale: 1, shadows: 'full', bloom: false, drawDist: 1, traffic: 1, peds: 1 },

@@ -54,7 +54,8 @@ async function init() {
   } catch { /* storage blocked */ }
   setDetail(level);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: !DETAIL.lite, powerPreference: 'high-performance' });
+  // MSAA is close to free on phone GPUs (tile-based), and without it phones looked far worse than PC.
+  const renderer = new THREE.WebGLRenderer({ antialias: !DETAIL.min, powerPreference: 'high-performance' });
   let pixelRatio = Math.min(devicePixelRatio, 1.5);
   renderer.setPixelRatio(pixelRatio);
   renderer.setSize(innerWidth, innerHeight);
@@ -90,7 +91,7 @@ async function init() {
       }
       if (run && run.length > 1) strips.push({ pts: run, width: 9, alpha: 0.3 });
     }
-    bakeAO(layout.world, { boxes: colliders.all, trees: city.trees, strips }, DETAIL.lite ? 3.5 : 2.5);
+    bakeAO(layout.world, { boxes: colliders.all, trees: city.trees, strips }, DETAIL.lite ? 3 : 2.5);
   }
   const blobs = new BlobShadows(scene);
   const halos = new Halos(scene, city.lampHeads);

@@ -1,7 +1,7 @@
 {
   "name": "namma-bengaluru",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "An open-world GTA-style game set in Bengaluru, built with Three.js",
   "type": "module",
   "scripts": {

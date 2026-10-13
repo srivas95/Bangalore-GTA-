@@ -201,32 +201,108 @@ export function poseSit(h) {
   b.shL.rotation.z = -0.1; b.shR.rotation.z = 0.1;
 }
 
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+const easeOut = (v) => 1 - (1 - clamp01(v)) ** 3;
+const easeInOut = (v) => { v = clamp01(v); return v * v * (3 - 2 * v); };
+// 0 → 1 over [a, b] with an ease, used to sequence the phases of a move.
+const seg = (k, a, b, ease = easeInOut) => ease((k - a) / (b - a));
+
+// Boxer's guard and stance (lead with the left), the base every strike starts and ends in.
+function guard(b, side = 1, crouch = 1) {
+  b.shL.rotation.x = b.shR.rotation.x = -0.95;
+  b.elL.rotation.x = b.elR.rotation.x = -2.0;
+  b.shL.rotation.z = -0.15; b.shR.rotation.z = 0.15;
+  b.thL.rotation.x = -0.32 * crouch; b.knL.rotation.x = 0.4 * crouch;
+  b.thR.rotation.x = 0.22 * crouch; b.knR.rotation.x = 0.3 * crouch;
+  b.hips.rotation.y = 0.25 * side * crouch;
+  b.chest.rotation.y = -0.15 * side * crouch;
+  b.hips.position.y = HIP_Y - 0.05 * crouch;
+}
+
 // k: 0..1 progress of a punch with the given hand (+1 left, -1 right).
+// Wind-up, a snapped strike with the hips and shoulders turning through, a beat, then back to guard.
 export function posePunch(h, k, side = -1) {
   reset(h);
   const b = h.bones;
-  const ext = k < 0.35 ? k / 0.35 : Math.max(0, 1 - (k - 0.35) / 0.65);
-  const [sh, el, osh, oel] = side < 0 ? [b.shR, b.elR, b.shL, b.elL] : [b.shL, b.elL, b.shR, b.elR];
-  // Guard with the other arm.
-  osh.rotation.x = -0.9; oel.rotation.x = -2.0; osh.rotation.z = side * -0.15;
-  sh.rotation.x = -0.9 - ext * 0.65;
-  el.rotation.x = -2.0 + ext * 1.95;
-  sh.rotation.z = side * 0.1 * ext;
-  b.chest.rotation.y = side * -0.45 * ext;
-  b.thL.rotation.x = -0.2; b.knL.rotation.x = 0.25; b.thR.rotation.x = 0.15;
+  guard(b);
+  const wind = seg(k, 0, 0.18) * (1 - seg(k, 0.18, 0.3));
+  const ext = seg(k, 0.18, 0.32, easeOut) * (1 - seg(k, 0.5, 1));
+  const [sh, el] = side < 0 ? [b.shR, b.elR] : [b.shL, b.elL];
+  sh.rotation.x = -0.95 + wind * 0.35 - ext * 0.7;
+  el.rotation.x = -2.0 - wind * 0.3 + ext * 1.95;
+  sh.rotation.z = side * (-0.15 + 0.25 * ext);
+  // Turn into it: chest and hips rotate towards the punching side, weight onto the front foot.
+  b.chest.rotation.y = side * (0.25 * wind - 0.55 * ext);
+  b.hips.rotation.y = 0.25 + side * (0.1 * wind - 0.3 * ext);
+  b.spine.rotation.x = 0.12 * ext;
+  b.thL.rotation.x = -0.32 - 0.15 * ext; b.knL.rotation.x = 0.4 + 0.15 * ext;
+  b.thR.rotation.x = 0.22 + 0.15 * ext;
+  b.neck.rotation.y = -side * 0.2 * ext;
 }
 
+// Chamber the knee, snap the leg out, retract and put it down; arms counterbalance.
 export function poseKick(h, k) {
   reset(h);
   const b = h.bones;
-  const ext = k < 0.4 ? k / 0.4 : Math.max(0, 1 - (k - 0.4) / 0.6);
-  b.thR.rotation.x = -0.3 - ext * 1.25;
-  b.knR.rotation.x = 1.4 * (1 - ext) + 0.05;
-  b.thL.rotation.x = 0.1; b.knL.rotation.x = 0.2;
-  b.spine.rotation.x = -0.25 * ext;
-  b.shL.rotation.z = 0.6 * ext + 0.1; b.shR.rotation.z = -0.6 * ext - 0.1;
-  b.shL.rotation.x = b.shR.rotation.x = -0.5;
-  b.elL.rotation.x = b.elR.rotation.x = -1.2;
+  guard(b, 1, 1 - seg(k, 0, 0.2));
+  const chamber = seg(k, 0, 0.22) * (1 - seg(k, 0.75, 1));
+  const ext = seg(k, 0.22, 0.38, easeOut) * (1 - seg(k, 0.5, 0.72));
+  b.thR.rotation.x = -1.35 * chamber - 0.25 * ext;
+  b.knR.rotation.x = 1.9 * chamber * (1 - ext) + 0.05;
+  b.thL.rotation.x = 0.05; b.knL.rotation.x = 0.25 * chamber;
+  b.spine.rotation.x = -0.35 * ext - 0.08 * chamber;
+  b.hips.rotation.y = -0.2 * ext;
+  b.hips.position.y = HIP_Y - 0.03 * chamber;
+  b.shL.rotation.x = -0.95 + 0.6 * ext; b.shR.rotation.x = -0.95 + 0.9 * ext;
+  b.shL.rotation.z = -0.15 + 0.7 * ext; b.shR.rotation.z = 0.15 - 0.9 * ext;
+  b.elL.rotation.x = b.elR.rotation.x = -2.0 + 1.1 * ext;
+}
+
+// Taking a hit: k 0..1 over the stagger. Snaps back, then sags and recovers.
+export function poseStagger(h, k) {
+  reset(h);
+  const b = h.bones;
+  const hit = seg(k, 0, 0.15, easeOut) * (1 - seg(k, 0.35, 1));
+  b.spine.rotation.x = -0.45 * hit;
+  b.neck.rotation.x = -0.5 * hit;
+  b.chest.rotation.y = 0.35 * hit;
+  // Arms flung out and back.
+  b.shL.rotation.x = 0.35 * hit; b.shR.rotation.x = -0.3 * hit;
+  b.shL.rotation.z = 1.0 * hit; b.shR.rotation.z = -1.2 * hit;
+  b.elL.rotation.x = b.elR.rotation.x = -0.8 * hit;
+  b.thL.rotation.x = 0.25 * hit; b.knL.rotation.x = 0.35 * hit;
+  b.thR.rotation.x = -0.35 * hit; b.knR.rotation.x = 0.5 * hit;
+  b.hips.position.y = HIP_Y - 0.08 * hit;
+}
+
+// Getting into a car through the driver's door: reach for the handle, duck, slide onto the seat.
+export function poseEnterCar(h, k) {
+  reset(h);
+  const b = h.bones;
+  const reach = seg(k, 0, 0.3) * (1 - seg(k, 0.45, 0.6));
+  const duck = seg(k, 0.3, 0.75);
+  b.shR.rotation.x = -1.1 * reach; b.elR.rotation.x = -0.4 * reach;
+  b.spine.rotation.x = 0.55 * duck; b.neck.rotation.x = 0.25 * duck;
+  b.thL.rotation.x = b.thR.rotation.x = -1.2 * duck;
+  b.knL.rotation.x = b.knR.rotation.x = 1.3 * duck;
+  b.hips.position.y = HIP_Y - 0.35 * duck;
+  b.shL.rotation.x = -0.5 * duck; b.elL.rotation.x = -0.6 * duck;
+}
+
+// Throwing a leg over a scooter or bike (from its left), then settling onto the seat.
+export function poseMount(h, k) {
+  reset(h);
+  const b = h.bones;
+  const lift = seg(k, 0, 0.45) * (1 - seg(k, 0.55, 0.8));
+  const sit = seg(k, 0.5, 1);
+  b.thR.rotation.x = -0.9 * lift - 1.45 * sit;
+  b.thR.rotation.z = -0.9 * lift - 0.08 * sit;
+  b.knR.rotation.x = 1.1 * lift + 1.4 * sit;
+  b.thL.rotation.x = -1.45 * sit; b.knL.rotation.x = 1.4 * sit; b.thL.rotation.z = 0.08 * sit;
+  b.spine.rotation.x = 0.25 * lift;
+  b.shL.rotation.x = b.shR.rotation.x = -0.5 * lift - 0.85 * sit;
+  b.elL.rotation.x = b.elR.rotation.x = -0.45 * sit;
+  b.hips.position.y = HIP_Y - 0.05 * lift;
 }
 
 // A Bengaluru constable's lathi swing (raised overhead, brought down).
@@ -244,11 +320,12 @@ export function poseLathi(h, k) {
 export function poseFight(h, t) {
   reset(h);
   const b = h.bones, bob = Math.sin(t * 7 + h.phase) * 0.03;
-  b.shL.rotation.x = b.shR.rotation.x = -0.95;
-  b.elL.rotation.x = b.elR.rotation.x = -2.0;
-  b.shL.rotation.z = -0.15; b.shR.rotation.z = 0.15;
-  b.thL.rotation.x = -0.3; b.knL.rotation.x = 0.4; b.thR.rotation.x = 0.2; b.knR.rotation.x = 0.3;
-  b.hips.position.y = HIP_Y - 0.05 + bob;
+  guard(b);
+  // Bounce on the balls of the feet, hands circling a little.
+  b.hips.position.y += bob;
+  b.shL.rotation.x += Math.sin(t * 3.5 + h.phase) * 0.06;
+  b.shR.rotation.x += Math.sin(t * 3.5 + h.phase + 1.7) * 0.06;
+  b.chest.rotation.y += Math.sin(t * 2 + h.phase) * 0.05;
 }
 
 export function poseDown(h) {
