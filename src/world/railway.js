@@ -2,7 +2,7 @@
 // alignments, overhead electrification, boundary walls, level crossings, three stations and
 // long-distance trains (a WAP-7 with red LHB coaches) shuttling between the ends.
 import * as THREE from 'three';
-import { BuilderSet, makeFrame } from './meshBuilder.js';
+import { BuilderSet, makeFrame, frameToWorld } from './meshBuilder.js';
 import { put } from './landmarks.js';
 import { Path } from './path.js';
 import { FACADE_TILE } from './textures.js';
@@ -20,14 +20,46 @@ export function buildRailway(ctx) {
   const { B, layout, colliders, group } = ctx;
   const st = B.get('stone'), metal = B.get('metal');
   const lines = layout.rails.map((l) => ({ ...l, path: new Path(l.pts) }));
-  const stations = RAIL_STATIONS.map((s) => {
-    const line = lines[s.line];
-    const pr = line.path.project(s.at[0], s.at[1]);
-    return { ...s, line, s: pr.s };
-  });
-  const nearStation = (line, s, pad = 0) => stations.some((q) => q.line === line && Math.abs(q.s - s) < 75 + pad);
   const onRoad = (x, z) => !layout.blockContaining(x, z) && !layout.underpassAt(x, z);
   const inBlock = (x, z) => { const b = layout.blockContaining(x, z); return b && !b.island; };
+  // Where roads cross each line (level crossings and rail underpasses), as distances along it.
+  const roadCrossings = (line) => {
+    const out = [];
+    for (const lc of layout.levelCrossings) if (lc.rail.name === line.name) out.push(line.path.project(lc.x, lc.z).s);
+    for (const u of layout.underpasses) if (u.type === 'rail' && line.path.project(u.cx, u.cz).d < 20) out.push(line.path.project(u.cx, u.cz).s);
+    return out;
+  };
+  // A station needs ~140 m of track clear of roads for its platforms, and land beside it for the
+  // building; slide it along the line to the nearest such spot (stations used to straddle roads).
+  const stationFits = (line, s) => {
+    if (s < 90 || s > line.path.length - 90) return false;
+    const at = line.path.at(s);
+    const side = [1, -1].find((k) => inBlock(at.x - at.dz * 20 * k, at.z + at.dx * 20 * k));
+    if (!side) return false;
+    for (let a = -70; a <= 70; a += 3) {
+      const p = line.path.at(Math.max(0, Math.min(line.path.length, s + a)));
+      for (const off of [-9, 0, 9, side * 12, side * 19, side * 27]) {
+        if (Math.abs(off) > 10 && Math.abs(a) > 37) continue; // the building is 72 m long
+        if (!inBlock(p.x - p.dz * off, p.z + p.dx * off)) return false;
+      }
+    }
+    return true;
+  };
+  const stations = RAIL_STATIONS.map((st0) => {
+    const line = lines[st0.line];
+    const s0 = line.path.project(st0.at[0], st0.at[1]).s;
+    const xs = roadCrossings(line);
+    // Prefer spots whose platforms end well short of a crossing (stopped trains keep its gates down).
+    const clear = (s, gap) => xs.every((x) => Math.abs(x - s) > gap);
+    let best = s0;
+    search: for (const gap of [140, 80, 0]) {
+      for (let d = 0; d <= 600; d += 5) {
+        for (const s of d ? [s0 + d, s0 - d] : [s0]) if (clear(s, gap) && stationFits(line, s)) { best = s; break search; }
+      }
+    }
+    return { ...st0, line, s: best };
+  });
+  const nearStation = (line, s, pad = 0) => stations.some((q) => q.line === line && Math.abs(q.s - s) < 75 + pad);
 
   for (const line of lines) {
     const P = line.path;
@@ -68,7 +100,9 @@ export function buildRailway(ctx) {
       for (const side of [-1, 1]) {
         const ox = -at.dz * 8 * side, oz = at.dx * 8 * side;
         const ax = at.x - at.dx * l / 2 + ox, az = at.z - at.dz * l / 2 + oz, bx = at.x + at.dx * l / 2 + ox, bz = at.z + at.dz * l / 2 + oz;
-        const ok = inBlock(ax, az) && inBlock(bx, bz) && inBlock((ax + bx) / 2, (az + bz) / 2) && !nearStation(line, s);
+        // Every couple of metres must be off the road (narrow lanes used to slip between samples).
+        let ok = !nearStation(line, s);
+        for (let k = 0; ok && k <= 4; k++) ok = inBlock(ax + (bx - ax) * k / 4, az + (bz - az) * k / 4);
         if (!ok) { flushWall(side); continue; }
         const w = walls[side];
         if (w && Math.abs((bx - w.ax) * -(w.bz - w.az) + (bz - w.az) * (w.bx - w.ax)) / (Math.hypot(w.bx - w.ax, w.bz - w.az) || 1) < 0.3) { w.bx = bx; w.bz = bz; }
@@ -158,28 +192,38 @@ export function buildRailway(ctx) {
     const f = makeFrame(at.x, at.z, Math.atan2(-at.dz, at.dx));
     const col = colliders.framed(f);
     B.xf = f;
-    const pl = 130;
+    const pl = 130, PS = 10;
+    // Built in 10 m pieces, leaving out any that would sit on a road (the KSR terminus, where
+    // the line starts right at Magadi Road).
+    const land = (lx, lz) => { const [x, z] = frameToWorld(f, lx, lz); return !onRoad(x, z); };
     for (const s of [-1, 1]) {
       const pz = s * 7;
-      st.box(0, 0.15, pz, pl, 0.75, 4, 0xc8bca8);
-      st.box(0, 0.9, pz - s * 1.85, pl, 0.02, 0.3, 0xf2c200);
-      for (let x = -pl / 2 + 6; x < pl / 2 - 4; x += 12) put(metal, CYL, x, 3.5, pz, 0x5a6a7a, 0, 0.12, 5.2, 0.12);
-      metal.box(0, 6, pz, pl, 0.15, 5, 0x8a9aaa);
-      col.addCentered(0, pz, pl, 4, 0.9, 'platform');
+      for (let x0 = -pl / 2; x0 < pl / 2 - 1e-6; x0 += PS) {
+        const xm = x0 + PS / 2;
+        if (!land(x0 + 0.5, pz) || !land(x0 + PS - 0.5, pz) || !land(xm, pz)) continue;
+        st.box(xm, 0.15, pz, PS, 0.75, 4, 0xc8bca8);
+        st.box(xm, 0.9, pz - s * 1.85, PS, 0.02, 0.3, 0xf2c200);
+        put(metal, CYL, xm, 3.5, pz, 0x5a6a7a, 0, 0.12, 5.2, 0.12);
+        metal.box(xm, 6, pz, PS, 0.15, 5, 0x8a9aaa);
+        col.addCentered(xm, pz, PS, 4, 0.9, 'platform');
+      }
       ctx.sign({ key: 'rs_' + sn.name, text: [sn.kn, sn.short || sn.name.toUpperCase()], x: 25, y: 3, z: pz + s * 1.6, w: 6, h: 1.4, face: s < 0 ? 'n' : 's', bg: '#f2c200', fg: '#111' });
     }
-    // Building on whichever side has land.
-    const side = [1, -1].find((s) => inBlock(at.x - at.dz * 20 * s, at.z + at.dx * 20 * s)) || 1;
-    const bz = side * 19;
-    const her = B.get('heritage'), roof = B.get('roof');
-    her.box(0, CURB_H, bz, 70, 9, 14, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
-    st.box(0, CURB_H + 9, bz, 72, 1, 16, 0xa8302a);
-    her.box(0, CURB_H, bz, 18, 14, 16, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof });
-    put(st, CONE4, 0, CURB_H + 16.4, bz, 0xa8302a, Math.PI / 4, 12, 5, 12);
-    col.addCentered(0, bz, 72, 16, 15, 'building');
-    ctx.sign({ key: 'rsb_' + sn.name, text: [sn.kn, sn.board || sn.name.toUpperCase()], x: 0, y: CURB_H + 11.5, z: bz + side * 8.05, w: 16, h: 3.2, face: side > 0 ? 's' : 'n', bg: '#f2c200', fg: '#111' });
+    // Building on whichever side has land for all of it (none if neither side does).
+    const fits = (k) => [-36, -18, 0, 18, 36].every((x) => [11, 19, 27].every((z) => land(x, k * z)));
+    const side = [1, -1].find(fits);
+    const bz = (side || 1) * 19;
+    if (side) {
+      const her = B.get('heritage'), roof = B.get('roof');
+      her.box(0, CURB_H, bz, 70, 9, 14, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
+      st.box(0, CURB_H + 9, bz, 72, 1, 16, 0xa8302a);
+      her.box(0, CURB_H, bz, 18, 14, 16, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof });
+      put(st, CONE4, 0, CURB_H + 16.4, bz, 0xa8302a, Math.PI / 4, 12, 5, 12);
+      col.addCentered(0, bz, 72, 16, 15, 'building');
+      ctx.sign({ key: 'rsb_' + sn.name, text: [sn.kn, sn.board || sn.name.toUpperCase()], x: 0, y: CURB_H + 11.5, z: bz + side * 8.05, w: 16, h: 3.2, face: side > 0 ? 's' : 'n', bg: '#f2c200', fg: '#111' });
+    }
     B.xf = null;
-    const [ex, ez] = [at.x - at.dz * (bz + side * 10), at.z + at.dx * (bz + side * 10)];
+    const [ex, ez] = [at.x - at.dz * (bz + (side || 1) * 10), at.z + at.dx * (bz + (side || 1) * 10)];
     ctx.pois.landmarks.push({ name: sn.name, x: ex, z: ez });
     sn.x = at.x; sn.z = at.z;
   }

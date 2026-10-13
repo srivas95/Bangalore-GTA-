@@ -561,6 +561,16 @@ async function init() {
     renderer.setViewport(0, 0, innerWidth, innerHeight);
   }
   let shadowFrame = 0;
+  // Lost graphics context (a driver reset, or a phone reclaiming GPU memory): the city's geometry
+  // only lives on the GPU, so save and rebuild from scratch rather than limp on with a black screen.
+  renderer.domElement.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    try { world.saveGame(); } catch { /* best effort */ }
+    try { localStorage.removeItem(BOOT_KEY); } catch { /* ignore */ }
+    const note = document.getElementById('loading');
+    if (note) { note.textContent = 'Graphics were reset. Reloading…'; note.style.display = ''; }
+    setTimeout(() => location.reload(), 300);
+  });
   const bootT = performance.now();
   let frames = 0;
   let bootOk = () => { try { localStorage.removeItem(BOOT_KEY); } catch { /* ignore */ } };

@@ -2,7 +2,7 @@
 // arterials, underground halls in the city centre, stations with street entrances, and BEML
 // trainsets running in both directions and stopping at every station.
 import * as THREE from 'three';
-import { BuilderSet, makeFrame } from './meshBuilder.js';
+import { BuilderSet, makeFrame, frameToWorld } from './meshBuilder.js';
 import { put } from './landmarks.js';
 import { textTexture } from './textures.js';
 import { textScale } from './detail.js';
@@ -85,6 +85,15 @@ export function buildMetro(scene, layout, colliders) {
     glow: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
   };
   const routes = metroRoutes();
+  // Piers stand on land, or in a road's median: never in a traffic lane. Null if neither.
+  const pierSpot = (x, z) => {
+    if (layout.blockContaining(x, z)) return [x, z];
+    const h = layout.edgeAt(x, z);
+    if (!h || h.d > h.e.r.width / 2 + 0.3) return [x, z];
+    const e = h.e;
+    // (Only if the median is under the deck: a pier more than 3.5 m off the track centre would miss it.)
+    return (e.r.median || 0) >= 1 && h.d < 3.5 ? [e.a.x + (e.b.x - e.a.x) * h.t, e.a.z + (e.b.z - e.a.z) * h.t] : null;
+  };
   const B = new BuilderSet({ chunk: 320, release: true });
   const con = B.get('concrete'), paint = B.get('paint'), metal = B.get('metal'), glass = B.get('glass'), glow = B.get('glow');
   const cyl = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -120,17 +129,19 @@ export function buildMetro(scene, layout, colliders) {
       if (y < 3) { con.box(0, 0, 0, 1.2, 6.5, 10.5, 0x9a958c); con.box(0, 6.5, 0, 1.6, 0.8, 11, line.color); }
       B.xf = null;
     }
-    // Piers, kept out of junctions.
+    // Piers, kept out of junctions and traffic lanes.
     for (let s = 15; s < P.length - 5; s += 30) {
       const y = line.yAt(s);
       if (y < 4 || isStation(s)) continue;
-      P.at(s, at);
-      let px = at.x, pz = at.z;
-      if (inJunction(px, pz)) {
-        let ok = false;
-        for (const d of [8, -8, 14, -14]) { P.at(s + d, at); if (!inJunction(at.x, at.z)) { px = at.x; pz = at.z; ok = true; break; } }
-        if (!ok) continue;
+      let spot = null;
+      for (const d of [0, 6, -6, 12, -12]) {
+        P.at(s + d, at);
+        if (inJunction(at.x, at.z)) continue;
+        spot = pierSpot(at.x, at.z);
+        if (spot) break;
       }
+      if (!spot) continue;
+      const [px, pz] = spot;
       put(con, cyl, px, y / 2, pz, concrete, 0, 0.95, y, 0.95);
       B.xf = makeFrame(px, pz, Math.atan2(-at.dz, at.dx));
       con.box(0, y - 1.2, 0, 2.4, 1.2, 7, concrete);
@@ -159,12 +170,16 @@ export function buildMetro(scene, layout, colliders) {
         }
         paint.box(0, Y + 7.2, 0, ST_HALF * 2 + 2, 0.6, 24, 0xf2f2f2);
         for (let x = -ST_HALF + 4; x <= ST_HALF - 4; x += 12) for (const sd of [-1, 1]) put(metal, cyl, x, Y + 4.4, sd * 8, 0x8a9aa8, 0, 0.15, 5.6, 0.15);
+        // (Station piers that would land in a traffic lane are left out.)
+        const clearOfLanes = (lx, lz) => { const [wx, wz] = frameToWorld(f, lx, lz); const p = pierSpot(wx, wz); return p && Math.hypot(p[0] - wx, p[1] - wz) < 0.5; };
         for (const px of [-ST_HALF + 6, ST_HALF - 6]) {
           for (const sd of [-1, 1]) {
             const pz = sd * 9;
+            if (!clearOfLanes(px, pz)) continue;
             put(con, cyl, px, Y / 2, pz, concrete, 0, 0.7, Y, 0.7);
             col.addCentered(px, pz, 1.4, 1.4, Y, 'pier');
           }
+          if (!clearOfLanes(px, 0)) continue;
           put(con, cyl, px, Y / 2, 0, concrete, 0, 0.9, Y, 0.9);
           col.addCentered(px, 0, 1.8, 1.8, Y, 'pier');
         }
@@ -197,8 +212,10 @@ export function buildMetro(scene, layout, colliders) {
         for (let d = 8; d < 40; d += 2) {
           const ex = st.x - st.dir.z * d * sd, ez = st.z + st.dir.x * d * sd;
           const blk = layout.blockContaining(ex, ez);
-          if (blk && !blk.island && !colliders.pointBlocked(ex, ez, 1)) {
-            const ef = makeFrame(ex, ez, ang + (sd < 0 ? 0 : Math.PI));
+          const ef = makeFrame(ex, ez, ang + (sd < 0 ? 0 : Math.PI));
+          // The whole kiosk on the footpath, not hanging over the road.
+          const onLand = [[-2.7, -2.2], [2.7, -2.2], [2.7, 1.8], [-2.7, 1.8]].every(([lx, lz]) => { const [x, z] = frameToWorld(ef, lx, lz); const b = layout.blockContaining(x, z); return b && !b.island; });
+          if (blk && !blk.island && onLand && !colliders.pointBlocked(ex, ez, 1)) {
             B.xf = ef;
             con.box(0, 0.15, 0, 5, 3.2, 3, 0xe8e4dc);
             paint.box(0, 3.35, 0, 5.4, 0.5, 3.4, line.color);

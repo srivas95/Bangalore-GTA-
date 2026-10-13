@@ -91,6 +91,13 @@ export function buildCity(scene, layout, colliders, renderer) {
 
   // ---------- Frames: buildings are authored in a lot's local frame ----------
   const W = (x, z) => frameToWorld(B.xf, x, z);
+  // On a road's carriageway (traffic lanes, or its median if withMedian), within pad metres.
+  const onCarriageway = (x, z, pad = 0, withMedian = true) => {
+    const h = layout.edgeAt(x, z);
+    if (!h) return false;
+    const r = h.e.r;
+    return h.d < r.width / 2 + pad && (withMedian || h.d > (r.median || 0) / 2 - 0.2);
+  };
   const col = () => colliders.framed(B.xf);
   const sign = (sg) => {
     const [x, z] = W(sg.x, sg.z);
@@ -275,6 +282,8 @@ export function buildCity(scene, layout, colliders, renderer) {
     const w = lot.maxX - lot.minX, d = lot.maxZ - lot.minZ;
     if (w < 3 || d < 3) return CURB_H;
     const cx = (lot.minX + lot.maxX) / 2, cz = (lot.minZ + lot.maxZ) / 2;
+    // A lot that strays onto a carriageway (where an arterial cuts across a block) stays empty.
+    if ([[lot.minX, lot.minZ], [lot.maxX, lot.minZ], [lot.maxX, lot.maxZ], [lot.minX, lot.maxZ], [cx, cz]].some(([x, z]) => onCarriageway(...W(x, z), 0.5))) return CURB_H;
     let y = CURB_H;
     const roofB = B.get('roof');
     if (shop) {
@@ -692,7 +701,8 @@ export function buildCity(scene, layout, colliders, renderer) {
   });
   for (const m of group.children) if (m.name.startsWith('road_')) m.castShadow = false;
 
-  const treeLod = buildInstancedTrees(group, trees, colliders);
+  // Trees never stand in a traffic lane (avenue trees on a curving road could drift into one).
+  const treeLod = buildInstancedTrees(group, trees.filter((t) => !onCarriageway(t.x, t.z, 0.6, false)), colliders);
   const lampHeads = [];
   const lampPools = buildLamps(group, lamps, colliders, lampHeads);
   const tankLod = buildTanks(group, DETAIL.min ? [] : tanks);

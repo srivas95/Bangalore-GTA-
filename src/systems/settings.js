@@ -45,8 +45,15 @@ export class Settings {
 
   // World detail for the next start: 'full' on computers, 'lite' on phones (see world/detail.js).
   get detailLevel() {
+    const ok = (d) => d === 'full' || d === 'lite' || d === 'min';
+    // The desktop app's "restart with lighter graphics" passes ?detail=lite.
+    const q = typeof location !== 'undefined' && new URLSearchParams(location.search).get('detail');
+    if (ok(q)) return q;
     const d = this.values.detail;
-    return d === 'full' || d === 'lite' || d === 'min' ? d : isTouchDevice() ? 'lite' : 'full';
+    if (ok(d)) return d;
+    // Auto: phones and computers with little memory (deviceMemory is in GB, capped at 8) get Lite.
+    const mem = typeof navigator !== 'undefined' && navigator.deviceMemory;
+    return isTouchDevice() || (mem && mem < 8) ? 'lite' : 'full';
   }
 
   get touchEnabled() { return this.values.touch === 'on' || (this.values.touch === 'auto' && isTouchDevice()); }
