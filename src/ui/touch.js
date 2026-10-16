@@ -14,6 +14,7 @@ const BUTTONS = [
   { id: 'hand', label: 'BRAKE', code: 'Space', hold: true, car: true, big: true },
   { id: 'horn', label: 'HORN', code: 'KeyH', hold: true, car: true },
   { id: 'back', label: '👀', code: 'KeyC', hold: true, car: true },
+  { id: 'radio', label: '📻', code: 'KeyR', car: true },
   { id: 'siren', label: 'SIREN', code: 'KeyG', car: true, when: (c) => c.police },
   // Both
   { id: 'enter', label: 'CAR', code: 'KeyF', both: true },
@@ -145,7 +146,7 @@ export class TouchControls {
     for (const b of this.buttons) {
       let show = b.both || (b.foot && !car) || (b.car && car);
       if (show && b.when) show = b.when(ctx);
-      if (ctx.metro && b.id !== 'use') show = false;
+      if (ctx.metro && b.id !== 'use' && !(b.id === 'enter' && ctx.hijack)) show = false;
       if (b.el.style.display !== (show ? '' : 'none')) {
         b.el.style.display = show ? '' : 'none';
         if (!show) this.up(b, true), this.toggled.delete(b.id), b.el.classList.remove('on');
@@ -155,6 +156,6 @@ export class TouchControls {
       const show = !b.when || b.when(ctx);
       if (b.el.style.display !== (show ? '' : 'none')) b.el.style.display = show ? '' : 'none';
     }
-    this.buttons.find((b) => b.id === 'enter').el.textContent = car ? 'EXIT' : 'CAR';
+    this.buttons.find((b) => b.id === 'enter').el.textContent = ctx.hijack ? 'HIJACK' : car ? 'EXIT' : 'CAR';
   }
 }

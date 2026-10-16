@@ -2,6 +2,8 @@
 # Writes <out>/audio/*.mp3 and <out>/soundBank.json (loop points, base pitches, gains).
 import json, subprocess, sys, os
 import numpy as np
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import enrich as enrich_mod
 
 RAW, OUT = sys.argv[1], sys.argv[2]
 SR = 44100
@@ -116,7 +118,12 @@ for cls, layers in ENGINES.items():
         lp, corr = seamless(x, L, 0.12)
         lp *= 10 ** ((-18 - rms_db(lp)) / 20)
         key = f'eng_{cls}_{i}'
-        total += loop_asset(key, lp, 80, f0=round(base, 2))
+        extra = {}
+        if key in enrich_mod.LAYERS:
+            # Intake/cab recordings with nothing a small speaker can play: add harmonics and rattle.
+            lp = enrich_mod.enrich(lp[:, 0], base, *enrich_mod.LAYERS[key])[:, None]
+            extra['enriched'] = True
+        total += loop_asset(key, lp, 80, f0=round(base, 2), **extra)
         report.append(f'{key}: {len(lp)/SR:.2f}s f0={base:.1f} match={corr:.2f}')
 
 # ---- Ambience beds (stereo). ----

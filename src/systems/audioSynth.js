@@ -1,5 +1,5 @@
 // Synthesised sounds: the fallback used until the recorded samples (audio.js) have loaded, or
-// if they can't be fetched, plus the musical UI cues (ping, cash, stings) and the car radio.
+// if they can't be fetched, plus the musical UI cues (ping, cash, stings).
 
 // Horn profiles. kind: beep (single/dual tone), bulb (rubber squeeze horn with a pitch drop),
 // air (vibrato chord through a lowpass), tune (multi-note musical lorry horn).
@@ -91,10 +91,15 @@ export class SynthAudio {
     this.eOsc.start(); this.eOsc2.start(); this.eLfo.start();
   }
 
-  engine(vehicle) {
-    if (!this.enabled || this.quiet) return;
+  // force: run even after silence() (the recordings for this engine aren't available).
+  engine(vehicle, force = false) {
+    if (!this.enabled || (this.quiet && !force)) return;
     const t = this.ctx.currentTime;
-    if (!vehicle || vehicle.stalled) { this.eGain.gain.setTargetAtTime(0, t, 0.1); return; }
+    if (!vehicle || vehicle.stalled || vehicle.engineDead) {
+      if (this.eOn !== false) { this.eGain.gain.setTargetAtTime(0, t, 0.1); this.eOn = false; }
+      return;
+    }
+    this.eOn = true;
     const s = vehicle.spec.engine;
     const sp = Math.abs(vehicle.forwardSpeed) / vehicle.spec.maxSpeed;
     const gears = s === 'car' ? 5 : s === 'bus' ? 4 : s === 'bike' ? 4 : 1;
@@ -346,37 +351,5 @@ export class SynthAudio {
     if (!this.enabled) return;
     const notes = bad ? [392, 370, 349, 262] : [523, 659, 784];
     notes.forEach((f, k) => this.tone([f, f / 2], 'sawtooth', 0.35, 0.12, 1500, k * 0.25));
-  }
-
-  // Generative "radio": a tabla-ish beat with a melody, only while driving.
-  radio(on) {
-    if (!this.enabled) return;
-    if (on && !this.radioTimer) {
-      let step = 0;
-      const scale = [0, 2, 4, 7, 9, 12, 14];
-      const root = 196;
-      this.radioTimer = setInterval(() => {
-        const t = this.ctx.currentTime;
-        if (step % 4 === 0 || step % 8 === 3) this.drum(t, 90, 0.25);
-        if (step % 4 === 2) this.drum(t, 320, 0.12);
-        if (step % 2 === 0 && Math.random() < 0.7) {
-          const n = scale[Math.floor(Math.random() * scale.length)];
-          this.tone([root * Math.pow(2, n / 12)], 'triangle', 0.22, 0.05);
-        }
-        step++;
-      }, 160);
-    } else if (!on && this.radioTimer) {
-      clearInterval(this.radioTimer);
-      this.radioTimer = null;
-    }
-  }
-
-  drum(t, f, v) {
-    const c = this.ctx;
-    const o = c.createOscillator(); o.type = 'sine';
-    o.frequency.setValueAtTime(f * 2, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08);
-    const g = c.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    o.connect(g).connect(this.master);
-    o.start(t); o.stop(t + 0.3);
   }
 }

@@ -174,10 +174,12 @@ export class StreetLife {
 
   // Gunfire or a blade nearby: everyone runs.
   panic(x, z, r) {
+    let shout = null;
     for (const q of this.peds) {
       if (q.state === 'down' || q.dead) continue;
-      if (Math.abs(q.x - x) < r && Math.abs(q.z - z) < r) this.scare(q, x, z);
+      if (Math.abs(q.x - x) < r && Math.abs(q.z - z) < r) { this.scare(q, x, z); if (!shout && q.h.group.visible) shout = q; }
     }
+    if (shout) this.voices?.flee(shout);
   }
 
   // Player melee (or a bullet) lands on a pedestrian.
@@ -199,7 +201,8 @@ export class StreetLife {
       p.vx = dirX * 2.5; p.vz = dirZ * 2.5;
       p.afterStagger = rng() < (p.h.female ? 0.08 : 0.3) ? 'angry' : 'flee';
     }
-    world.hud?.say(`"${pickLine(LINES.punched)}"`, 2);
+    if (world.voices) world.voices.speak('punched', p, { priority: true, dur: 2.5 });
+    else world.hud?.say(`"${pickLine(LINES.punched)}"`, 2);
     // Nearby people scatter; someone always calls 112.
     for (const q of this.peds) {
       if (q === p || q.state === 'down') continue;
@@ -382,7 +385,10 @@ export class StreetLife {
           p.timer -= dt;
           poseStagger(p.h, 1 - p.timer / 0.45);
           if (p.timer <= 0) {
-            if (p.afterStagger === 'angry') { p.state = 'angry'; p.timer = 15; hud?.say(`"${pickLine(LINES.fightBack)}"`, 2); }
+            if (p.afterStagger === 'angry') {
+              p.state = 'angry'; p.timer = 15;
+              if (world.voices) world.voices.speak('fightBack', p, { priority: true, dur: 2.5 }); else hud?.say(`"${pickLine(LINES.fightBack)}"`, 2);
+            }
             else this.scare(p, world.player.x, world.player.z);
           }
           break;
@@ -454,7 +460,7 @@ export class StreetLife {
           if (p.kind !== 'walker' && !p.temp) this.detach(p);
           if (v.speed > 15) this.kill(p, v.vx, v.vz, world.audio); else this.knock(p, v.vx, v.vz, world.audio);
           if (v.driver === 'player') {
-            if (rng() < 0.6) world.hud?.say(`"${pickLine(LINES.bumped)}"`, 2.5);
+            if (!p.dead && rng() < 0.75) { if (world.voices) world.voices.speak('bumped', p, { priority: true }); else world.hud?.say(`"${pickLine(LINES.bumped)}"`, 2.5); }
             world.crime?.('Hit a pedestrian', p.x, p.z, 1);
           }
           return;

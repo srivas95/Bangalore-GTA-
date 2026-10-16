@@ -35,6 +35,11 @@ export class Vehicle {
     this.roll = 0;
     this.pitch = 0;
     this.rollVel = 0; this.pitchVel = 0;
+    // Ground contact: vertical speed, airborne flag, the ground's slope under the axles
+    // (gPitch/gRoll, radians) and its grade (rise per metre forward), plus a heave spring for landings.
+    this.vy = 0; this.airborne = false;
+    this.gPitch = 0; this.gRoll = 0; this.grade = 0;
+    this.heave = 0; this.heaveVel = 0;
     this.angVel = 0; // yaw rate, rad/s (left +)
     this.ax = 0; this.ay = 0; this.slip = 0;
     this.driver = null; // 'player' | 'ai' | 'police' | null
@@ -187,6 +192,9 @@ export class Vehicle {
     }
     if (!input) Fbrake += m * 7; // nobody at the wheel: parked, in gear
     if (this.stalled || dead) Fdrive = 0;
+    // In the air (off a ramp's crest or a kerb): no grip, no drive, no brakes.
+    const contact = this.airborne ? 0 : 1;
+    if (!contact) { Fdrive = 0; Fbrake = 0; }
 
     // Tyres. Slip angle in each axle's own frame; a softened Pacejka-style curve.
     const curve = (al) => Math.sin(1.25 * Math.atan(18 * al)); // peaks near 10 degrees of slip
@@ -196,15 +204,15 @@ export class Vehicle {
     const wLong = vfx * cd + vfy * sd, wLat = -vfx * sd + vfy * cd;
     const sp = Math.hypot(u, v);
     const low = Math.min(1, sp / 3); // below walking pace, tyres just roll
-    let Ffl = -mu * Nf * curve(Math.atan2(wLat, Math.abs(wLong) + 0.5)) * low;
+    let Ffl = -mu * Nf * curve(Math.atan2(wLat, Math.abs(wLong) + 0.5)) * low * contact;
     // Rear axle.
     const vry = v - b * r;
     const rearMu = mu * (hb && input ? (s.twoWheeler ? 0.85 : 0.42) : s.twoWheeler ? 1 : 1.15); // a planted rear = stable
-    let Frl = -rearMu * Nr * curve(Math.atan2(vry, Math.abs(u) + 0.5)) * low;
+    let Frl = -rearMu * Nr * curve(Math.atan2(vry, Math.abs(u) + 0.5)) * low * contact;
     // Brakes split 60/40 front/rear; drive goes through the front (most Indian cars are FWD).
     const sgn = Math.sign(u) || 1;
     let Fxf = Fdrive * 0.7 - Fbrake * 0.6 * sgn * Math.min(1, Math.abs(u) / 0.4);
-    let Fxr = Fdrive * 0.3 - (Fbrake * 0.4 + (hb && input ? m * 5 : 0)) * sgn * Math.min(1, Math.abs(u) / 0.4);
+    let Fxr = Fdrive * 0.3 - (Fbrake * 0.4 + (hb && input && contact ? m * 5 : 0)) * sgn * Math.min(1, Math.abs(u) / 0.4);
     // Friction circle per axle: hard braking or wheelspin steals cornering grip.
     const circle = (Fx, Fy, Fmax) => { const t = Math.hypot(Fx, Fy); return t > Fmax ? Fmax / t : 1; };
     const kf = circle(Fxf, Ffl, mu * Nf * 1.05), kr = circle(Fxr, Frl, rearMu * Nr * 1.05);
@@ -215,15 +223,21 @@ export class Vehicle {
     const Mz = a * (Fxf * sd + Ffl * cd) - b * Frl;
     // Resistance: rolling, aero, and wading through water.
     const drag = 0.012 * m * u + 0.0004 * m * u * Math.abs(u) + (depth > 0.04 ? m * Math.min(6, depth * 3.5) * u * 0.25 : 0);
+    // Gravity along the slope: ramps slow you climbing and speed you up going down. (Held
+    // still by the handbrake-in-gear rule below when nobody's on the throttle.)
+    const Fslope = contact ? -m * g * this.grade / Math.sqrt(1 + this.grade * this.grade) : 0;
 
     // Velocity is re-projected onto the (rotating) body axes every step, so the frame's
     // rotation is already accounted for: no Coriolis terms here.
-    const ax = (Fx - drag) / m;
+    const ax = (Fx - drag + Fslope) / m;
     const ay = Fy / m;
     u += ax * dt;
     v += ay * dt;
     r += (Mz / I) * dt;
-    if (s.twoWheeler) {
+    if (!contact) {
+      // Airborne: keep spinning as we left the ground, a little air drag on the spin.
+      r *= Math.exp(-0.5 * dt);
+    } else if (s.twoWheeler) {
       // Bikes lean rather than slide: they follow their front wheel, up to the grip limit.
       const rk = (u * Math.tan(d)) / L, rMax = (mu * g) / Math.max(2, Math.abs(u));
       r = Math.max(-rMax, Math.min(rMax, rk));
@@ -235,7 +249,7 @@ export class Vehicle {
       const rMax = (mu * g * 1.15) / Math.max(2, Math.abs(u)) + (hb && input ? 2.5 : ai ? 0.05 : 0.35);
       if (Math.abs(r) > rMax) r -= (Math.abs(r) - rMax) * Math.sign(r) * Math.min(1, dt * (ai ? 12 : 4));
     }
-    if (low < 1) { // near standstill blend to pure rolling so cars don't drift at 2 km/h
+    if (low < 1 && contact) { // near standstill blend to pure rolling so cars don't drift at 2 km/h
       const rk = (u * Math.tan(d)) / L;
       r += (rk - r) * (1 - low);
       v *= 1 - (1 - low) * Math.min(1, dt * 12);
@@ -403,14 +417,92 @@ export class Vehicle {
     }
   }
 
+  // The ground under the wheels: front and rear axle (and, for four wheels driven by physics,
+  // the left and right tracks). Sets the grade (rise per metre forward) used by the physics and
+  // returns the ride height and the slope's pitch and roll.
+  sampleGround(layout) {
+    const s = this.spec, fx = Math.sin(this.heading), fz = Math.cos(this.heading);
+    const hb = s.wheelbase / 2, y = this.y, x0 = this.x, z0 = this.z;
+    const gh = (x, z) => layout.groundHeight(x, z, y);
+    let hF, hR, roll = 0;
+    if (this.driver === 'ai' && this.flatGround) {
+      // Traffic on a road with no ramps on it: one sample will do.
+      this.grade = 0;
+      return { ground: gh(x0, z0), pitch: 0, roll: 0 };
+    }
+    if (s.twoWheeler || this.driver === 'ai') {
+      hF = gh(x0 + fx * hb, z0 + fz * hb);
+      hR = gh(x0 - fx * hb, z0 - fz * hb);
+    } else {
+      const tw = s.width * 0.4, lx = fz * tw, lz = -fx * tw;
+      const fl = gh(x0 + fx * hb + lx, z0 + fz * hb + lz), fr = gh(x0 + fx * hb - lx, z0 + fz * hb - lz);
+      const rl = gh(x0 - fx * hb + lx, z0 - fz * hb + lz), rr = gh(x0 - fx * hb - lx, z0 - fz * hb - lz);
+      hF = (fl + fr) / 2; hR = (rl + rr) / 2;
+      roll = Math.atan2((fl + rl) - (fr + rr), 4 * tw); // left side up = positive
+    }
+    this.grade = (hF - hR) / s.wheelbase;
+    return { ground: (hF + hR) / 2, pitch: Math.atan2(hR - hF, s.wheelbase), roll };
+  }
+
+  // Ride along the ground, or fly: the ground can only push up. Over a crest taken fast, or off a
+  // kerb, the vehicle leaves it and falls back under gravity, landing with a bounce.
+  followGround(dt, ground) {
+    // The springs let the wheels follow a road that drops away somewhat faster than gravity
+    // alone would (STICK); only a crest taken properly fast throws you off it.
+    const STICK = 9.81 + 7;
+    if (ground >= this.y + this.vy * dt - 0.5 * STICK * dt * dt - 0.004) {
+      const rise = ground - this.y;
+      let step = false;
+      if (this.airborne && this.vy < -2) {
+        const hit = -this.vy;
+        this.heaveVel -= Math.min(5, hit) * 0.45;
+        this.pitchVel += (Math.random() - 0.5) * hit * 0.2;
+        this.landed = Math.max(this.landed || 0, hit);
+      } else if (rise > 0.05 && rise > Math.abs(this.vy) * dt * 2) {
+        // A kerb: a step, not a slope. The suspension soaks it up (the body rises smoothly).
+        this.heave -= rise * 0.85;
+        step = true;
+      }
+      // Carry the ground's vertical speed (a ramp's crest at speed can then launch you).
+      const cap = 0.4 * Math.max(1, Math.abs(this.forwardSpeed));
+      this.vy = step ? 0 : Math.max(-cap, Math.min(cap, rise / dt));
+      this.y = ground;
+      this.airborne = false;
+    } else {
+      this.y += this.vy * dt - 4.905 * dt * dt;
+      this.vy -= 9.81 * dt;
+      this.airborne = this.y > ground + 0.06;
+      if (this.y < ground) { this.y = ground; this.vy = 0; this.airborne = false; }
+    }
+  }
+
   syncVisual(dt, world) {
-    const ground = world ? world.layout.groundHeight(this.x, this.z, this.y) : this.y;
-    // Fall quickly, climb smoothly.
-    const k = ground < this.y - 0.5 ? dt * 6 : dt * 12;
-    this.y += (ground - this.y) * Math.min(1, k || 1);
+    let pitchT = this.gPitch, rollT = this.gRoll;
+    if (world) {
+      const g = this.sampleGround(world.layout);
+      pitchT = g.pitch; rollT = g.roll;
+      if (!(dt > 0)) {
+        this.y = g.ground; this.vy = 0; this.airborne = false;
+        this.gPitch = pitchT; this.gRoll = rollT;
+      } else if (this.driver === 'ai') {
+        // Traffic is on rails: it hugs the road surface.
+        this.y = g.ground; this.vy = 0; this.airborne = false;
+      } else this.followGround(Math.min(dt, 1 / 20), g.ground);
+    }
+    if (dt > 0 && !this.airborne) {
+      // Settle onto the slope quickly (a kerb is a short sharp bump, a ramp a steady tilt).
+      const k = 1 - Math.exp(-dt * 16);
+      this.gPitch += (pitchT - this.gPitch) * k;
+      this.gRoll += (rollT - this.gRoll) * k;
+    } else if (dt > 0) this.gPitch += 0.15 * dt; // a slow nose-down rotation in the air
+    if (dt > 0) {
+      const h = Math.min(dt, 1 / 30);
+      this.heaveVel += (-this.heave * 140 - this.heaveVel * 13) * h;
+      this.heave += this.heaveVel * h;
+    }
     // Sinks a little into deep water.
     const sink = Math.min(0.4, Math.max(0, this.waterDepth - 0.6) * 0.3);
-    this.group.position.set(this.x, this.y - sink, this.z);
+    this.group.position.set(this.x, this.y - sink + this.heave, this.z);
     this.group.rotation.y = this.heading;
     const vF = this.forwardSpeed;
     if (this.spec.twoWheeler) {
@@ -418,7 +510,11 @@ export class Vehicle {
       this.lean += (target - this.lean) * Math.min(1, dt * 6);
       // Parked two-wheelers rest on their side stand.
       this.group.rotation.z = this.driver ? this.lean : -0.12;
-    } else if (dt > 0) {
+      this.group.rotation.x = this.gPitch;
+    } else if (!(dt > 0)) {
+      this.group.rotation.z = this.gRoll + this.roll;
+      this.group.rotation.x = this.gPitch + this.pitch;
+    } else {
       // Suspension: the body rolls out of corners, dives under braking and squats under power,
       // on a lightly damped spring so it bobs a little.
       const heavy = this.spec.length > 7 ? 1.6 : 1;
@@ -429,8 +525,8 @@ export class Vehicle {
       this.pitchVel += ((pitchT - this.pitch) * k - this.pitchVel * c) * h;
       this.roll += this.rollVel * h;
       this.pitch += this.pitchVel * h;
-      this.group.rotation.z = this.roll;
-      this.group.rotation.x = this.pitch;
+      this.group.rotation.z = this.gRoll + this.roll;
+      this.group.rotation.x = this.gPitch + this.pitch;
     }
     if (dt > 0) this.effects(dt, world);
     for (const w of this.model.wheels) {

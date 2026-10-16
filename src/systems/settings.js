@@ -16,7 +16,7 @@ export const isTouchDevice = () => typeof window !== 'undefined' && (matchMedia?
 
 const defaults = () => ({
   quality: isTouchDevice() ? 'low' : 'high', ...PRESETS[isTouchDevice() ? 'low' : 'high'],
-  sensitivity: 1, invertY: false, volume: 0.8, touch: 'auto', detail: 'auto',
+  sensitivity: 1, invertY: false, volume: 0.8, radioVol: 0.7, voices: 'auto', touch: 'auto', detail: 'auto',
 });
 
 export class Settings {
@@ -81,6 +81,8 @@ export class Settings {
       ${row('Look sensitivity', slider('sensitivity', 0.3, 2.5, 0.05))}
       ${row('Invert look up/down', check('invertY'))}
       ${row('Volume', slider('volume', 0, 1, 0.05))}
+      ${row('Radio volume', slider('radioVol', 0, 1, 0.05))}
+      ${row('Voices <small data-o="voicesInfo"></small>', `<select data-k="voices"><option value="auto">Device voices</option><option value="synth">Synthesised</option><option value="off">Off</option></select>`)}
       ${row('World detail <small>(after restart)</small>', `<select data-k="detail"><option value="auto">Auto</option><option value="full">Full</option><option value="lite">Lite (phones)</option><option value="min">Minimum</option></select>`)}
       ${row('Touch controls', `<select data-k="touch"><option value="auto">Auto</option><option value="on">On</option><option value="off">Off</option></select>`)}
       <div class="sbtns"><button data-act="close">Done</button><button data-act="reset" class="ghost">Reset save game</button></div>`;
@@ -91,7 +93,8 @@ export class Settings {
       }
       for (const o of el.querySelectorAll('[data-o]')) {
         const k = o.dataset.o, v = this.values[k];
-        o.textContent = k === 'resScale' || k === 'drawDist' || k === 'traffic' || k === 'peds' || k === 'volume' ? `${Math.round(v * 100)}%` : `${(+v).toFixed(2)}×`;
+        if (k === 'voicesInfo') { o.textContent = this.voicesInfo ? `(${this.voicesInfo()})` : ''; continue; }
+        o.textContent = k === 'resScale' || k === 'drawDist' || k === 'traffic' || k === 'peds' || k === 'volume' || k === 'radioVol' ? `${Math.round(v * 100)}%` : `${(+v).toFixed(2)}×`;
       }
     };
     el.addEventListener('input', (e) => {

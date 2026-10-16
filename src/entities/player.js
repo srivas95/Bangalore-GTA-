@@ -367,13 +367,20 @@ export class Player {
 
   drive(dt, input, world) {
     const v = this.vehicle;
+    const steer = input.axis(['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']);
     const ctrl = {
       throttle: input.axis(['KeyS', 'ArrowDown'], ['KeyW', 'ArrowUp']),
-      steer: input.axis(['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']),
+      // A gentler centre on the touch joystick (keys are all-or-nothing and unaffected).
+      steer: Math.sign(steer) * Math.pow(Math.abs(steer), 1.4),
       handbrake: input.down('Space'),
     };
     const wasStalled = v.stalled;
     const impact = v.update(dt, ctrl, world);
+    if (v.landed) {
+      // Back on the ground after a jump off a ramp's crest.
+      if (v.landed > 3) { world.audio?.thud(Math.min(1, v.landed / 9)); world.shake?.(Math.min(0.5, v.landed / 14)); }
+      v.landed = 0;
+    }
     if (v.stalled && !wasStalled) world.hud?.say(`Engine flooded! ${LINES.flood[Math.floor(Math.random() * LINES.flood.length)]}`, 3);
     if (impact > 4) {
       world.audio?.thud(Math.min(1, impact / 15));
@@ -412,9 +419,13 @@ export class Player {
       if (v.type !== 'bus' && v.type !== 'schoolBus') {
         const opts = v.rider ? { outfit: v.rider.outfit, female: v.rider.female } : {};
         v.removeRider();
-        world.streetLife.spawnFleeing(v.x - Math.cos(v.heading) * 1.5, v.z + Math.sin(v.heading) * 1.5, this.x, this.z, opts);
-        world.hud.say(`"${LINES.carjacked[Math.floor(Math.random() * LINES.carjacked.length)]}"`, 3);
-      } else world.hud.say('Conductor: "Ticket ticket! ...oh. You\'re DRIVING it?"', 3);
+        const victim = world.streetLife.spawnFleeing(v.x - Math.cos(v.heading) * 1.5, v.z + Math.sin(v.heading) * 1.5, this.x, this.z, opts);
+        // The driver keeps the voice they had behind the wheel (if you bumped them earlier).
+        if (v.lang) { victim.lang = v.lang; victim.voicePitch = v.voicePitch; }
+        if (world.voices) world.voices.speak('carjacked', victim, { priority: true });
+        else world.hud.say(`"${LINES.carjacked[Math.floor(Math.random() * LINES.carjacked.length)]}"`, 3);
+      } else if (world.voices) world.voices.speak('conductor', { x: v.x, z: v.z, lang: 'kn' }, { priority: true, prefix: 'Conductor: ' });
+      else world.hud.say('Conductor: "Ticket ticket! ...oh. You\'re DRIVING it?"', 3);
       world.crime?.(v.spec.police ? 'Stealing a Hoysala' : 'Vehicle theft', v.x, v.z, v.spec.police ? 2 : 1);
     }
     v.removeRider();

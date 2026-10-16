@@ -23,6 +23,8 @@ import { Pickups, WEAPONS } from './systems/weapons.js';
 import { Gangs } from './entities/gangs.js';
 import { HUD } from './ui/hud.js';
 import { MetroRide } from './systems/metroRide.js';
+import { MetroDrive } from './systems/metroDrive.js';
+import { Interiors } from './systems/interiors.js';
 import { Story } from './systems/story.js';
 import { Settings, PRESETS } from './systems/settings.js';
 import { TouchControls } from './ui/touch.js';
@@ -34,6 +36,8 @@ import { bakeAO, aoUniforms } from './world/ao.js';
 import { BlobShadows } from './world/blobs.js';
 import { GPS } from './systems/gps.js';
 import { Halos } from './world/halos.js';
+import { Voices } from './systems/voices.js';
+import { Radio } from './systems/radio.js';
 
 const BOOT_KEY = 'namma-bengaluru-boot';
 
@@ -80,6 +84,8 @@ async function init() {
   traffic.prewarm(150, 16.5);
   const streetLife = new StreetLife(scene, layout, colliders, signals);
   const env = new Environment(scene, renderer, camera, layout, city);
+  // Lights also shine on the shop interiors' camera layer (systems/interiors.js).
+  scene.traverse((o) => { if (o.isLight) o.layers.enable(1); });
   // Baked ground shading next to buildings, walls, trees and under the metro viaducts.
   {
     const strips = [];
@@ -180,6 +186,9 @@ async function init() {
   rig.yaw = 0;
   const audio = new Audio();
   const hud = new HUD(layout, city.pois, { metro: metro.routes, rails: city.rail.lines, mapScale: DETAIL.lite ? 0.26 : 0.32 });
+  const voices = new Voices(audio, hud);
+  const radio = new Radio(audio, voices, hud);
+  streetLife.voices = voices;
   const missions = new Missions(scene, layout, city.pois, hud, audio);
   const police = new Police(scene, layout, colliders, hud, audio);
   env.onThunder = (delay) => audio.thunder(delay, 0.6 + Math.random() * 0.4);
@@ -187,6 +196,7 @@ async function init() {
   const gangs = new Gangs(scene, layout, colliders);
   const pickups = new Pickups(scene);
   const metroRide = new MetroRide(metro, hud, audio);
+  const metroDrive = new MetroDrive(metro, hud, audio);
 
   const world = {
     layout, colliders, traffic, streetLife, audio, hud, camera, police, player, signals,
@@ -197,19 +207,24 @@ async function init() {
     get hour() { return env.hour; },
     trafficScale: 1, pedScale: 1, initialFill: true,
     shake: (a) => rig.shake(a),
-    particles, gangs, pickups,
+    particles, gangs, pickups, voices, radio,
     money: (n) => missions.addMoney(n),
     crime: (reason, x, z, stars) => police.crime(reason, x, z, stars, world),
     camRig: rig,
     skipClock: (s) => env.skip(s),
     setHour: (h) => { env.hour = h; },
-    footpathNear, park, metroRide,
+    footpathNear, park, metroRide, metroDrive,
   };
   world.free = free;
   const story = new Story(scene, hud, audio, missions, world);
   world.saveGame = () => story.save();
   const garages = new Garages(scene, layout, colliders, hud, audio, missions, world, city.pois);
   world.garages = garages;
+  const interiors = new Interiors(scene, layout, colliders, hud, audio, missions, world, city.pois);
+  world.interiors = interiors;
+  interiors.restoreOutfit();
+  // While you're inside a shop the map, minimap and district names show you at its door.
+  const hudPlayer = { get pos() { return interiors.door || player.pos; }, get health() { return player.health; }, get vehicle() { return player.vehicle; }, get heading() { return player.heading; } };
 
   // ---------- Crashes and explosions ----------
   world.onVehicleImpact = (a, b, speed, cx, cz) => {
@@ -357,6 +372,8 @@ async function init() {
   };
   const respawn = () => {
     const p = nearestOf(pending.list, player.pos);
+    if (interiors.active) interiors.exit();
+    if (metroDrive.active) metroDrive.leave(metroDrive.platformHere(metroDrive.train) || metroDrive.train.line.stations[0], world);
     if (player.vehicle) player.exitVehicle(world, true);
     player.respawn(p.x, p.z);
     police.reset();
@@ -385,6 +402,7 @@ async function init() {
     if (on) document.exitPointerLock?.();
     else if (!paused) input.lock();
   };
+  settings.voicesInfo = () => voices.describe();
   settings.buildPanel(document.getElementById('help'));
   settings.onReset = () => { story.reset(); missions.money = 500; hud.setMoney(500, true); world.garages?.reset?.(); };
   document.getElementById('open-settings').addEventListener('click', () => settings.toggle(true));
@@ -403,6 +421,8 @@ async function init() {
     rig.sens = s.sensitivity;
     rig.invert = s.invertY;
     audio.setVolume?.(s.volume);
+    radio.setVolume(s.radioVol ?? 0.7);
+    voices.setMode(s.voices);
     touch.setEnabled(settings.touchEnabled);
   });
 
@@ -429,7 +449,7 @@ async function init() {
       setTimeout(() => hud.say(touch.enabled ? 'Tip: tap CAR next to the red scooter. Gigs ping your phone.' : 'Tip: grab the red scooter (F). Gigs ping your phone. The monsoon comes when it wants (or press K).', 7), fellBack ? 6500 : 2500);
     }
   };
-  const pause = () => { paused = true; hud.toggleHelp(true); };
+  const pause = () => { paused = true; hud.toggleHelp(true); audio.pause(true); voices.stop(); };
   touch.onPause = pause;
   startBtn.addEventListener('click', resume);
   renderer.domElement.addEventListener('click', () => { if (!paused && !touch.enabled) input.lock(); });
@@ -442,7 +462,6 @@ async function init() {
     renderer.setSize(innerWidth, innerHeight);
     composer?.setSize(innerWidth, innerHeight);
   });
-  let radioOn = true;
   // O: quick switch between the Low preset and whatever you had.
   let beforeLow = null;
   const togglePerf = () => {
@@ -451,13 +470,21 @@ async function init() {
   };
 
   // ---------- Loop ----------
-  const clock = new THREE.Clock();
-  let elapsed = 0;
-  const tick = () => {
+  // Frame time comes from the browser's vsync timestamp for each frame, not from reading the
+  // clock partway through it: on phones the time a frame's script starts wobbles by several
+  // milliseconds, and stepping the world by that wobble is what made driving look jerky.
+  let elapsed = 0, lastT = null, hijackable = null;
+  const tick = (now) => {
     requestAnimationFrame(tick);
-    const dt = Math.min(clock.getDelta(), 1 / 20);
+    if (typeof now !== 'number') now = performance.now();
+    let dt = lastT === null ? 1 / 60 : (now - lastT) / 1000;
+    lastT = now;
+    dt = Math.min(Math.max(dt, 1 / 240), 1 / 20);
     if (!paused) update(dt);
-    renderer.shadowMap.needsUpdate = ++shadowFrame % env.shadowEvery === 0;
+    // Shadows on the cheap setting are redrawn every other frame, which makes a moving car's
+    // shadow stutter behind it: redraw every frame while you're driving.
+    const moving = player.vehicle && player.vehicle.speed > 1;
+    renderer.shadowMap.needsUpdate = moving || ++shadowFrame % env.shadowEvery === 0;
     blobs.update(camera, useBloom);
     halos.update(camera, env.night, signals, useBloom);
     if (useBloom) { const c = getComposer(); bloom.strength = 0.1 + env.night * 0.3; c.render(); } else renderer.render(scene, camera);
@@ -469,7 +496,8 @@ async function init() {
     if (elapsed > 3) world.initialFill = false;
 
     if (input.hit('KeyM')) hud.toggleMap();
-    if (input.hit('KeyR')) { radioOn = !radioOn; hud.say(radioOn ? 'Radio on' : 'Radio off', 1.2); }
+    // R: the next station (in a vehicle; Shift+R on foot reloads).
+    if (input.hit('KeyR') && player.vehicle && !input.down('ShiftLeft')) radio.next(player.vehicle);
     if (input.hit('KeyK')) { env.setRain(!env.raining); hud.say(env.raining ? 'Dark clouds roll in over Bengaluru…' : 'The rain eases off.', 2.5); }
     if (input.hit('KeyT') && !metroRide.active) { env.timeScale = env.timeScale > 1 ? 1 : 30; hud.say(env.timeScale > 1 ? 'Time ×30' : 'Time normal', 1.5); }
     if (input.hit('KeyO')) togglePerf();
@@ -485,24 +513,32 @@ async function init() {
     for (const u of police.units) world.vehicles.push(u.v);
 
     // Namma Metro: entrances on the street, and the ride itself.
-    const entrance = !player.vehicle && !pending && !metroRide.active ? metroRide.nearEntrance(player.pos) : null;
+    const entrance = !player.vehicle && !pending && !metroRide.active && !metroDrive.active ? metroRide.nearEntrance(player.pos) : null;
     if (entrance && input.hit('KeyE')) { input.pressed.delete('KeyE'); metroRide.open(entrance, world); }
+    // On the platform with a train in, or riding one: F takes over the cab.
+    hijackable = !pending && metroRide.active ? metroDrive.candidate(metroRide) : null;
     if (pending) {
       screenT -= dt;
       if (screenT <= 0) respawn();
+    } else if (metroDrive.active) {
+      metroDrive.update(dt, input, world, camera);
+    } else if (hijackable && input.hit('KeyF')) {
+      metroDrive.hijack(hijackable, world);
     } else if (metroRide.active) {
       metroRide.update(dt, input, world, missions, camera);
+    } else if (interiors.active) {
+      if (!interiors.update(dt, input)) player.update(dt, input, rig.yaw, world);
     } else if (garages.menu) {
       garages.update(dt, input);
     } else {
       garages.update(dt, input);
+      interiors.update(dt, input);
       const wasIn = player.vehicle;
       player.update(dt, input, rig.yaw, world);
       if (player.vehicle && !free.includes(player.vehicle)) free.push(player.vehicle);
-      if (player.vehicle !== wasIn) audio.radio(!!player.vehicle && radioOn);
-      if (player.vehicle) audio.radio(radioOn);
+      if (player.vehicle && player.vehicle !== wasIn) radio.enter(player.vehicle);
     }
-    world.focus.x = player.pos.x; world.focus.z = player.pos.z;
+    { const fp = interiors.door || player.pos; world.focus.x = fp.x; world.focus.z = fp.z; }
 
     for (const v of free) {
       if (v === player.vehicle) continue;
@@ -510,8 +546,8 @@ async function init() {
       else if (v.health < 45 || v.fireT > 0 || v.wrecked) v.effects(dt, world); // keep smoking and burning
       v.group.visible = Math.abs(v.x - world.focus.x) < 300 && Math.abs(v.z - world.focus.z) < 300;
     }
-    police.update(dt, world);
-    gangs.update(dt, world);
+    // (Inside a shop, the police and the rowdies wait for you outside.)
+    if (!interiors.active) { police.update(dt, world); gangs.update(dt, world); }
     pickups.update(dt, world);
     spawnRowdies(dt);
     world.dynamic.length = 0;
@@ -534,13 +570,18 @@ async function init() {
     city.update(dt, elapsed, camera);
     particles.update(dt, camera, renderer);
     env.update(dt, world.focus, player, police);
+    if (interiors.active) interiors.light(env); else interiors.unlight(env);
     missions.update(dt, input, player);
     story.update(dt, input);
     audio.setRain(env.rain);
 
-    if (metroRide.active || garages.menu) hud.prompt('');
+    if (metroDrive.active) hud.prompt('');
+    else if (hijackable && metroRide.state !== 'menu') hud.prompt('F  Hijack the train  ★★★★★');
+    else if (metroRide.active || garages.menu) hud.prompt('');
+    else if (interiors.active) hud.prompt(interiors.prompt);
     else if (garages.nearStall) { /* the garage set its own prompt */ }
     else if (entrance) hud.prompt(`E  Namma Metro · ${entrance.st.en}`);
+    else if (interiors.prompt && !player.vehicle) hud.prompt(interiors.prompt);
     else if (!player.vehicle && !pending) {
       let near = null;
       for (const v of world.vehicles) {
@@ -550,16 +591,18 @@ async function init() {
       hud.prompt(near ? (near.v.driver === 'ai' || near.v.driver === 'police' ? `F  "Borrow" the ${near.v.spec.label}` : `F  Get in the ${near.v.spec.label}`) : '');
     } else hud.prompt(player.vehicle && player.vehicle.speed <= 8 ? (player.vehicle.spec.police ? 'F  Get out  ·  G  Siren' : 'F  Get out') : '');
 
-    if (!window.__freeCam && !metroRide.active) rig.update(dt, input, player, colliders);
-    if (!metroRide.active) metroRide.banner.classList.remove('show');
+    if (!window.__freeCam && !metroRide.active && !metroDrive.active) rig.update(dt, input, player, colliders);
+    if (!metroRide.active && !metroDrive.active) metroRide.banner.classList.remove('show');
     audio.engine(player.vehicle, dt);
-    audio.update?.(dt, { world, camera, env, player, metro: metroRide.state });
+    audio.update?.(dt, { world, camera, env, player, indoor: !!interiors.active, metro: metroDrive.active ? 'riding' : metroRide.state });
+    radio.update(dt, !!player.vehicle && !pending && !metroRide.active);
+    voices.update(dt, world);
     const markers = missions.markers.concat(story.markers);
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
     if (gps.update(dt, player.x, player.z) === 'arrived') { hud.say('You have arrived.', 2.5); audio.click?.(); }
     if (gps.target) markers.push({ x: gps.target.x, z: gps.target.z, color: '#c050ff' });
-    hud.update(dt, player, rig.yaw, markers);
-    touch.update({ driving: !!player.vehicle, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police, use: !!entrance || !!story.active || garages.nearStall || !!garages.menu, offer: !!missions.offer, metro: metroRide.active });
+    hud.update(dt, hudPlayer, rig.yaw, markers);
+    touch.update({ hijack: !!hijackable, driving: !!player.vehicle || metroDrive.active, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police, use: !!entrance || !!story.active || garages.nearStall || !!garages.menu || interiors.useNear || !!interiors.menu, offer: !!missions.offer, metro: metroRide.active && !metroDrive.active });
     { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
     world.rigPitch = rig.pitch;
     hud.setClock(env.clockString(), env.rain > 0.6 ? '⛈ Monsoon' : env.rain > 0.1 ? '🌧 Rain' : env.night > 0.5 ? '🌙 Clear' : '☀ Clear');
@@ -593,10 +636,10 @@ async function init() {
   const bootT = performance.now();
   let frames = 0;
   let bootOk = () => { try { localStorage.removeItem(BOOT_KEY); } catch { /* ignore */ } };
-  tick();
+  requestAnimationFrame(tick);
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { audio, story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
+  window.__game = { audio, voices, radio, metroDrive, interiors, story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.
@@ -647,12 +690,18 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
                 b.removeRider();
                 const p = world.streetLife.spawnFleeing(b.x, b.z, a.x, a.z, opts);
                 world.streetLife.knock(p, -nx * Math.min(9, 3 + dvB), -nz * Math.min(9, 3 + dvB), world.audio);
+                if (a.driver === 'player') world.voices?.speak('bumped', p, { priority: true });
               }
               free.push(b);
               if (a.driver === 'player') world.crime('Reckless driving', a.x, a.z, 1);
             } else if (agent) {
               agent.stunned = 2;
-              if (a.driver === 'player' && -vn > 3 && Math.random() < 0.5) world.hud.say(`"${LINES.bumped[Math.floor(Math.random() * LINES.bumped.length)]}"`, 2.5);
+              if (a.driver === 'player' && -vn > 3 && Math.random() < 0.5 && !(b.spokeT > performance.now())) {
+                // The driver leans out of the window (and remembers their voice if you steal the car).
+                b.spokeT = performance.now() + 4000;
+                if (b.female === undefined) b.female = b.rider ? !!b.rider.female : Math.random() < 0.2;
+                world.voices.speak('bumped', b, { priority: true });
+              }
             }
           } else {
             a.x += nx * pen * ia / (ia + ib); a.z += nz * pen * ia / (ia + ib);

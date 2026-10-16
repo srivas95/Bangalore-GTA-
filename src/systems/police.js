@@ -204,7 +204,8 @@ export class Police {
     }
     u.officers = 0;
     u.state = 'parked';
-    world.hud.say(`Constable: "${LINES.cop[Math.floor(Math.random() * LINES.cop.length)]}"`, 2.5);
+    if (world.voices) world.voices.speak('cop', u.onFoot[0] || { x: v.x, z: v.z }, { prefix: 'Constable: ', priority: true, dur: 2.5 });
+    else world.hud.say(`Constable: "${LINES.cop[Math.floor(Math.random() * LINES.cop.length)]}"`, 2.5);
   }
 
   copsInFront(x, z, heading, range) {
@@ -239,7 +240,7 @@ export class Police {
       if (c.timer <= 0) { c.state = 'chase'; c.health = 70; h.group.rotation.x = 0; }
     } else {
       // Chase the player on foot, or head back to the car.
-      const target = (this.level > 0 && !pl.vehicle && !pl.dead) || (this.level > 0 && pl.vehicle && Math.hypot(pl.x - c.x, pl.z - c.z) < 12) ? pl : c.unit && this.units.includes(c.unit) && !c.unit.v.engineDead ? c.unit.v : null;
+      const target = pl.unreachable ? (c.unit && this.units.includes(c.unit) ? c.unit.v : null) : (this.level > 0 && !pl.vehicle && !pl.dead) || (this.level > 0 && pl.vehicle && Math.hypot(pl.x - c.x, pl.z - c.z) < 12) ? pl : c.unit && this.units.includes(c.unit) && !c.unit.v.engineDead ? c.unit.v : null;
       if (!target) { c.state = 'leave'; }
       const tx = target ? target.x : c.x + 1, tz = target ? target.z : c.z;
       const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz);
@@ -280,7 +281,7 @@ export class Police {
         if (!u.onFoot.length) u.state = this.level > 0 ? 'pursue' : 'leave';
       } else poseIdle(h, t);
       c.shout -= dt;
-      if (c.shout <= 0 && target === pl && d < 20) { c.shout = 4 + Math.random() * 4; world.hud.say(`Constable: "${LINES.cop[Math.floor(Math.random() * LINES.cop.length)]}"`, 2); }
+      if (c.shout <= 0 && target === pl && d < 20) { c.shout = 4 + Math.random() * 4; if (world.voices) world.voices.speak('cop', c, { prefix: 'Constable: ', dur: 2 }); else world.hud.say(`Constable: "${LINES.cop[Math.floor(Math.random() * LINES.cop.length)]}"`, 2); }
     }
     // Reel from a punch for a moment, whatever they were doing.
     if (c.flinch > 0 && c.state !== 'down') { c.flinch -= dt; poseStagger(h, 1 - c.flinch / 0.35); }
@@ -364,7 +365,8 @@ export class Police {
     if (this.level > 0 && active < MAX_UNITS[this.level] && this.spawnCd <= 0) { this.spawnUnit(world); this.spawnCd = 4; }
 
     // Is anyone watching you?
-    const seen = this.units.some((u) => Math.hypot(u.v.x - p.x, u.v.z - p.z) < 110 && this.lineOfSight(u.v.x, u.v.z, p.x, p.z))
+    // (A hijacked metro train is in plain view of the whole city.)
+    const seen = pl.unreachable || this.units.some((u) => Math.hypot(u.v.x - p.x, u.v.z - p.z) < 110 && this.lineOfSight(u.v.x, u.v.z, p.x, p.z))
       || this.cops.some((c) => c.state !== 'down' && Math.hypot(c.x - p.x, c.z - p.z) < 40);
     if (this.level > 0) {
       if (seen) { this.seenT = 0; this.lastKnown = { x: p.x, z: p.z }; } else this.seenT += dt;
@@ -399,7 +401,7 @@ export class Police {
     }
 
     // Busted?
-    if (this.level > 0 && !pl.dead) {
+    if (this.level > 0 && !pl.dead && !pl.unreachable) {
       let pinned = false;
       if (pl.vehicle) {
         if (pl.vehicle.speed < 1.5) pinned = this.units.some((u) => Math.hypot(u.v.x - p.x, u.v.z - p.z) < 7) || this.cops.some((c) => c.state !== 'down' && Math.hypot(c.x - p.x, c.z - p.z) < 3);

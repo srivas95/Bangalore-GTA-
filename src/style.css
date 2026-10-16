@@ -30,11 +30,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 #toast { font-size: 56px; color: #fff; letter-spacing: 2px; -webkit-text-stroke: 1.5px #000; }
 #toast-sub { font-size: 20px; color: var(--gold); letter-spacing: 3px; text-transform: uppercase; }
 
-#radio { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 22px; color: var(--gold); opacity: 0; transition: opacity 0.4s; }
+#radio { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 22px; color: var(--gold); opacity: 0; transition: opacity 0.4s; text-align: center; text-shadow: 0 2px 6px rgba(0,0,0,0.8); }
+#radio b { display: block; color: var(--c, var(--gold)); }
+#radio small { display: block; font-size: 13px; color: #ddd; letter-spacing: 1px; }
 #radio.show { opacity: 1; }
 
 #subtitle { position: absolute; bottom: 120px; width: 100%; text-align: center; font-family: system-ui, sans-serif; font-size: 20px; font-weight: 600; opacity: 0; transition: opacity 0.3s; padding: 0 20%; }
 #subtitle.show { opacity: 1; }
+#subtitle small { display: block; font-size: 14px; font-weight: 500; color: #e8d9a8; margin-top: 3px; }
 #prompt { position: absolute; bottom: 80px; width: 100%; text-align: center; font-size: 18px; opacity: 0; transition: opacity 0.2s; }
 #prompt.show { opacity: 1; }
 
@@ -171,3 +174,18 @@ body.touch #health { top: 46px; bottom: auto; left: 4px; width: 136px; height: 1
 #garage-menu .gm-item.off { opacity: 0.4; }
 #garage-menu .gm-item em { font-style: normal; font-weight: bold; color: #7ee07e; }
 #garage-menu .gm-foot { padding: 8px 16px; font-size: 12px; color: #aaa; border-top: 1px solid #333; }
+
+/* Walk-in shops: the counter menu, and the fade going in and out. */
+#shop-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(470px, 92vw); max-height: 80vh; overflow-y: auto; display: none; background: rgba(14, 12, 10, 0.94); border-radius: 10px; border: 1px solid #3a3226; border-top: 4px solid var(--gold); pointer-events: auto; font-family: system-ui, sans-serif; }
+#shop-menu.show { display: block; }
+#shop-menu .gm-head { padding: 12px 16px; font-size: 18px; border-bottom: 1px solid #333; font-family: var(--hud-font); letter-spacing: 1px; }
+#shop-menu .gm-head span { display: block; font-size: 12px; color: #999; font-family: system-ui, sans-serif; letter-spacing: 0; }
+#shop-menu .gm-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px 16px; font-size: 14px; color: #ddd; cursor: pointer; }
+#shop-menu .gm-item small { color: #b8a878; margin-left: 6px; font-size: 12px; }
+#shop-menu .gm-item.sel { background: rgba(240, 192, 64, 0.18); color: #fff; }
+#shop-menu .gm-item.off { opacity: 0.4; }
+#shop-menu .gm-item.danger span { color: #ff8a7a; }
+#shop-menu .gm-item em { font-style: normal; font-weight: bold; color: #7ee07e; }
+#shop-menu .gm-foot { padding: 8px 16px; font-size: 12px; color: #aaa; border-top: 1px solid #333; cursor: pointer; }
+#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 0.26s; z-index: 50; }
+#fade.on { opacity: 1; }

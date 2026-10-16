@@ -451,6 +451,7 @@ export class Traffic {
       v.vz = dt > 0 ? (v.z - prevZ) / dt : 0;
       const far = distP > 280;
       v.group.visible = !far;
+      v.flatGround = !a.edge.flyover && !a.edge.und.underpasses; // (ramps only on those edges)
       if (!far || ai % 4 === 0) v.syncVisual(dt, world);
     }
     // Top up the population around the player.

@@ -12,6 +12,7 @@ export class Layout {
     let seed = 1203;
     this.rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     this.world = MD.WORLD;
+    this.floors = [];
     const avoid = [...MD.PARKS.map((p) => p.poly), ...MD.LAKES.map((l) => l.poly), MD.AIRPORT.poly];
     const net = buildRoadNet({ world: this.world, arterials: MD.ARTERIALS, avoid, rng: this.rng, spacing: 150, urban: MD.URBAN, ruralSpacing: 650 });
     this.net = net;
@@ -449,6 +450,8 @@ export class Layout {
 
   // Surface height. Pass the current height `y` to choose between levels on a flyover.
   groundHeight(x, z, y) {
+    // Extra floors (the walk-in shop interiors, built off the map).
+    for (const f of this.floors) if (x >= f.minX && x <= f.maxX && z >= f.minZ && z <= f.maxZ) return f.y;
     if (this.blockContaining(x, z)) return CURB_H;
     let g = 0;
     const u = this.underpasses.length ? this.underpassAt(x, z) : null;

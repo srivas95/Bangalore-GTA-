@@ -53,10 +53,12 @@ and signing.
 | F (or E) | Get in or out of a vehicle. Works on traffic too ("borrowing") |
 | H (or Q) | Horn (every vehicle type sounds different) |
 | G | Siren, when you're driving a Hoysala |
-| E | At a metro station entrance: buy a token and ride |
+| E | At a metro station entrance: buy a token and ride. At a shop door or counter: walk in, order |
+| F | On a metro platform with a train in, or riding one: hijack the train (★★★★★) |
 | J | Accept the gig on your phone |
 | M | City map (scroll or pinch to zoom, drag to move, click or tap to set a GPS waypoint) |
-| R | Radio on/off |
+| R | Next radio station (in a vehicle), then off |
+| V | Driving a hijacked metro train: cab view / chase view |
 | K | Summon (or stop) the monsoon |
 | T | Fast-forward time ×30; on the metro, skip the wait or the ride |
 | O | Quick switch to the Low graphics preset |
@@ -107,11 +109,26 @@ and signing.
     if needed (the two lines' halls are on different levels).
   - Wait on the platform for a real train going your way, then ride it.
   - **T** skips the wait or the ride.
+- **The trains.** Three-car BEML sets with raked cab noses, livery bands, windows that light up
+  at night and doors that slide open at the platforms. Each car rides on two bogies that follow the
+  track, so the train bends through curves car by car, with gangways stretching between them, leans
+  into the bends and pitches on the ramps down to the tunnels. The route's bends are eased into
+  curves, and trains keep a safe distance behind one another.
+- **Hijacking.** On the platform when a train is in, or while riding, press **F** to take over the
+  cab. It's an instant **5-star** wanted level. **W** for power, **S** to brake and then reverse,
+  **Space** for the emergency brake, **H** for the horn, **V** for the cab view. Run it through the
+  stations, or ram the train ahead, then stop at a platform and press **F** to make a run for it:
+  the Hoysalas follow along underneath and wait for you outside.
 
 ### Vehicles and driving
 
 - **Tyre physics.** Driving uses a bicycle model with slip angles, load transfer and handbrake
   turns, plus a stability assist that keeps it fun. Two-wheelers lean.
+- **Slopes.** Vehicles sit on the ground under their axles, so they pitch up flyover ramps and dive
+  into underpasses, tilt on kerbs and climb onto footpaths with a bump. Gravity slows you uphill;
+  take a crest fast enough and you leave the ground and land on the suspension.
+- **Smooth on phones.** The world is stepped by the display's frame timestamps, the camera is locked
+  to the car (no lag to wobble), its boom glides past walls, and shadows keep up with the car.
 - **Real car models**, each with its own proportions:
   - Maruti Alto, WagonR, Swift and Dzire
   - Hyundai i10, Verna and Creta
@@ -148,6 +165,24 @@ and signing.
     a machete ("long").
   - **Guns are rare:** a country-made **katta** that sometimes misfires, and a revolver.
 - **Rowdies.** Gangs of rowdies hang around markets and yards after dark.
+- **They talk back,** in the languages of the city: Kannada, Tamil, Telugu, Hindi, Dakhni,
+  Malayalam and Bangalore English. Drivers you carjack or bump, people you hit or knock over,
+  anyone who fights back, crowds running from gunfire, constables, shopkeepers and passers-by
+  chatting (Kannada proverbs and a line of Kuvempu among them). Subtitles show the line and what
+  it means. Lines are spoken by the device's own voices where it has them (Android and Edge have
+  Kannada, Tamil, Telugu, Hindi and Malayalam voices; most systems have Hindi), otherwise read by
+  an Indian English voice, or "spoken" by a synthesised voice where there's no speech at all
+  (Settings → Voices).
+- **Walk-in shops.** Every shopfront has a door: walk into the yellow arrow. At the counter (**E**):
+  - **Eat** at darshinis, biryani houses, cafés, bakeries, sweet shops and pubs to get your health
+    back (idli vada, masala dose, biryani, filter coffee...), or buy **first aid** at a pharmacy.
+  - **Hardware shops** sell lathis, bats, chains, sickles and machetes, and a katta (and rounds)
+    from under the counter.
+  - **Clothes and silk shops** sell a new look (an RCB jersey, a Mysore silk shirt, a lungi...). If
+    no policeman saw you go in, it clears a wanted level of up to 2 stars (one star off above that).
+    Your outfit is saved.
+  - **Rob the till** of any shop with a weapon in your hand: cash (a jeweller's pays best), and the
+    police are waiting outside (2 stars, 3 at a jeweller's).
 - **Police.**
   - A wanted level from 1 to 5 stars.
   - Hoysalas route through the streets and ram you, and constables come at you with lathis.
@@ -175,6 +210,17 @@ and signing.
 - **Hits, guns and the rest** are recordings too: punches, crashes, glass, a revolver and a
   country-made katta, doors, footsteps, tyre screech, thunder and cows. Underpasses and the metro
   add an echo.
+- **Small speakers.** The auto, bus and lorry recordings, and the idle of the car and the Bullet,
+  were almost all below 150 Hz, which phone and laptop speakers can't play: those engines were
+  silent there. They now carry harmonics and a firing-synced rattle (tools/sounds/enrich.py). The
+  sound also wakes up again after the phone suspends it, and stops while the game is paused.
+- **Radio.** Five stations of Indian music, generated as it plays, with presenters between songs.
+  **R** changes station; every vehicle remembers its own.
+  - **Namma FM 91.1**: Kannada film songs (dholak, strings, flute, nadaswaram, a singer).
+  - **Bolly Bajao 94.3**: Bollywood dance (bhangra dhol, tumbi, synth stabs).
+  - **Machi Kuthu 98.3**: Tamil kuthu and gaana (thappu drums, nadaswaram).
+  - **Raaga Sudha 101.3**: Carnatic (tanpura, veena and mridangam, from alapana to the composition).
+  - **Filter Kaapi Lo-fi 104.0**: sitar and electric piano over a lazy beat.
 
 ### Brands
 
@@ -201,7 +247,7 @@ art direction and what's next.
 
 ```
 src/
-  config.js            Constants, shop signage and brands, dialogue lines
+  config.js            Constants, shop signage and brands, dialogue lines in seven languages
   main.js              Renderer, game loop, busted/wasted, vehicle-vehicle collisions
   world/
     mapdata.js         Real geography: arterials, metro stations, railway, parks, lakes, districts, landmarks
@@ -232,12 +278,16 @@ src/
   systems/
     story.js           Story missions (step scripts), mission givers, saving
     metroRide.js       Tokens, platforms, riding, interchange, skipping
+    metroDrive.js      Hijacking and driving a metro train
+    interiors.js       Walk-in shops and restaurants: rooms, counters, eating, weapons, clothes, robbery
+    voices.js          Spoken lines in Bengaluru's languages: device voices or a synthesised one
+    radio.js           The car radio: generated Indian music, five stations
     police.js          Wanted level, Hoysala pursuit AI, constables, busting
     weapons.js         Weapon table, raycasts, pickups
     signals.js         Signal phases by approach, heads, traffic constables
     environment.js     Day/night, sky, rain, lightning, wetness, flooding, headlights
     audio.js           Sample-based sound: engines, traffic, horns, siren, ambience, reverb
-    audioSynth.js      Synthesised fallbacks, UI cues and the radio
+    audioSynth.js      Synthesised fallbacks and UI cues
     soundBank.json     Loop points and pitches for public/audio/*.mp3 (built by tools/sounds)
     settings.js        Graphics/control settings and presets
     garages.js         Repair stalls, Chikka Motors, owned vehicles

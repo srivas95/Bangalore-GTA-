@@ -168,9 +168,12 @@ export class HUD {
     this.toastT = 3.5;
   }
 
-  say(text, dur = 3) {
-    this.el.sub.textContent = text;
-    this.el.sub.classList.add('show');
+  // A subtitle; `sub` is a second, smaller line (the language and meaning of a spoken line).
+  say(text, dur = 3, sub = '') {
+    const el = this.el.sub;
+    el.textContent = text;
+    if (sub) { const s = document.createElement('small'); s.textContent = sub; el.appendChild(s); }
+    el.classList.add('show');
     this.subT = dur;
   }
 
@@ -198,10 +201,22 @@ export class HUD {
   vehicleEntered(v) {
     this.el.speed.classList.add('show');
     this.el.vehicle.textContent = v.spec.label;
-    const stations = ['Radio Namma 91.1', 'Silk Board Jam FM 92.7', 'Filter Kaapi Beats 98.3', 'Gully Bass 104'];
-    this.el.radio.textContent = '📻 ' + stations[Math.floor(Math.random() * stations.length)];
-    this.el.radio.classList.add('show');
-    setTimeout(() => this.el.radio.classList.remove('show'), 3500);
+  }
+
+  // The station banner when you tune in (st: a radio station, or null for off); `line` is what
+  // the presenter is saying.
+  radioStation(st, line = '') {
+    const el = this.el.radio;
+    el.innerHTML = '';
+    if (st) {
+      const b = document.createElement('b'); b.textContent = `📻 ${st.name} ${st.freq}`;
+      const s = document.createElement('small'); s.textContent = line || st.tag;
+      el.append(b, s);
+      el.style.setProperty('--c', st.color);
+    } else el.textContent = '📻 Radio off';
+    el.classList.add('show');
+    clearTimeout(this._radioT);
+    this._radioT = setTimeout(() => el.classList.remove('show'), line ? 5000 : 3500);
   }
 
   vehicleExited() {

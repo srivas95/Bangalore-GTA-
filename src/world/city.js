@@ -36,7 +36,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   const lamps = [];
   const tanks = [];
   const signs = [];
-  const pois = { food: [], homes: [], landmarks: [], parking: [], industrial: [], fuel: [] };
+  const pois = { food: [], homes: [], landmarks: [], parking: [], industrial: [], fuel: [], shops: [] };
   const signCount = T.SIGN_COLS * T.SIGN_ROWS;
   const pools = { general: [], pub: [], industrial: [] };
   for (let k = 0; k < signCount; k++) {
@@ -369,6 +369,11 @@ export function buildCity(scene, layout, colliders, renderer) {
       const p = frontPoint(lot, 2.2);
       pois.food.push({ name: s.en, x: p.x, z: p.z, district: block.district });
     }
+    // Every shopfront can be walked into (systems/interiors.js): the door is on the facade,
+    // facing the road; (ix, iz) points into the shop.
+    const door = frontPoint(lot, 0.9), inside = frontPoint(lot, -1);
+    const il = Math.hypot(inside.x - door.x, inside.z - door.z) || 1;
+    pois.shops.push({ name: s.en, kn: s.kn, sign: s, x: door.x, z: door.z, ix: (inside.x - door.x) / il, iz: (inside.z - door.z) / il, district: block.district });
   }
 
   function hotelFor(block) {

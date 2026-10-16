@@ -16,13 +16,14 @@ import { DETAIL } from '../world/detail.js';
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
-// Engine classes: idle and redline firing pitch (Hz), gear count and loudness.
+// Engine classes: idle and redline firing pitch (Hz), gear count, loudness, and the lowest the
+// player's engine filter closes to (an auto or a bike is open to the air: its rattle stays bright).
 const ENG = {
-  scooter: { idle: 48.9, max: 132, gears: 1, vol: 0.5 },
-  bike: { idle: 9.3, max: 50, gears: 4, vol: 0.75 },
-  auto: { idle: 30.6, max: 96, gears: 4, vol: 0.7 },
-  car: { idle: 22.7, max: 118, gears: 5, vol: 0.55 },
-  bus: { idle: 50.2, max: 140, gears: 4, vol: 0.85 },
+  scooter: { idle: 48.9, max: 132, gears: 1, vol: 0.5, lp: 1300 },
+  bike: { idle: 9.3, max: 50, gears: 4, vol: 0.75, lp: 1500 },
+  auto: { idle: 30.6, max: 96, gears: 4, vol: 0.75, lp: 2600 },
+  car: { idle: 22.7, max: 118, gears: 5, vol: 0.55, lp: 900 },
+  bus: { idle: 50.2, max: 140, gears: 4, vol: 0.85, lp: 1700 },
 };
 
 // Horns: which recording, pitch, level and how long a blast lasts. Bengaluru honks in bursts.
@@ -217,10 +218,15 @@ export class Audio {
   }
 
   start() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    this.paused = false;
+    if (this.ctx) { this.wake(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
+    // iPhones: play like a game or a video app rather than obeying the ring/silent switch,
+    // which otherwise mutes the whole game without a word.
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* older Safari */ }
     const c = this.ctx = new AC();
+    this.unlockGestures();
     this.master = c.createGain();
     this.master.gain.value = 0.9 * (this.volume ?? 0.8);
     this.comp = c.createDynamicsCompressor();
@@ -243,6 +249,41 @@ export class Audio {
     this.enabled = true;
     if (!this.ready) this.preload();
     this.ready.then(() => { if (!this.failed || this.has('amb_city', 'eng_car_0')) this.synth.silence(); });
+  }
+
+  // Phones suspend (or, on iOS, "interrupt") the audio context when the screen locks, a call
+  // comes in, the app goes to the background, or simply when it was started a moment before the
+  // tap counted as a gesture. Every later tap, click or key tries again, and so does coming back
+  // to the tab, so the sound can't stay dead.
+  wake() {
+    const c = this.ctx;
+    if (!c || this.paused) return;
+    if (c.state !== 'running' && c.state !== 'closed') c.resume?.().catch(() => {});
+  }
+
+  unlockGestures() {
+    const kick = () => {
+      this.wake();
+      // Older iOS also wants a sound started inside the gesture before it unmutes.
+      if (!this.unlocked && this.ctx) {
+        this.unlocked = true;
+        try { const s = this.ctx.createBufferSource(); s.buffer = this.ctx.createBuffer(1, 1, 22050); s.connect(this.ctx.destination); s.start(0); } catch { /* ignore */ }
+      }
+    };
+    for (const ev of ['pointerdown', 'touchend', 'keydown', 'click']) addEventListener(ev, kick, { passive: true, capture: true });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.ctx?.suspend?.().catch(() => {});
+      else this.wake();
+    });
+    this.ctx.onstatechange = () => { if (this.ctx.state !== 'running' && !document.hidden) setTimeout(() => this.wake(), 300); };
+  }
+
+  // The pause screen: everything stops (engines, radio, rain) until you resume.
+  pause(on) {
+    this.paused = on;
+    if (!this.ctx) return;
+    if (on) this.ctx.suspend?.().catch(() => {});
+    else this.wake();
   }
 
   // A synthetic room: early reflections off the buildings, then a smooth exponential tail.
@@ -418,7 +459,8 @@ export class Audio {
     const v = player.vehicle;
     const cabin = v && !v.spec.twoWheeler && v.spec.engine !== 'auto';
     const under = (v ? v.y : player.y) < -1.6;
-    this.ambLP.frequency.setTargetAtTime(cabin ? 1400 : under ? 5000 : 18000, t, 0.3);
+    // Inside a shop the street is through the door: muffled.
+    this.ambLP.frequency.setTargetAtTime(s.indoor ? 900 : cabin ? 1400 : under ? 5000 : 18000, t, 0.3);
     this.trafficBus.gain.setTargetAtTime(cabin ? 0.45 : 0.8, t, 0.3);
   }
 
@@ -458,10 +500,12 @@ export class Audio {
   // dt: game time since the last call.
   engine(vehicle, dt = 1 / 60) {
     if (!this.enabled) return;
-    if (!vehicle) { this.stopEngine(); this.synth.engine(null); return; }
+    if (!vehicle) { this.stopEngine(); this.synth.engine(null, true); return; }
     const cls = vehicle.spec.engine;
-    if (!this.has(`eng_${cls}_0`, `eng_${cls}_1`, `eng_${cls}_2`)) { this.synth.engine(vehicle); return; }
-    if (!this.synth.quiet) this.synth.engine(null);
+    // Recordings not in (still loading, or failed): the synthesised engine stands in, even after
+    // the rest of the synthesised sound has been retired.
+    if (!ENG[cls] || !this.has(`eng_${cls}_0`, `eng_${cls}_1`, `eng_${cls}_2`)) { this.stopEngine(); this.synth.engine(vehicle, true); return; }
+    this.synth.engine(null, true);
     if (vehicle.stalled || vehicle.engineDead || vehicle.wrecked) {
       if (this.pEng) { this.pEng.stop(0.4); this.pEng = null; }
       return;
@@ -478,7 +522,7 @@ export class Audio {
     const E = ENG[cls];
     const f = E.idle * Math.pow(E.max / E.idle, this.rpm);
     const load = 0.35 + 0.65 * thr;
-    this.pEng.set(f, E.vol * (0.55 + 0.45 * load), 900 + 7000 * load * (0.4 + 0.6 * this.rpm), 0, 1, 0.04);
+    this.pEng.set(f, E.vol * (0.55 + 0.45 * load), E.lp + 7000 * load * (0.4 + 0.6 * this.rpm), 0, 1, 0.04);
   }
 
   // Called by main when you leave a vehicle (engine() gets null).
@@ -654,9 +698,8 @@ export class Audio {
     this.play('metro_chime', { vol: 0.6, verb: 0.3 });
   }
 
-  // Musical cues and the radio stay synthesised.
+  // Musical cues stay synthesised (the radio is systems/radio.js).
   ping() { if (this.enabled) this.synth.ping(); }
   cash() { if (this.enabled) this.synth.cash(); }
   sting(bad = true) { if (this.enabled) this.synth.sting(bad); }
-  radio(on) { if (this.enabled) this.synth.radio(on); }
 }
