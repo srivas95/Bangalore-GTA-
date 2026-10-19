@@ -51,6 +51,14 @@ THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars
 	return clamp( c, 0.0, 1.0 );
 }`);
 
+// Diffuse light from the sky. The sky's colours are display colours, and in linear light they are
+// far more saturated than real skylight (the zenith has 13 times more blue than red), so used as
+// they are they turn every road and shadow blue-violet. Reflections keep the full colour.
+THREE.ShaderChunk.envmap_physical_pars_fragment = THREE.ShaderChunk.envmap_physical_pars_fragment.replace(
+  'return PI * envMapColor.rgb * envMapIntensity;',
+  `vec3 irr = PI * envMapColor.rgb * envMapIntensity;
+			return mix( vec3( dot( irr, vec3( 0.2126, 0.7152, 0.0722 ) ) ), irr, 0.3 );`);
+
 async function init() {
   // Wait for the Kannada font so the canvas-painted signs render the script.
   try { await Promise.race([document.fonts.load('26px "Noto Sans Kannada"'), document.fonts.load('40px "Oswald"'), new Promise((r) => setTimeout(r, 2500))]); } catch { /* offline */ }

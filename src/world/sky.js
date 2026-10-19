@@ -17,7 +17,7 @@ void main() {
 const SKY_FRAG = /* glsl */`
 uniform vec3 uSunDir, uMoonDir, uZenith, uHorizon, uGround, uGlow, uSunDisc, uCloudLit, uCloudDark;
 uniform float uTime, uStars, uCloud, uMoon, uSunVis, uEnvGain;
-uniform vec3 uEnvFloor;
+uniform vec3 uEnvFloor, uEnvGround;
 varying vec3 vDir;
 float hash3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -65,8 +65,10 @@ void main() {
   col += vec3(0.18, 0.22, 0.32) * pow(max(cm, 0.0), 220.0) * uMoon;
   col = mix(col, cc, ca);
   #ifdef ENV
-    // The copy baked into image-based lighting: brighter, with a moonlit floor, so streets stay
-    // readable at night without washing out the visible sky.
+    // The copy baked into image-based lighting: sunlit ground below the horizon (warm bounce light
+    // on walls), brighter, and with a moonlit floor so streets stay readable at night without
+    // washing out the visible sky.
+    col = mix(col, uEnvGround, smoothstep(0.0, -0.2, h));
     col = max(col * uEnvGain, uEnvFloor);
   #endif
   gl_FragColor = vec4(col, 1.0);
@@ -110,7 +112,7 @@ export class Sky {
       uGlow: { value: new THREE.Color() }, uSunDisc: { value: new THREE.Color(1, 0.95, 0.85).multiplyScalar(30) },
       uCloudLit: { value: new THREE.Color() }, uCloudDark: { value: new THREE.Color() },
       uTime: { value: 0 }, uStars: { value: 0 }, uCloud: { value: 0.25 }, uMoon: { value: 0 }, uSunVis: { value: 1 },
-      uEnvGain: { value: 1.6 }, uEnvFloor: { value: new THREE.Color() },
+      uEnvGain: { value: 1.6 }, uEnvFloor: { value: new THREE.Color() }, uEnvGround: { value: new THREE.Color() },
     };
     this.material = new THREE.ShaderMaterial({
       uniforms: this.uniforms, vertexShader: SKY_VERT, fragmentShader: SKY_FRAG,
@@ -154,7 +156,10 @@ export class Sky {
     u.uMoon.value = Math.min(1, Math.max(0, (-elev - 3) / 6)) * (1 - rain * 0.9);
     u.uCloud.value = clouds + (1 - clouds) * rain;
     u.uEnvGain.value = 1 + 1.1 * dayness;
-    u.uEnvFloor.value.setRGB(0.42, 0.47, 0.64).lerp(_b.setRGB(0.36, 0.38, 0.4), dayness);
+    // Saturated, because materials take only part of the sky light's colour (see main.js).
+    u.uEnvFloor.value.setRGB(0.36, 0.46, 0.86).lerp(_b.setRGB(0.36, 0.38, 0.4), dayness);
+    const sunlit = Math.min(1, Math.max(0, (elev + 2) / 14)) * (1 - rain * 0.7);
+    u.uEnvGround.value.copy(this.horizon).multiplyScalar(0.3 * (1 - sunlit)).add(_b.setRGB(0.3, 0.27, 0.22).multiplyScalar(sunlit));
     // Clouds: white and sunlit by day, warm at dusk, dim blue-grey at night.
     u.uCloudLit.value.copy(this.horizon).lerp(_b.setRGB(1, 1, 1), 0.55 * dayness).multiplyScalar(0.25 + 0.95 * dayness);
     u.uCloudDark.value.copy(this.zenith).lerp(_b.setRGB(0.35, 0.37, 0.4), 0.6).multiplyScalar(0.3 + 0.6 * dayness);

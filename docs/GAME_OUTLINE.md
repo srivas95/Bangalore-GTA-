@@ -106,13 +106,14 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 ## 5. Art direction and models
 
 - **Current:** fully procedural geometry and textures, physically based lighting, a custom time-of-day sky with
-  twilight, clouds, stars and moon, image-based lighting baked from that sky (only when it changes), haze that
-  takes the horizon colour, PBR Neutral tone mapping with an in-shader grade. Surface shaders add weathering,
+  twilight, clouds, stars and moon, image-based lighting baked from that sky (only when it changes; its diffuse
+  part is desaturated, with warm ground bounce below the horizon), haze that takes the horizon colour, PBR
+  Neutral tone mapping with an in-shader grade. Surface shaders add weathering,
   plaster-only paint masks, reflective window glass, randomly lit windows, painted kerbs and ground variation at
   almost no cost. The look is the same on PC, web and Android: shading next to walls and buildings is baked into
   a ground map at load, the sun's shadow map holds only the static city and is redrawn only when the light moves,
   people and vehicles get soft contact shadows, facades get normal maps from their own paint, and lights glow with
-  halo sprites instead of a bloom pass (bloom is optional). Trees are alpha-tested leaf-card canopies. People are
+  halo sprites instead of a bloom pass (bloom is optional). Trees are alpha-tested leaf-card canopies, with darker filler cards inside. People are
   single skinned meshes with a 13-bone rig; vehicles are single skinned meshes whose wheels are bones. This keeps
   crowds and traffic cheap. See [GRAPHICS_ENGINE.md](GRAPHICS_ENGINE.md) for the engine options review.
 - **Planned art pass:** swap procedural builders for glTF models one at a time, without touching gameplay code:

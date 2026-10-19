@@ -169,12 +169,15 @@ and signing.
   sets), a warm glow along the horizon at sunrise and sunset, sun and moon, twinkling stars and
   drifting clouds that close in for the monsoon. The fog takes the horizon's colour, so the city
   fades into the haze, and a distant skyline fills the horizon. Lighting comes from the same sky:
-  warm low sun, blue-sky fill, reflections in car paint and window glass, a moonlit floor at night.
+  a warm sun; a soft sky fill, much paler than the sky itself, so roads and shadows stay grey rather
+  than blue; warm light bounced off the street onto walls; reflections in car paint and window
+  glass; and a moonlit floor at night.
 - **A lived-in city.** Weathered paint (cream, ochre, terracotta, sage, dusty blue, cement) on the
   plaster only, with window frames and glass left alone; monsoon streaks and splash grime; grey
   concrete roofs; windows that light up at random at night in warm bulbs and cool tubelights;
   eight kinds of shop front (kirana, shutters, darshini, pharmacy, textile, mobile, hardware,
-  bakery); black-and-yellow kerbs; overhead cables between the poles; leafy trees.
+  bakery); black-and-yellow kerbs; overhead cables between the poles; leafy trees with full,
+  shaded canopies.
 - **Made for every device.** All of it is a few extra shader instructions on the existing
   materials, so phones get the same look on the Low preset.
 

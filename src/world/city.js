@@ -810,27 +810,34 @@ function buildInstancedTrees(group, trees, colliders) {
   const trunkMat = withAO(new THREE.MeshStandardMaterial({ color: 0x5a4636, roughness: 1 }));
   // Canopies: clusters of alpha-tested leaf cards on an ellipsoid shell. They read as foliage, cost
   // a fraction of solid blobs, and the normals point out from the centre for soft, rounded light.
+  // A few bigger cards fill the middle so the canopy doesn't show sky straight through, and leaves
+  // deeper in are darker.
   const leaf = T.leafAtlas(DETAIL.lite ? 128 : 256);
-  const canopy = (rx, ry, n, seed, size) => {
+  const canopy = (rx, ry, n, inner, seed, size) => {
     const r = T.mulberry32(seed);
-    const pos = [], nor = [], uv = [], idx = [];
-    for (let k = 0; k < n; k++) {
+    const pos = [], nor = [], uv = [], col = [], idx = [];
+    for (let k = 0; k < n + inner; k++) {
       let x, y, z, l;
       do { x = r() * 2 - 1; y = r() * 2 - 1; z = r() * 2 - 1; l = x * x + y * y + z * z; } while (l > 1 || l < 0.04);
       l = Math.sqrt(l);
-      const sh = 0.45 + 0.55 * Math.cbrt(r()); // mostly near the surface, some inside
+      // Shell cards mostly near the surface, some inside; the filler cards well inside.
+      const sh = k < n ? 0.45 + 0.55 * Math.cbrt(r()) : 0.12 + 0.45 * r();
       x = (x / l) * sh; y = (y / l) * sh; z = (z / l) * sh;
       const a = r() * Math.PI * 2, tilt = (r() - 0.5) * 1.3;
       const ux = Math.cos(a), uz = Math.sin(a);
       const vx = -Math.sin(a) * Math.sin(tilt), vy = Math.cos(tilt), vz = Math.cos(a) * Math.sin(tilt);
-      const hs = size * (0.7 + 0.5 * r());
+      const hs = size * (0.7 + 0.5 * r()) * (k < n ? 1 : 1.25);
       let nx = x, ny = y + 0.45, nz = z;
       const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
-      const u0 = r() * 0.45, v0 = r() * 0.45, b = pos.length / 3;
+      // One of the atlas's four clusters, sometimes mirrored.
+      const cell = Math.floor(r() * 4), flip = r() < 0.5, b = pos.length / 3;
+      const u0 = (cell % 2) * 0.5 + 0.03, v0 = (cell >> 1) * 0.5 + 0.03;
+      const ao = Math.max(0.4, 0.6 + 0.4 * (sh - 0.45) / 0.55) * (0.88 + 0.12 * y);
       for (const [i, j] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
         pos.push(x * rx + (ux * i + vx * j) * hs, y * ry + vy * j * hs, z * rx + (uz * i + vz * j) * hs);
         nor.push(nx, ny, nz);
-        uv.push(u0 + ((i + 1) / 2) * 0.55, v0 + ((j + 1) / 2) * 0.55);
+        uv.push(u0 + ((flip ? -i : i) + 1) / 2 * 0.44, v0 + ((j + 1) / 2) * 0.44);
+        col.push(ao, ao, ao);
       }
       idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
     }
@@ -838,20 +845,21 @@ function buildInstancedTrees(group, trees, colliders) {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.setIndex(idx);
     return g;
   };
-  const NH = DETAIL.lite ? 32 : 64, NL = 16;
+  const NH = DETAIL.lite ? 32 : 64, NL = 16, IH = DETAIL.lite ? 12 : 24;
   // [wide rain tree, gulmohar, small flowering tree]
-  const hi = [canopy(3.4, 1.8, NH, 3, DETAIL.lite ? 1.4 : 1.1), canopy(2.6, 2.0, NH, 9, DETAIL.lite ? 1.2 : 0.95), canopy(1.9, 1.6, Math.round(NH * 0.7), 11, DETAIL.lite ? 1.0 : 0.8)];
-  const lo = [canopy(3.4, 1.8, NL, 4, 2.1), canopy(2.6, 2.0, NL, 10, 1.8), canopy(1.9, 1.6, 12, 12, 1.5)];
+  const hi = [canopy(3.4, 1.8, NH, IH, 3, DETAIL.lite ? 1.4 : 1.1), canopy(2.6, 2.0, NH, IH, 9, DETAIL.lite ? 1.2 : 0.95), canopy(1.9, 1.6, Math.round(NH * 0.7), Math.round(IH * 0.7), 11, DETAIL.lite ? 1.0 : 0.8)];
+  const lo = [canopy(3.4, 1.8, NL, 6, 4, 2.1), canopy(2.6, 2.0, NL, 6, 10, 1.8), canopy(1.9, 1.6, 12, 4, 12, 1.5)];
   const trunkH = [4.2, 3.2, 1.8];
   const colours = [
     [0x3f6a2a, 0x4a7a30, 0x557d33, 0x3a5f28, 0x5e8a3a],
     [0xd8452a, 0xe25a2a, 0xc93a22, 0xe86a30],
     [0x4c8a3a, 0x5a9a40, 0xa04aa0, 0x8a5ac8],
   ];
-  const mat = new THREE.MeshStandardMaterial({ map: leaf, alphaTest: 0.5, alphaToCoverage: !DETAIL.min, side: THREE.DoubleSide, roughness: 0.8 });
+  const mat = new THREE.MeshStandardMaterial({ map: leaf, vertexColors: true, alphaTest: 0.5, alphaToCoverage: !DETAIL.min, side: THREE.DoubleSide, roughness: 0.8 });
   const buckets = new Map();
   for (const t of trees) {
     const key = `${t.t}:${Math.floor(t.x / CHUNK)}:${Math.floor(t.z / CHUNK)}`;
@@ -958,7 +966,7 @@ function buildLamps(group, lamps, colliders, heads) {
   const geo = new THREE.PlaneGeometry(1, 1);
   geo.rotateX(-Math.PI / 2);
   const pools = new THREE.InstancedMesh(geo, poolMat, Math.max(1, lamps.length));
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(14, 1, 14), p = new THREE.Vector3();
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(22, 1, 22), p = new THREE.Vector3();
   lamps.forEach(([x, z, ax, az], k) => {
     m.compose(p.set(x + ax * 3.5, 0.2, z + az * 3.5), q, s);
     pools.setMatrixAt(k, m);

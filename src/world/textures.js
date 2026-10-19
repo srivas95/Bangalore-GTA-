@@ -576,8 +576,9 @@ export function windowGlow(style) {
 export function lightPoolTexture() {
   const [c, ctx] = canvas(128, 128);
   const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, 'rgba(255,214,150,0.9)');
-  g.addColorStop(0.4, 'rgba(255,190,120,0.35)');
+  g.addColorStop(0, 'rgba(255,214,150,0.75)');
+  g.addColorStop(0.3, 'rgba(255,200,135,0.42)');
+  g.addColorStop(0.65, 'rgba(255,184,115,0.13)');
   g.addColorStop(1, 'rgba(255,170,100,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 128, 128);
@@ -769,16 +770,20 @@ export function leafAtlas(size = 256) {
   ctx.clearRect(0, 0, size, size);
   const r = mulberry32(4242), R = (a, b) => a + (b - a) * r();
   const k = size / 256;
-  for (let cl = 0; cl < 9; cl++) {
-    const cx = R(40, 216) * k, cy = R(40, 216) * k, rad = R(36, 66) * k;
-    for (let n = 0; n < 110; n++) {
-      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * rad;
-      const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
-      const l = R(58, 96);
-      ctx.fillStyle = `hsl(${R(60, 100)}, ${R(8, 28)}%, ${l}%)`;
-      ctx.save(); ctx.translate(x, y); ctx.rotate(r() * Math.PI);
-      ctx.beginPath(); ctx.ellipse(0, 0, R(4, 9) * k, R(2, 4) * k, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
+  // Four leaf clusters, one per quarter, each a few overlapping lobes kept clear of the quarter's
+  // edges, so a card shows a whole cluster with a ragged leafy outline, never a straight cut.
+  for (let cell = 0; cell < 4; cell++) {
+    const ox = (cell % 2) * 128 + 64, oy = (cell >> 1) * 128 + 64;
+    for (let lobe = 0; lobe < 4; lobe++) {
+      const a0 = r() * Math.PI * 2, d0 = lobe ? R(10, 20) : 0, rad = R(20, 28);
+      const cx = ox + Math.cos(a0) * d0, cy = oy + Math.sin(a0) * d0;
+      for (let n = 0; n < 130; n++) {
+        const a = r() * Math.PI * 2, d = Math.sqrt(r()) * rad;
+        ctx.fillStyle = `hsl(${R(60, 100)}, ${R(8, 28)}%, ${R(58, 96)}%)`;
+        ctx.save(); ctx.translate((cx + Math.cos(a) * d) * k, (cy + Math.sin(a) * d) * k); ctx.rotate(r() * Math.PI);
+        ctx.beginPath(); ctx.ellipse(0, 0, R(3.5, 7) * k, R(1.8, 3.4) * k, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
     }
   }
   const t = toTexture(c, { repeat: false, aniso: 4 });

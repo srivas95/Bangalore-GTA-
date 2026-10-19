@@ -12,7 +12,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const C = (hex) => new THREE.Color(hex);
 // Sunlight colour by elevation: deep orange at the horizon to near-white at midday.
 const SUN_KEYS = [[0, C(0xff8a4a)], [4, C(0xffb070)], [10, C(0xffd2a0)], [20, C(0xffe8c8)], [40, C(0xfff4e4)]];
-const MOON = C(0xa8c0f0);
+const MOON = C(0xb0c4ee);
 const _c1 = new THREE.Color(), _c2 = new THREE.Color();
 
 export class Environment {
@@ -200,27 +200,32 @@ export class Environment {
       while (k < SUN_KEYS.length - 1 && elev > SUN_KEYS[k][0]) k++;
       const [e0, c0] = SUN_KEYS[k - 1], [e1, c1] = SUN_KEYS[k];
       this.sun.color.copy(c0).lerp(c1, Math.min(1, Math.max(0, (elev - e0) / (e1 - e0))));
-      this.sun.intensity = 3.0 * smooth(-1, 8, elev) * (1 - rain * 0.8);
+      this.sun.intensity = 3.5 * smooth(-1, 8, elev) * (1 - rain * 0.8);
       this.lightDir.copy(this.sunDir);
     } else {
       // A bright, blue moon: night should read as night but stay playable (on phones too).
       this.sun.color.copy(MOON);
-      this.sun.intensity = 0.9 * smooth(-1, -6, elev) * (1 - rain * 0.6);
+      this.sun.intensity = 1.1 * smooth(-1, -6, elev) * (1 - rain * 0.6);
       this.lightDir.copy(this.sunDir).negate();
       this.lightDir.y = Math.abs(this.lightDir.y) + 0.3;
       this.lightDir.normalize();
     }
-    // Ambient from the sky itself: zenith blue from above, warm ground bounce from below.
+    // Ambient from the sky itself: a pale sky tint from above (real skylight is much less blue
+    // than the sky looks), warm ground bounce from below; bluer by night.
     _c1.copy(sky.zenith).lerp(sky.horizon, 0.35);
     const lum = Math.max(1e-4, _c1.r * 0.3 + _c1.g * 0.59 + _c1.b * 0.11);
+    _c1.lerp(_c2.setScalar(lum), 0.55 * day);
     this.hemi.color.copy(_c1).multiplyScalar(Math.min(4, 0.62 / lum)).lerp(_c2.setRGB(0.55, 0.62, 0.8), night * 0.6);
     this.hemi.groundColor.setHSL(0.08, 0.28, lerp(0.2, 0.36, day));
-    this.hemi.intensity = lerp(0.62, 0.72, day) * (1 - rain * 0.3) + this.flash * 2.5;
-    this.scene.environmentIntensity = lerp(0.35, 0.6, day) * (1 - rain * 0.35) + this.flash;
-    this.renderer.toneMappingExposure = lerp(0.95, 1.4, night) + this.flash * 0.6;
+    // Nights get more fill than is physical: the tone curve's toe crushes dark values (and turns a
+    // faintly blue night navy), and the streets have to stay readable on a phone.
+    this.hemi.intensity = lerp(0.8, 0.55, day) * (1 - rain * 0.3) + this.flash * 2.5;
+    this.scene.environmentIntensity = lerp(0.6, 0.5, day) * (1 - rain * 0.35) + this.flash;
+    this.renderer.toneMappingExposure = lerp(0.95, 1.5, night) + this.flash * 0.6;
 
-    // Fog takes the horizon's colour, so the city fades into the sky (aerial perspective).
-    this.scene.fog.color.copy(sky.horizon).lerp(sky.zenith, 0.15);
+    // Fog takes the horizon's colour exactly, so the city fades into the sky (aerial perspective)
+    // and nothing lost in the haze shows as a silhouette against it.
+    this.scene.fog.color.copy(sky.horizon);
     this.scene.fog.near = lerp(150, 25, rain);
     this.scene.fog.far = lerp(lerp(800, 560, night), 240, rain) * (this.drawDist ?? 1);
     this.scene.fog.near = Math.min(this.scene.fog.near, this.scene.fog.far * 0.5);
@@ -236,7 +241,7 @@ export class Environment {
     const su = sl.userData.uniforms;
     su.uHaze.value.copy(this.scene.fog.color);
     su.uTone.value.copy(this.scene.fog.color).multiplyScalar(lerp(0.72, 0.45, night)).lerp(_c2.setRGB(0.4, 0.38, 0.36), 0.15 * day)
-      .lerp(this.scene.fog.color, smooth(15, 120, this.camera.position.y) * 0.6); // from up high it's mostly haze
+      .lerp(this.scene.fog.color, smooth(12, 70, this.camera.position.y) * 0.92); // from up high it's haze
     su.uNight.value = smooth(0.4, 1, night) * (1 - rain);
 
     // Lightning and thunder in heavy rain.
