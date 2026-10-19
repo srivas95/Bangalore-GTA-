@@ -482,6 +482,7 @@ function airport(ctx, block) {
   const pb = new BuilderSet();
   buildPlane(pb.get('m'), LIVERIES[0]);
   const plane = new THREE.Group();
+  plane.userData.dynamic = true;
   pb.buildAll({ m: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.2 }) }, plane);
   group.add(plane);
   let t = 20, liv = 0;

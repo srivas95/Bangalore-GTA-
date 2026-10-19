@@ -152,10 +152,12 @@ export function buildRailway(ctx) {
       pivot.position.set(px, 1.25, pz);
       pivot.rotation.y = f.ang;
       pivot.add(arm);
+      pivot.userData.dynamic = true;
       group.add(pivot);
       c.booms.push({ arm, sd });
       const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), lampOff);
       lamp.position.set(px, 2.0, pz);
+      lamp.userData.dynamic = true;
       group.add(lamp);
       c.lamps.push(lamp);
       const box = colliders.framed(f).addCentered(0, sd * 9, L, 0.4, 1.5, 'wall');
@@ -318,7 +320,7 @@ function makeTrain(parts, group, line, dir, s, lat) {
   const n = 7, coach = 23.5;
   const cars = [{ mesh: parts.loco.clone(), off: 10 }];
   for (let k = 0; k < n; k++) cars.push({ mesh: parts.coach.clone(), off: 20.8 + k * (coach + 0.8) + coach / 2 });
-  for (const c of cars) group.add(c.mesh);
+  for (const c of cars) { c.mesh.userData.dynamic = true; group.add(c.mesh); }
   const len = 20.8 + n * (coach + 0.8);
   return { line, cars, s, dir, lat, speed: 10, wait: 0, len, honked: false, stoppedAt: null, x: 0, z: 0 };
 }

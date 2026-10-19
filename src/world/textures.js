@@ -164,22 +164,23 @@ export function zebraTexture() {
 
 export function paverTexture() {
   const [c, ctx] = canvas(256, 256);
-  ctx.fillStyle = '#9a948c';
+  ctx.fillStyle = '#6e6a64';
   ctx.fillRect(0, 0, 256, 256);
-  // Interlocking pavers in alternating red/grey bands, typical of BBMP footpaths.
-  const s = 32;
-  for (let y = 0; y < 256; y += s) {
-    for (let x = 0; x < 256; x += s) {
-      const red = ((x + y) / s) % 4 < 2;
-      const base = red ? [150, 95, 80] : [165, 160, 150];
-      const j = rand(-14, 14);
+  // Interlocking pavers, mostly weathered grey with the odd faded red band (BBMP footpaths).
+  const bw = 32, bh = 16;
+  for (let row = 0; row < 256 / bh; row++) {
+    const red = row % 6 === 2 || row % 6 === 3;
+    for (let x = (row % 2) * (bw / 2) - bw; x < 256; x += bw) {
+      const base = red ? [128, 92, 78] : [150, 146, 138];
+      const j = rand(-16, 12);
       ctx.fillStyle = `rgb(${base[0] + j},${base[1] + j},${base[2] + j})`;
       ctx.beginPath();
-      ctx.roundRect(x + 1.5, y + 1.5, s - 3, s - 3, 5);
+      ctx.roundRect(x + 1.2, row * bh + 1.2, bw - 2.4, bh - 2.4, 3);
       ctx.fill();
     }
   }
-  blotches(ctx, 256, 256, 15, '60,50,40', 50, 0.2);
+  blotches(ctx, 256, 256, 18, '50,44,36', 50, 0.22);
+  blotches(ctx, 256, 256, 6, '120,100,70', 30, 0.18);
   grain(ctx, 256, 256, 0.12, 6000);
   return toTexture(c);
 }
@@ -234,9 +235,11 @@ export const FACADE_TILE = { w: 7, h: 6.4 };
 
 export function plasterFacade() {
   const [c, ctx] = canvas(512, 512);
-  ctx.fillStyle = '#ece8e0';
+  // Wall plaster is mid-light grey (the facade shader paints it with the building's colour);
+  // frames, sills and AC units stay near-white and glass dark, so they're left unpainted.
+  ctx.fillStyle = '#d6d0c5';
   ctx.fillRect(0, 0, 512, 512);
-  blotches(ctx, 512, 512, 20, '180,170,155', 80, 0.25);
+  blotches(ctx, 512, 512, 20, '150,140,125', 80, 0.25);
   for (let f = 0; f < 2; f++) {
     for (let b = 0; b < 2; b++) {
       const x = b * 256 + 58, y = f * 256 + 78, w = 140, h = 116;
@@ -281,10 +284,10 @@ export function plasterFacade() {
 
 export function apartmentFacade() {
   const [c, ctx] = canvas(512, 512);
-  ctx.fillStyle = '#ece6dc';
+  ctx.fillStyle = '#d6cfc3';
   ctx.fillRect(0, 0, 512, 512);
-  blotches(ctx, 512, 512, 15, '170,160,150', 80, 0.25);
-  const clothes = ['#c0392b', '#2980b9', '#f1c40f', '#8e44ad', '#16a085', '#ecf0f1', '#e67e22'];
+  blotches(ctx, 512, 512, 15, '140,130,120', 80, 0.25);
+  const clothes = ['#9a3a2e', '#3a6a92', '#c8a43a', '#6a4a7a', '#3a7a6a', '#e4e0d8', '#b8703a'];
   for (let f = 0; f < 2; f++) {
     for (let b = 0; b < 2; b++) {
       const x = b * 256, y = f * 256;
@@ -305,7 +308,7 @@ export function apartmentFacade() {
         }
       }
       // Balcony parapet with railing.
-      ctx.fillStyle = '#e4ddd0';
+      ctx.fillStyle = '#d2cbbf';
       ctx.fillRect(x + 22, y + 160, 212, 64);
       ctx.fillStyle = 'rgba(0,0,0,0.15)';
       ctx.fillRect(x + 22, y + 160, 212, 6);
@@ -550,9 +553,8 @@ export function windowGlow(style) {
   const [c, ctx] = canvas(512, shop ? 256 : 512);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, 512, shop ? 256 : 512);
-  const lit = () => rng() < 0.45;
-  const colour = () => (rng() < 0.4 ? '#cfe2ff' : rng() < 0.5 ? '#ffd9a0' : '#ffe8c0');
-  const rect = (x, y, w, h) => { ctx.fillStyle = colour(); ctx.globalAlpha = rand(0.55, 1); ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; };
+  const lit = () => true;
+  const rect = (x, y, w, h) => { ctx.fillStyle = '#fff4e4'; ctx.fillRect(x, y, w, h); };
   if (style === 'plaster') {
     for (let f = 0; f < 2; f++) for (let b = 0; b < 2; b++) if (lit()) rect(b * 256 + 58, f * 256 + 78, 140, 116);
   } else if (style === 'apartment') {
@@ -563,7 +565,7 @@ export function windowGlow(style) {
   } else if (style === 'heritage') {
     for (let f = 0; f < 2; f++) for (let b = 0; b < 2; b++) if (lit()) rect(b * 256 + 78, f * 256 + 80, 100, 130);
   } else if (style === 'glass') {
-    for (let f = 0; f < 4; f++) for (let b = 0; b < 4; b++) if (rng() < 0.55) rect(b * 128 + 4, f * 128 + 4, 120, 100);
+    for (let f = 0; f < 4; f++) for (let b = 0; b < 4; b++) rect(b * 128 + 4, f * 128 + 4, 120, 100);
   } else if (shop) {
     for (let s = 0; s < 2; s++) { if (rng() < 0.25) continue; ctx.fillStyle = rng() < 0.5 ? '#ffe2a8' : '#dfefff'; ctx.globalAlpha = rand(0.4, 0.9); ctx.fillRect(s * 256 + 24, 100, 208, 150); ctx.globalAlpha = 1; }
   }
@@ -603,4 +605,183 @@ export function normalFromTexture(tex, strength = 2.5, size = 512) {
   }
   ctx.putImageData(img, 0, 0);
   return toTexture(c, { srgb: false });
+}
+
+// ---------- Shop fronts: an atlas of 8 shop types (4 x 2 cells, each an 8 m x 4 m tile holding
+// two shops) and a matching night-glow atlas. Goods are kept muted and interiors dark. ----------
+export const SHOP_ATLAS = { cols: 4, rows: 2 };
+const SHOP_TYPES = ['kirana', 'shutters', 'darshini', 'pharmacy', 'textile', 'mobile', 'hardware', 'bakery'];
+const GOODS = ['#7a4a3a', '#9a7a42', '#4a644a', '#3a5470', '#664a62', '#8a8250', '#b8b0a0', '#5a5650', '#a05a3a'];
+
+function shutterPaint(ctx, x, y, w, h, posters) {
+  ctx.fillStyle = '#7d8186';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  for (let yy = y; yy < y + h; yy += 6) ctx.fillRect(x, yy, w, 1.6);
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  for (let yy = y + 3; yy < y + h; yy += 6) ctx.fillRect(x, yy, w, 1);
+  if (posters) {
+    for (let k = 0; k < 3; k++) {
+      if (rng() < 0.4) continue;
+      ctx.fillStyle = GOODS[Math.floor(rand(0, GOODS.length))];
+      ctx.globalAlpha = rand(0.5, 0.85);
+      ctx.fillRect(x + rand(8, w - 70), y + rand(10, Math.max(12, h - 90)), rand(40, 64), rand(50, 80));
+      ctx.globalAlpha = 1;
+    }
+    if (rng() < 0.5) { // a padlock and the lifting handle
+      ctx.fillStyle = '#2a2a2a'; ctx.fillRect(x + w / 2 - 5, y + h - 16, 10, 10);
+    }
+  }
+  streaks(ctx, x, y, w, h * 0.6, 0.1);
+}
+
+function interiorPaint(ctx, ex, x, y, w, h, warm = true, glow = 0.8) {
+  ctx.fillStyle = '#26211c';
+  ctx.fillRect(x, y, w, h);
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, warm ? 'rgba(255,220,160,0.28)' : 'rgba(220,235,255,0.3)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  ex.fillStyle = warm ? '#ffd9a0' : '#e6f0ff';
+  ex.globalAlpha = glow;
+  ex.fillRect(x, y, w, h);
+  ex.globalAlpha = 1;
+}
+
+function shelvesPaint(ctx, x, y, w, h, palette, rows = 4, itemW = [8, 16]) {
+  const rh = h / rows;
+  for (let r = 0; r < rows; r++) {
+    const yy = y + r * rh;
+    for (let xx = x + 6; xx < x + w - 10;) {
+      const iw = rand(itemW[0], itemW[1]), ih = rand(rh * 0.45, rh * 0.85);
+      ctx.fillStyle = palette[Math.floor(rand(0, palette.length))];
+      ctx.fillRect(xx, yy + rh - ih - 4, iw, ih);
+      xx += iw + rand(1, 4);
+    }
+    ctx.fillStyle = '#4a3c2c'; ctx.fillRect(x + 2, yy + rh - 4, w - 4, 4);
+  }
+}
+
+function shopCell(ctx, ex, type) {
+  ctx.fillStyle = '#b9b2a6';
+  ctx.fillRect(0, 0, 512, 256);
+  for (let s = 0; s < 2; s++) {
+    const x = s * 256 + 14, w = 228, y = 34, h = 222;
+    const closed = type === 'shutters' || (rng() < 0.18 && type !== 'darshini');
+    if (closed) { shutterPaint(ctx, x, y, w, h, true); continue; }
+    const up = rand(26, 46); // the shutter rolled up into its box
+    switch (type) {
+      case 'kirana':
+        interiorPaint(ctx, ex, x, y + up, w, h - up, true, 0.75);
+        shelvesPaint(ctx, x, y + up + 10, w, h - up - 60, GOODS, 3);
+        for (let k = 0; k < 9; k++) { // sachet strips hanging at the front
+          ctx.fillStyle = GOODS[Math.floor(rand(0, GOODS.length))];
+          ctx.fillRect(x + 10 + k * 24, y + up, 7, rand(30, 60));
+        }
+        for (let k = 0; k < 4; k++) { ctx.fillStyle = '#b8a888'; ctx.beginPath(); ctx.ellipse(x + 30 + k * 52, y + h - 18, 22, 16, 0, 0, Math.PI * 2); ctx.fill(); }
+        break;
+      case 'darshini': {
+        interiorPaint(ctx, ex, x, y + up, w, h - up, true, 0.95);
+        ctx.fillStyle = '#1e1a16'; ctx.fillRect(x + 20, y + up + 12, 90, 50); // menu board
+        ctx.fillStyle = 'rgba(230,220,190,0.75)';
+        for (let k = 0; k < 6; k++) ctx.fillRect(x + 28, y + up + 18 + k * 7, rand(40, 75), 2);
+        const cg = ctx.createLinearGradient(0, y + h - 70, 0, y + h - 30); // steel counter
+        cg.addColorStop(0, '#d8dcde'); cg.addColorStop(1, '#8a8e92');
+        ctx.fillStyle = cg; ctx.fillRect(x + 6, y + h - 70, w - 12, 40);
+        ctx.fillStyle = '#c8b090';
+        for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(x + 40 + k * 48, y + h - 76, 9, Math.PI, 0); ctx.fill(); }
+        break;
+      }
+      case 'pharmacy':
+        interiorPaint(ctx, ex, x, y + up, w, h - up, false, 0.9);
+        ctx.fillStyle = '#dcdedc'; ctx.fillRect(x + 4, y + up + 4, w - 8, h - up - 8);
+        shelvesPaint(ctx, x + 6, y + up + 12, w - 12, h - up - 70, ['#e8e8e4', '#4a7aa8', '#3a8a5a', '#c8c8c0', '#d84a3a'], 4, [6, 12]);
+        ctx.fillStyle = '#1f9a4a'; // green cross
+        ctx.fillRect(x + w - 44, y + up + 10, 30, 10); ctx.fillRect(x + w - 34, y + up, 10, 30);
+        ex.fillStyle = '#40ff80'; ex.fillRect(x + w - 44, y + up + 10, 30, 10); ex.fillRect(x + w - 34, y + up, 10, 30);
+        ctx.strokeStyle = '#6a6e70'; ctx.lineWidth = 4; ctx.strokeRect(x + 70, y + up + 30, 88, h - up - 32);
+        break;
+      case 'textile':
+        interiorPaint(ctx, ex, x, y + up, w, h - up, true, 0.85);
+        shelvesPaint(ctx, x, y + up + 6, w, h - up - 40, ['#7a2232', '#b8862a', '#2a6a6a', '#8a2a6a', '#3a3a7a', '#c86a3a', '#6a7a3a'], 4, [12, 18]);
+        // a mannequin in a sari
+        ctx.fillStyle = '#c89a7a'; ctx.beginPath(); ctx.arc(x + w - 40, y + up + 30, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#9a2242'; ctx.beginPath(); ctx.moveTo(x + w - 56, y + h); ctx.lineTo(x + w - 46, y + up + 40); ctx.lineTo(x + w - 34, y + up + 40); ctx.lineTo(x + w - 22, y + h); ctx.fill();
+        break;
+      case 'mobile':
+        interiorPaint(ctx, ex, x, y + up, w, h - up, false, 1.0);
+        ctx.fillStyle = '#e8eaec'; ctx.fillRect(x + 4, y + up + 4, w - 8, h - up - 8);
+        for (let k = 0; k < 4; k++) { // poster wall
+          ctx.fillStyle = ['#1e4a9a', '#c82a2a', '#2a2a2a', '#e0a020'][k];
+          ctx.fillRect(x + 10 + k * 54, y + up + 10, 48, 64);
+          ctx.fillStyle = '#d8dce0'; ctx.fillRect(x + 26 + k * 54, y + up + 22, 16, 30);
+        }
+        ctx.fillStyle = 'rgba(150,190,210,0.55)'; ctx.fillRect(x + 8, y + h - 70, w - 16, 44); // glass counter
+        ctx.fillStyle = '#4a4e52'; ctx.fillRect(x + 8, y + h - 26, w - 16, 26);
+        break;
+      case 'hardware':
+        interiorPaint(ctx, ex, x, y + up, w, h - up, true, 0.55);
+        for (let k = 0; k < 14; k++) { ctx.fillStyle = ['#7a7e82', '#3a5a8a', '#c8c8c0', '#8a6a3a'][k % 4]; ctx.fillRect(x + 8, y + up + 10 + k * 8, w * rand(0.5, 0.9), 5); }
+        for (let k = 0; k < 5; k++) { ctx.fillStyle = ['#2a6ab0', '#c83a2a', '#e0b020', '#3a8a3a', '#8a8a8a'][k]; ctx.fillRect(x + 12 + k * 42, y + h - 52, 30, 40); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 12 + k * 42, y + h - 52, 30, 5); }
+        break;
+      case 'bakery': {
+        interiorPaint(ctx, ex, x, y + up, w, h - up, true, 1.0);
+        shelvesPaint(ctx, x, y + up + 8, w, 80, ['#c8964a', '#a8662a', '#e8c88a', '#8a4a2a'], 2, [10, 18]);
+        const gg = ctx.createLinearGradient(0, y + h - 90, 0, y + h - 20); // lit glass cabinet
+        gg.addColorStop(0, 'rgba(255,240,210,0.85)'); gg.addColorStop(1, 'rgba(200,170,120,0.85)');
+        ctx.fillStyle = gg; ctx.fillRect(x + 8, y + h - 90, w - 16, 70);
+        for (let k = 0; k < 10; k++) { ctx.fillStyle = ['#b8742a', '#e0b060', '#8a3a2a', '#f0e0c0'][k % 4]; ctx.beginPath(); ctx.ellipse(x + 24 + k * 20, y + h - 52 + (k % 2) * 18, 8, 5, 0, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = '#5a5e62'; ctx.fillRect(x + 8, y + h - 20, w - 16, 20);
+        break;
+      }
+      default: break;
+    }
+    // The shutter box and the rolled-up shutter at the top.
+    shutterPaint(ctx, x, y, w, up, false);
+  }
+  // Lintel band and pillars, with monsoon streaks.
+  ctx.fillStyle = '#a8a196';
+  ctx.fillRect(0, 0, 512, 34);
+  ctx.fillStyle = '#b0a99e';
+  ctx.fillRect(0, 0, 14, 256); ctx.fillRect(256, 0, 14, 256); ctx.fillRect(498, 0, 14, 256);
+  streaks(ctx, 0, 34, 512, 40, 0.15);
+  grain(ctx, 512, 256, 0.08, 7000);
+}
+
+export function shopfrontAtlas(scale = 1) {
+  const { cols, rows } = SHOP_ATLAS;
+  const CW = Math.round(512 * scale), CH = Math.round(256 * scale);
+  const [c, ctx] = canvas(CW * cols, CH * rows);
+  const [e, ex] = canvas(CW * cols, CH * rows);
+  ex.fillStyle = '#000';
+  ex.fillRect(0, 0, CW * cols, CH * rows);
+  SHOP_TYPES.forEach((type, i) => {
+    const ox = (i % cols) * CW, oy = Math.floor(i / cols) * CH;
+    for (const g of [ctx, ex]) { g.save(); g.translate(ox, oy); g.scale(scale, scale); g.beginPath(); g.rect(0, 0, 512, 256); g.clip(); }
+    shopCell(ctx, ex, type);
+    ctx.restore(); ex.restore();
+  });
+  return { map: toTexture(c), emissive: toTexture(e), cols, rows };
+}
+
+// Leaf clusters on a transparent card, painted light so each tree's instance colour sets the hue.
+export function leafAtlas(size = 256) {
+  const [c, ctx] = canvas(size, size);
+  ctx.clearRect(0, 0, size, size);
+  const r = mulberry32(4242), R = (a, b) => a + (b - a) * r();
+  const k = size / 256;
+  for (let cl = 0; cl < 9; cl++) {
+    const cx = R(40, 216) * k, cy = R(40, 216) * k, rad = R(36, 66) * k;
+    for (let n = 0; n < 110; n++) {
+      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * rad;
+      const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+      const l = R(58, 96);
+      ctx.fillStyle = `hsl(${R(60, 100)}, ${R(8, 28)}%, ${l}%)`;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(r() * Math.PI);
+      ctx.beginPath(); ctx.ellipse(0, 0, R(4, 9) * k, R(2, 4) * k, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+  const t = toTexture(c, { repeat: false, aniso: 4 });
+  t.premultiplyAlpha = false;
+  return t;
 }

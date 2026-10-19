@@ -6,6 +6,7 @@ const _v = new THREE.Vector3();
 const _n = new THREE.Vector3();
 const _c = new THREE.Color();
 const _m3 = new THREE.Matrix3();
+const nonIndexed = new WeakMap();
 
 export class MeshBuilder {
   // opts.pbr: store per-vertex [roughness, metalness, emissive] (see makePbrMaterial).
@@ -104,7 +105,12 @@ export class MeshBuilder {
 
   // Add an arbitrary three.js geometry transformed by `matrix`.
   addGeometry(geo, matrix, color) {
-    const g = geo.index ? geo.toNonIndexed() : geo;
+    // Shared primitives (boxes, spheres, limbs) are reused thousands of times: un-index each once.
+    let g = geo;
+    if (geo.index) {
+      g = nonIndexed.get(geo);
+      if (!g) { g = geo.toNonIndexed(); nonIndexed.set(geo, g); }
+    }
     const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
     const col = color instanceof THREE.Color ? color.clone() : new THREE.Color(color ?? 0xffffff);
     _m3.getNormalMatrix(matrix);
@@ -125,7 +131,6 @@ export class MeshBuilder {
       if (this.usePbr) this.pbrArr.push(this.pbr[0], this.pbr[1], this.pbr[2]);
       if (this.useSkin) this.boneArr.push(this.bone);
     }
-    if (g !== geo) g.dispose();
   }
 
   // Distribute triangles into cells by centroid.
@@ -188,6 +193,19 @@ export function buildSkinned(builder, material, bones, { castShadow = true, rece
 }
 
 // Global uniforms shared by procedural materials (driven by the day/night system).
+// Everything in `group` not flagged userData.dynamic moves into a child group whose matrices are
+// computed once, so the per-frame scene-graph update skips thousands of static objects.
+export function freezeStatic(group) {
+  const statics = new THREE.Group();
+  statics.name = `${group.name}Static`;
+  for (const o of [...group.children]) if (!o.userData.dynamic) statics.add(o);
+  group.add(statics);
+  statics.updateMatrixWorld(true);
+  statics.traverse((o) => { o.matrixAutoUpdate = false; });
+  statics.updateMatrixWorld = () => {};
+  return statics;
+}
+
 export const sharedUniforms = { uNight: { value: 0 }, uWet: { value: 0 } };
 
 // MeshStandardMaterial whose roughness/metalness/emissive come from the per-vertex `pbr` attribute.

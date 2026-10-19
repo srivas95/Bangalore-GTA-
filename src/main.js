@@ -37,6 +37,20 @@ import { Halos } from './world/halos.js';
 
 const BOOT_KEY = 'namma-bengaluru-boot';
 
+// Tone mapping: Khronos PBR Neutral (true to the painted colours), then a light film grade done
+// in the same shader pass, so it costs nothing extra: a gentle S-curve around mid-grey, a touch
+// more saturation, cool shadows and warm highlights.
+THREE.ShaderChunk.tonemapping_pars_fragment = THREE.ShaderChunk.tonemapping_pars_fragment.replace(
+  'vec3 CustomToneMapping( vec3 color ) { return color; }',
+  `vec3 CustomToneMapping( vec3 color ) {
+	vec3 c = NeutralToneMapping( color );
+	c = 0.18 * pow( max( c, vec3( 0.0 ) ) / 0.18, vec3( 1.1 ) );
+	float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
+	c = mix( vec3( l ), c, 1.08 );
+	c *= mix( vec3( 0.97, 0.99, 1.04 ), vec3( 1.03, 1.0, 0.96 ), smoothstep( 0.05, 0.6, l ) );
+	return clamp( c, 0.0, 1.0 );
+}`);
+
 async function init() {
   // Wait for the Kannada font so the canvas-painted signs render the script.
   try { await Promise.race([document.fonts.load('26px "Noto Sans Kannada"'), document.fonts.load('40px "Oswald"'), new Promise((r) => setTimeout(r, 2500))]); } catch { /* offline */ }
@@ -57,13 +71,14 @@ async function init() {
 
   // MSAA is close to free on phone GPUs (tile-based), and without it phones looked far worse than PC.
   const renderer = new THREE.WebGLRenderer({ antialias: !DETAIL.min, powerPreference: 'high-performance' });
-  let pixelRatio = Math.min(devicePixelRatio, 1.5);
+  let baseRatio = Math.min(devicePixelRatio, 1.5), dynScale = 1, dynRes = true;
+  let pixelRatio = baseRatio;
   renderer.setPixelRatio(pixelRatio);
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  // Khronos PBR Neutral: keeps the pastel facades and signboards true to colour (ACES and AgX wash them out).
-  renderer.toneMapping = THREE.NeutralToneMapping;
+  // Khronos PBR Neutral plus a grade (see CustomToneMapping above).
+  renderer.toneMapping = THREE.CustomToneMapping;
   renderer.toneMappingExposure = 0.9;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.getElementById('app').appendChild(renderer.domElement);
@@ -389,9 +404,10 @@ async function init() {
   settings.onReset = () => { story.reset(); missions.money = 500; hud.setMoney(500, true); world.garages?.reset?.(); };
   document.getElementById('open-settings').addEventListener('click', () => settings.toggle(true));
   settings.onChange((s) => {
-    pixelRatio = Math.min(devicePixelRatio, 1.5) * s.resScale;
-    renderer.setPixelRatio(pixelRatio);
-    composer?.setPixelRatio(pixelRatio);
+    baseRatio = Math.min(devicePixelRatio, 1.5) * s.resScale;
+    dynRes = s.dynamicRes !== false;
+    if (!dynRes) dynScale = 1;
+    applyPixelRatio();
     env.setShadows(s.shadows);
     useBloom = s.bloom;
     env.drawDist = s.drawDist;
@@ -405,6 +421,29 @@ async function init() {
     audio.setVolume?.(s.volume);
     touch.setEnabled(settings.touchEnabled);
   });
+
+  // ---------- Dynamic resolution ----------
+  // When frames take clearly longer than the display's refresh interval, render fewer pixels
+  // (down to 60% of the chosen resolution); creep back up when there's headroom again.
+  function applyPixelRatio() {
+    pixelRatio = baseRatio * dynScale;
+    renderer.setPixelRatio(pixelRatio);
+    composer?.setPixelRatio(pixelRatio);
+  }
+  let frameAvg = 1 / 60, target = 1 / 60, winMin = 1, winT = 0, resT = 0, slowT = 0, fastT = 0;
+  function adaptResolution(raw) {
+    if (!dynRes || paused || raw > 0.25 || raw <= 0) return;
+    frameAvg += (raw - frameAvg) * 0.05;
+    // Aim for the display's refresh rate (the shortest frames seen in a 5 s window), but never
+    // above 60 fps: 60 on a 120 Hz screen is fine and not worth blurrier pixels.
+    winMin = Math.min(winMin, raw); winT += raw;
+    if (winT > 5) { target = Math.min(1 / 50, Math.max(1 / 61, winMin)); winMin = 1; winT = 0; }
+    resT -= raw;
+    if (frameAvg > target * 1.45) { slowT += raw; fastT = 0; } else if (frameAvg < target * 1.12) { fastT += raw; slowT = 0; } else { slowT = Math.max(0, slowT - raw); fastT = 0; }
+    if (resT > 0) return;
+    if (slowT > 1 && dynScale > 0.6) { dynScale = Math.max(0.6, dynScale - 0.1); applyPixelRatio(); resT = 2; slowT = 0; }
+    else if (fastT > 4 && dynScale < 1) { dynScale = Math.min(1, dynScale + 0.05); applyPixelRatio(); resT = 3; fastT = 0; }
+  }
 
   // ---------- Start / pause ----------
   const startBtn = document.getElementById('start');
@@ -455,9 +494,13 @@ async function init() {
   let elapsed = 0;
   const tick = () => {
     requestAnimationFrame(tick);
-    const dt = Math.min(clock.getDelta(), 1 / 20);
+    const rawDt = clock.getDelta();
+    const dt = Math.min(rawDt, 1 / 20);
     if (!paused) update(dt);
-    renderer.shadowMap.needsUpdate = ++shadowFrame % env.shadowEvery === 0;
+    // The sun's shadow map holds only the static city, so it's redrawn only when the light moves.
+    renderer.shadowMap.needsUpdate = env.shadowNeedsUpdate;
+    env.shadowNeedsUpdate = false;
+    adaptResolution(rawDt);
     blobs.update(camera, useBloom);
     halos.update(camera, env.night, signals, useBloom);
     if (useBloom) { const c = getComposer(); bloom.strength = 0.1 + env.night * 0.3; c.render(); } else renderer.render(scene, camera);
@@ -579,7 +622,6 @@ async function init() {
     renderer.render(scene, cam);
     renderer.setViewport(0, 0, innerWidth, innerHeight);
   }
-  let shadowFrame = 0;
   // Lost graphics context (a driver reset, or a phone reclaiming GPU memory): the city's geometry
   // only lives on the GPU, so save and rebuild from scratch rather than limp on with a black screen.
   renderer.domElement.addEventListener('webglcontextlost', (e) => {

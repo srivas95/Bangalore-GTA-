@@ -548,6 +548,6 @@ function makeCow() {
   const g = new THREE.Group();
   g.add(body, head);
   g.userData.head = head;
-  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  g.userData.blob = { w: 1.3, l: 2.6 };
   return g;
 }

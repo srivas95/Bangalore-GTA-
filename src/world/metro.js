@@ -2,7 +2,7 @@
 // arterials, underground halls in the city centre, stations with street entrances, and BEML
 // trainsets running in both directions and stopping at every station.
 import * as THREE from 'three';
-import { BuilderSet, makeFrame, frameToWorld } from './meshBuilder.js';
+import { BuilderSet, makeFrame, frameToWorld, freezeStatic } from './meshBuilder.js';
 import { put } from './landmarks.js';
 import { textTexture } from './textures.js';
 import { textScale } from './detail.js';
@@ -434,6 +434,7 @@ export function buildMetro(scene, layout, colliders) {
     }
   };
   update(0);
+  freezeStatic(group);
   return { update, group, trains, routes };
 }
 
@@ -483,7 +484,8 @@ function makeTrain(cars, group, line, dir, s) {
     const mesh = (front || back ? set.cab : set.mid).clone();
     // The rear cab faces backwards.
     const inner = mesh;
-    if (back) { const g = new THREE.Group(); inner.rotation.y = Math.PI; g.add(inner); list.push({ mesh: g, off: CAR / 2 + k * (CAR + 0.6) }); group.add(g); continue; }
+    if (back) { const g = new THREE.Group(); g.userData.dynamic = true; inner.rotation.y = Math.PI; g.add(inner); list.push({ mesh: g, off: CAR / 2 + k * (CAR + 0.6) }); group.add(g); continue; }
+    mesh.userData.dynamic = true;
     list.push({ mesh, off: CAR / 2 + k * (CAR + 0.6) });
     group.add(mesh);
   }

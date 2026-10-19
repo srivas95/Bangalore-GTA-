@@ -10,6 +10,7 @@ import { CURB_H } from '../config.js';
 import { buildRailway } from './railway.js';
 import { DETAIL } from './detail.js';
 import { withAO } from './ao.js';
+import { groundSurface } from './surface.js';
 
 const SHRUB = new THREE.IcosahedronGeometry(1, 0);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 12);
@@ -41,7 +42,7 @@ export function buildInfrastructure(ctx) {
   const { B, layout, colliders, mats, tex, group } = ctx;
   const ensureRoadMat = (lanes, median, width) => {
     const key = roadMaterialKey(lanes, median);
-    if (!mats[key]) mats[key] = withAO(new THREE.MeshStandardMaterial({ map: tex(T.roadTexture({ lanes, median, width })), roughness: 0.88 }));
+    if (!mats[key]) mats[key] = groundSurface(withAO(new THREE.MeshStandardMaterial({ map: tex(T.roadTexture({ lanes, median, width })), roughness: 0.88 })), { strength: 0.8 });
     ctx.roadMats.add(mats[key]);
     return key;
   };
@@ -196,6 +197,7 @@ export function buildInfrastructure(ctx) {
     water.position.set(u.cx, u.waterLevel, u.cz);
     water.visible = false;
     water.renderOrder = 2;
+    water.userData.dynamic = true;
     group.add(water);
     u.waterMesh = water;
   }

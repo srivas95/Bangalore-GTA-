@@ -5,12 +5,16 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { MeshBuilder, buildSkinned } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 
+const baseUpdateMatrixWorld = THREE.Object3D.prototype.updateMatrixWorld;
+function skipWhenHidden(force) { if (this.visible) baseUpdateMatrixWorld.call(this, force); }
+
 const SKIN = [0x8d5524, 0xa8693c, 0xc68642, 0x7a4a2a, 0xb5784a, 0x9c6236, 0x6b4226, 0xd09a6a];
 const SHIRTS = [0xffffff, 0x2e5e9e, 0x9e2e2e, 0x5a8a4a, 0xe8c070, 0x7a5aa0, 0x404040, 0xd0d8e8, 0xf0a060, 0x4aa0b0, 0x2a2a2a, 0xc04a7a];
 const PANTS = [0x2a3040, 0x3a3a3a, 0x5a4a3a, 0x1f2a4a, 0x8a8070, 0x2a2a2a, 0x4a5a7a];
 const SAREES = [0xc0182a, 0xe8a020, 0x1a7a4a, 0x8a1a7a, 0x2a4ac0, 0xf06a9a, 0xe05a1a, 0x0a8a8a, 0x6a1a2a, 0xd0b020];
 
-export const humanMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82 });
+// Albedo scaled to 0.84 so white shirts and kurtas don't blow out in the midday sun.
+export const humanMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, color: new THREE.Color(0.84, 0.84, 0.84) });
 
 const G = {
   rbox: new RoundedBoxGeometry(1, 1, 1, 1, 0.25),
@@ -122,11 +126,12 @@ export function createHuman(opts = {}, r = Math.random) {
   }
 
   const bones = makeBones();
-  const mesh = buildSkinned(b, humanMaterial, bones);
+  const mesh = buildSkinned(b, humanMaterial, bones, { castShadow: false });
   mesh.receiveShadow = false;
   const group = new THREE.Group();
   group.add(mesh);
   group.userData.blob = { w: 1.2, l: 1.2 };
+  group.updateMatrixWorld = skipWhenHidden;
   const bn = {};
   for (const [k, i] of Object.entries(B)) bn[k] = bones[i];
   return {

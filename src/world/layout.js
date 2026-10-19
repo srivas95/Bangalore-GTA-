@@ -4,6 +4,8 @@ import { buildRoadNet, insetPolygon, simplifyLoop, polyArea, pointInPoly, LANE_W
 import * as MD from './mapdata.js';
 import { CURB_H, UNDERPASS } from '../config.js';
 
+const _seen = new Int32Array(9); // scratch for blockContaining
+
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const RASTER = 4;
 
@@ -375,13 +377,17 @@ export class Layout {
   blockContaining(x, z) {
     const W = this.world;
     const i = Math.floor((x - W.minX) / RASTER), j = Math.floor((z - W.minZ) / RASTER);
-    const seen = [];
+    const seen = _seen;
+    let ns = 0;
     for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
       const ii = i + di, jj = j + dj;
       if (ii < 0 || jj < 0 || ii >= this.rw || jj >= this.rh) continue;
       const idx = this.raster[jj * this.rw + ii];
-      if (idx < 0 || seen.includes(idx)) continue;
-      seen.push(idx);
+      if (idx < 0) continue;
+      let dup = false;
+      for (let q = 0; q < ns; q++) if (seen[q] === idx) { dup = true; break; }
+      if (dup) continue;
+      seen[ns++] = idx;
       if (di === 0 && dj === 0 && this.allBlocks[idx] && interiorCell(this, ii, jj, idx)) return this.allBlocks[idx];
       if (pointInPoly(x, z, this.allBlocks[idx].poly)) return this.allBlocks[idx];
     }

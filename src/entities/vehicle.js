@@ -16,6 +16,8 @@ export const policeLampMats = {
   off: new THREE.MeshStandardMaterial({ color: 0x552222, roughness: 0.3 }),
 };
 const LAMP_GEO = new THREE.BoxGeometry(1, 1, 1);
+const baseUpdateMatrixWorld = THREE.Object3D.prototype.updateMatrixWorld;
+function skipWhenHidden(force) { if (this.visible) baseUpdateMatrixWorld.call(this, force); }
 
 export class Vehicle {
   constructor(type, { x = 0, z = 0, heading = 0, rng = Math.random, color, livery, model, rider = false, pink = false } = {}) {
@@ -26,6 +28,10 @@ export class Vehicle {
     if (this.model.spec && this.model.spec !== this.spec) this.spec = this.model.spec; // real car dimensions
     this.group = this.model.group;
     this.group.userData.vehicle = this;
+    // Moving things don't cast into the (static, cached) sun shadow map: they get contact shadows.
+    this.group.traverse((o) => { o.castShadow = false; });
+    // Nothing to update for vehicles out of sight.
+    this.group.updateMatrixWorld = skipWhenHidden;
     this.group.userData.blob = { w: this.spec.width * 1.6, l: this.spec.length * 1.2 };
     this.x = x; this.z = z; this.y = 0;
     this.heading = heading;
@@ -115,15 +121,17 @@ export class Vehicle {
     if (this.pillion) { this.group.remove(this.pillion.group); this.pillion = null; }
   }
 
+  // Collision circles along the body (the out array and its objects are reused).
   circles(out = []) {
-    out.length = 0;
     const n = Math.max(1, Math.round(this.spec.length / this.spec.width));
     const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
     const span = this.spec.length - this.spec.width;
     for (let k = 0; k < n; k++) {
       const t = n === 1 ? 0 : (k / (n - 1) - 0.5) * span;
-      out.push({ x: this.x + fx * t, z: this.z + fz * t, r: this.radius, off: t });
+      const c = out[k] || (out[k] = { x: 0, z: 0, r: 0, off: 0 });
+      c.x = this.x + fx * t; c.z = this.z + fz * t; c.r = this.radius; c.off = t;
     }
+    out.length = n;
     return out;
   }
 

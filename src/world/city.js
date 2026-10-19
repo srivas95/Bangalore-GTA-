@@ -2,7 +2,7 @@
 // blocks, buildings on lots that face their road, trees, lamps, props and landmarks.
 // Roads, underpasses, flyovers and the railway live in infrastructure.js / railway.js.
 import * as THREE from 'three';
-import { BuilderSet, sharedUniforms, makeFrame, frameToWorld } from './meshBuilder.js';
+import { BuilderSet, sharedUniforms, makeFrame, frameToWorld, freezeStatic } from './meshBuilder.js';
 import * as T from './textures.js';
 import { LANDMARKS, put } from './landmarks.js';
 import { buildInfrastructure } from './infrastructure.js';
@@ -10,21 +10,25 @@ import { fillPoly, polyWalls, rectCorners, rectsOverlap } from './geom.js';
 import { pointInPoly, polyArea, insetPolygon } from './roadnet.js';
 import { HOTEL_SITES } from './mapdata.js';
 import { metroRoutes } from './metro.js';
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CURB_H, SHOP_SIGNS, FUEL_BRANDS } from '../config.js';
 import { DETAIL, textScale } from './detail.js';
 import { withAO } from './ao.js';
+import { facadeSurface, windowSurface, shopSurface, groundSurface } from './surface.js';
 
 const rng = T.mulberry32(20240607);
 const rand = (a = 0, b = 1) => a + (b - a) * rng();
 const pick = (arr) => arr[Math.floor(rng() * arr.length)];
 
-const PASTELS = [0xf3e9d2, 0xe8d5b5, 0xf0c9a0, 0xd9e4dd, 0xf5e1e9, 0xe3d7f0, 0xfff6d5, 0xcfe0f5, 0xf2c6b4, 0xe6e6e6, 0xd4ecc8, 0xf7d9a8, 0xffffff];
-const BRIGHTS = [0xf4a6a6, 0x9fd3c7, 0xf7dc6f, 0xaed6f1, 0xd7bde2, 0xf5cba7, 0xa9dfbf, 0xf0b27a];
+// Weathered paint: off-whites, creams, buff and ochre, terracotta, sage, dusty blue, cement.
+// (They tint only the plaster: see surface.js.)
+const PASTELS = [0xf2ead8, 0xeedfc0, 0xe6cfa4, 0xe3c494, 0xd9ad84, 0xdba48a, 0xcdd2b4, 0xbccad4, 0xdcd8d0, 0xeac6b6, 0xe2d8e6, 0xd2e0d6, 0xf4eee2, 0xe8dcc8];
+// Market streets: the brighter "Asian Paints" colours, still sun-faded.
+const BRIGHTS = [0xe6a878, 0x9cc6b6, 0xe4cc6a, 0xa8c2e0, 0xd0aed2, 0xeaae9e, 0xa8cfa4, 0xe4b062, 0xd8846a];
 const FLOOR_H = 3.2;
 const SHOP_H = 4;
 const CHUNK = 320;
 const FACE_ROT = { s: 0, n: Math.PI, e: Math.PI / 2, w: -Math.PI / 2 };
+const _seed = new THREE.Color(), _parapet = new THREE.Color(), _grey = new THREE.Color(0xb8b4ac);
 
 export function buildCity(scene, layout, colliders, renderer) {
   T.resetRandom(7);
@@ -58,6 +62,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     map: tex(map), vertexColors: true, emissiveMap: T.windowGlow(style), emissive: 0xffe2b0, emissiveIntensity: 0,
     ...(bump && { normalMap: tex(T.normalFromTexture(map, bump, DETAIL.min ? 256 : 512)), normalScale: new THREE.Vector2(1, 1) }), ...extra,
   });
+  const shopAtlas = T.shopfrontAtlas(DETAIL.lite ? 0.5 : 1);
   const mats = {
     ground: std({ map: tex(T.soilTexture()), roughness: 1 }),
     sidewalk: std({ map: tex(T.paverTexture()), roughness: 0.95, vertexColors: true }),
@@ -69,7 +74,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     apartment: facade('apartment', T.apartmentFacade(), { roughness: 0.9 }, 3),
     heritage: facade('heritage', T.heritageFacade(), { roughness: 0.85 }, 3),
     glass: facade('glass', T.glassFacade(), { roughness: 0.12, metalness: 0.65, envMapIntensity: 1.2 }),
-    shop: facade('shop', T.shopfrontTexture(), { roughness: 0.85 }, 2),
+    shop: std({ map: tex(shopAtlas.map), emissiveMap: shopAtlas.emissive, emissive: 0xffe2b0, emissiveIntensity: 0, vertexColors: true, roughness: 0.85 }),
     roof: std({ map: tex(T.roofTexture()), roughness: 0.95, vertexColors: true }),
     stone: std({ roughness: 0.75, vertexColors: true, side: THREE.DoubleSide }),
     metal: std({ roughness: 0.4, metalness: 0.7, vertexColors: true }),
@@ -80,6 +85,14 @@ export function buildCity(scene, layout, colliders, renderer) {
   };
   mats.signs.emissiveMap = mats.signs.map;
   for (const k of Object.keys(mats)) if (k !== 'glow' && k !== 'signs' && k !== 'water') withAO(mats[k]);
+  // World-space detail on top: weathering, paint masks, lit windows, ground variation, kerbs.
+  facadeSurface(mats.plaster, [2, 2]);
+  facadeSurface(mats.apartment, [4, 2]);
+  facadeSurface(mats.heritage, [2, 2]);
+  windowSurface(mats.glass, [4, 4]);
+  shopSurface(mats.shop, shopAtlas.cols, shopAtlas.rows);
+  groundSurface(mats.sidewalk, { kerb: true });
+  for (const k of ['ground', 'grass', 'plaza', 'junction', 'zebra', 'roof']) groundSurface(mats[k], { strength: k === 'roof' ? 0.7 : 1 });
   mats.water.normalMap.repeat.set(12, 12);
   // Materials whose emissive brightens at night: [material, day, night].
   const nightMats = [
@@ -301,23 +314,23 @@ export function buildCity(scene, layout, colliders, renderer) {
     let y = CURB_H;
     const roofB = B.get('roof');
     if (shop) {
-      B.get('shop').box(cx, y, cz, w, SHOP_H, d, 0xffffff, { tileW: T.SHOP_TILE.w, tileH: T.SHOP_TILE.h, top: floors === 0, topBuilder: roofB, topTile: 10 });
+      // The red channel seeds which shop types this frontage gets (see surface.js shopSurface).
+      B.get('shop').box(cx, y, cz, w, SHOP_H, d, _seed.setRGB(rng(), 1, 1), { tileW: T.SHOP_TILE.w, tileH: T.SHOP_TILE.h, top: floors === 0, topBuilder: roofB, topTile: 10, topColor: 0xffffff });
       y += SHOP_H;
       B.get('stone').box(cx, y - 0.25, cz, w + 0.6, 0.3, d + 0.6, 0xcfc8ba, { top: true });
       addSign(lot, y + 0.1, block);
     }
     const tile = style === 'glass' ? T.GLASS_TILE : T.FACADE_TILE;
     const h = floors * FLOOR_H;
-    if (floors > 0) B.get(style).box(cx, y, cz, w, h, d, tint, { tileW: tile.w, tileH: tile.h, topBuilder: roofB, topTile: 10 });
+    if (floors > 0) B.get(style).box(cx, y, cz, w, h, d, tint, { tileW: tile.w, tileH: tile.h, topBuilder: roofB, topTile: 10, topColor: 0xffffff });
     const top = y + h;
     if (floors > 0 && style !== 'glass') {
       const p = 0.25, ph = 0.9, st = B.get('stone');
+      // Parapets in a dirtier, greyer shade of the wall colour.
+      const pc = _parapet.set(tint).lerp(_grey, 0.35).multiplyScalar(0.82);
       // Roof parapets: about a third of the city's triangles, so phones skip them.
       if (!DETAIL.lite) {
-        st.box(cx, top, lot.minZ + p / 2, w, ph, p, tint);
-        st.box(cx, top, lot.maxZ - p / 2, w, ph, p, tint);
-        st.box(lot.minX + p / 2, top, cz, p, ph, d - 2 * p, tint);
-        st.box(lot.maxX - p / 2, top, cz, p, ph, d - 2 * p, tint);
+        parapet(st, lot, top, ph, p, pc);
       }
       // Black Sintex water tanks and the stair headroom: a Bengaluru skyline staple.
       const n = rng() < 0.8 ? 1 + Math.floor(rand(0, 2.5)) : 0;
@@ -325,11 +338,29 @@ export function buildCity(scene, layout, colliders, renderer) {
       if (rng() < 0.5 && w > 6 && d > 6) {
         // (Random numbers drawn either way so the city is the same at every detail level.)
         const hx = cx + rand(-w / 4, w / 4), hz = cz + rand(-d / 4, d / 4);
-        if (!DETAIL.lite) B.get('plaster').box(hx, top, hz, 3, 2.6, 3, tint, { tileW: T.FACADE_TILE.w, tileH: T.FACADE_TILE.h, topBuilder: roofB, topTile: 10 });
+        if (!DETAIL.lite) B.get('stone').box(hx, top, hz, 3, 2.6, 3, pc, { topBuilder: roofB, topTile: 10, topColor: 0xffffff });
       }
     }
     col().add(lot.minX, lot.maxX, lot.minZ, lot.maxZ, top + 1, 'building');
     return top;
+  }
+
+  // Roof parapet as one hollow ring: 24 triangles where four boxes took 40.
+  function parapet(st, lot, y, h, t, color) {
+    const { minX: x0, maxX: x1, minZ: z0, maxZ: z1 } = lot;
+    const xi0 = x0 + t, xi1 = x1 - t, zi0 = z0 + t, zi1 = z1 - t, y1 = y + h, uv = [0, 0, 1, 1];
+    st.quad([x0, y, z1], [x1, y, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], uv, color);
+    st.quad([x1, y, z0], [x0, y, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], uv, color);
+    st.quad([x1, y, z1], [x1, y, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], uv, color);
+    st.quad([x0, y, z0], [x0, y, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], uv, color);
+    st.quad([xi1, y, zi1], [xi0, y, zi1], [xi0, y1, zi1], [xi1, y1, zi1], [0, 0, -1], uv, color);
+    st.quad([xi0, y, zi0], [xi1, y, zi0], [xi1, y1, zi0], [xi0, y1, zi0], [0, 0, 1], uv, color);
+    st.quad([xi1, y, zi0], [xi1, y, zi1], [xi1, y1, zi1], [xi1, y1, zi0], [-1, 0, 0], uv, color);
+    st.quad([xi0, y, zi1], [xi0, y, zi0], [xi0, y1, zi0], [xi0, y1, zi1], [1, 0, 0], uv, color);
+    st.quad([x0, y1, z1], [x1, y1, z1], [x1, y1, zi1], [x0, y1, zi1], [0, 1, 0], uv, color);
+    st.quad([x0, y1, zi0], [x1, y1, zi0], [x1, y1, z0], [x0, y1, z0], [0, 1, 0], uv, color);
+    st.quad([xi1, y1, zi1], [x1, y1, zi1], [x1, y1, zi0], [xi1, y1, zi0], [0, 1, 0], uv, color);
+    st.quad([x0, y1, zi1], [xi0, y1, zi1], [xi0, y1, zi0], [x0, y1, zi0], [0, 1, 0], uv, color);
   }
 
   // Quad on a lot face, a0..a1 along it (lots face 's' in their frame; landmarks may use any face).
@@ -747,6 +778,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     for (const m of wetMats) { m.roughness = 0.95 - wet * 0.55; m.color.setScalar(1 - wet * 0.3); }
   };
   sharedUniforms.uWet.value = 0;
+  freezeStatic(group);
   return { group, pois, update, setLighting, materials: mats, lampPositions: lamps, rail: infra.rail, trees, lampHeads };
 }
 
@@ -774,38 +806,50 @@ function buildInstancedTrees(group, trees, colliders) {
   const trunkGeo = new THREE.CylinderGeometry(0.22, 0.4, 1, 6);
   trunkGeo.translate(0, 0.5, 0);
   const trunkMat = withAO(new THREE.MeshStandardMaterial({ color: 0x5a4636, roughness: 1 }));
-  const canopy = (wide, detail, n) => {
-    const parts = [];
-    const r = T.mulberry32(wide ? 3 : 9);
+  // Canopies: clusters of alpha-tested leaf cards on an ellipsoid shell. They read as foliage, cost
+  // a fraction of solid blobs, and the normals point out from the centre for soft, rounded light.
+  const leaf = T.leafAtlas(DETAIL.lite ? 128 : 256);
+  const canopy = (rx, ry, n, seed, size) => {
+    const r = T.mulberry32(seed);
+    const pos = [], nor = [], uv = [], idx = [];
     for (let k = 0; k < n; k++) {
-      const g = new THREE.IcosahedronGeometry(1, detail);
-      g.deleteAttribute('uv');
-      const a = (k / n) * Math.PI * 2;
-      const rad = k === 0 ? 0 : (wide ? 2.2 : 1.4) * (0.6 + r() * 0.4);
-      const s = (wide ? 2.2 : 1.7) * (0.7 + r() * 0.4) * (n < 5 ? 1.25 : 1);
-      g.scale(s, s * (wide ? 0.6 : 0.8), s);
-      g.translate(Math.cos(a) * rad, (r() - 0.5) * 0.8, Math.sin(a) * rad);
-      parts.push(g);
+      let x, y, z, l;
+      do { x = r() * 2 - 1; y = r() * 2 - 1; z = r() * 2 - 1; l = x * x + y * y + z * z; } while (l > 1 || l < 0.04);
+      l = Math.sqrt(l);
+      const sh = 0.45 + 0.55 * Math.cbrt(r()); // mostly near the surface, some inside
+      x = (x / l) * sh; y = (y / l) * sh; z = (z / l) * sh;
+      const a = r() * Math.PI * 2, tilt = (r() - 0.5) * 1.3;
+      const ux = Math.cos(a), uz = Math.sin(a);
+      const vx = -Math.sin(a) * Math.sin(tilt), vy = Math.cos(tilt), vz = Math.cos(a) * Math.sin(tilt);
+      const hs = size * (0.7 + 0.5 * r());
+      let nx = x, ny = y + 0.45, nz = z;
+      const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+      const u0 = r() * 0.45, v0 = r() * 0.45, b = pos.length / 3;
+      for (const [i, j] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        pos.push(x * rx + (ux * i + vx * j) * hs, y * ry + vy * j * hs, z * rx + (uz * i + vz * j) * hs);
+        nor.push(nx, ny, nz);
+        uv.push(u0 + ((i + 1) / 2) * 0.55, v0 + ((j + 1) / 2) * 0.55);
+      }
+      idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
     }
-    const g = mergeVertices(mergeGeometries(parts));
-    const pa = g.attributes.position;
-    for (let k = 0; k < pa.count; k++) {
-      const x = pa.getX(k), y = pa.getY(k), z = pa.getZ(k);
-      const f = 1 + Math.sin(x * 3.1 + z * 2.3) * Math.cos(y * 2.7 + x) * 0.12;
-      pa.setXYZ(k, x * f, y * f, z * f);
-    }
-    g.computeVertexNormals();
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
     return g;
   };
-  const hi = DETAIL.lite ? [canopy(true, 1, 4), canopy(false, 1, 3), canopy(false, 0, 3)] : [canopy(true, 1, 6), canopy(false, 1, 5), canopy(false, 1, 4)];
-  const lo = [canopy(true, 0, 3), canopy(false, 0, 3), canopy(false, 0, 2)];
+  const NH = DETAIL.lite ? 32 : 64, NL = 16;
+  // [wide rain tree, gulmohar, small flowering tree]
+  const hi = [canopy(3.4, 1.8, NH, 3, DETAIL.lite ? 1.4 : 1.1), canopy(2.6, 2.0, NH, 9, DETAIL.lite ? 1.2 : 0.95), canopy(1.9, 1.6, Math.round(NH * 0.7), 11, DETAIL.lite ? 1.0 : 0.8)];
+  const lo = [canopy(3.4, 1.8, NL, 4, 2.1), canopy(2.6, 2.0, NL, 10, 1.8), canopy(1.9, 1.6, 12, 12, 1.5)];
   const trunkH = [4.2, 3.2, 1.8];
   const colours = [
     [0x3f6a2a, 0x4a7a30, 0x557d33, 0x3a5f28, 0x5e8a3a],
     [0xd8452a, 0xe25a2a, 0xc93a22, 0xe86a30],
     [0x4c8a3a, 0x5a9a40, 0xa04aa0, 0x8a5ac8],
   ];
-  const mat = new THREE.MeshStandardMaterial({ roughness: 0.85 });
+  const mat = new THREE.MeshStandardMaterial({ map: leaf, alphaTest: 0.5, alphaToCoverage: !DETAIL.min, side: THREE.DoubleSide, roughness: 0.8 });
   const buckets = new Map();
   for (const t of trees) {
     const key = `${t.t}:${Math.floor(t.x / CHUNK)}:${Math.floor(t.z / CHUNK)}`;

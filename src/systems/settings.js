@@ -16,7 +16,7 @@ export const isTouchDevice = () => typeof window !== 'undefined' && (matchMedia?
 
 const defaults = () => ({
   quality: isTouchDevice() ? 'low' : 'high', ...PRESETS[isTouchDevice() ? 'low' : 'high'],
-  sensitivity: 1, invertY: false, volume: 0.8, touch: 'auto', detail: 'auto',
+  sensitivity: 1, invertY: false, volume: 0.8, touch: 'auto', detail: 'auto', dynamicRes: true,
 });
 
 export class Settings {
@@ -73,6 +73,7 @@ export class Settings {
       <h2>Settings</h2>
       ${row('Quality', `<select data-k="quality"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="custom" disabled>Custom</option></select>`)}
       ${row('Resolution', slider('resScale', 0.4, 1, 0.05))}
+      ${row('Dynamic resolution <small>(drops pixels to keep it smooth)</small>', check('dynamicRes'))}
       ${row('Shadows', `<select data-k="shadows"><option value="off">Off</option><option value="near">Near you</option><option value="full">Full</option></select>`)}
       ${row('Bloom (extra glow)', check('bloom'))}
       ${row('Draw distance', slider('drawDist', 0.4, 1, 0.05))}

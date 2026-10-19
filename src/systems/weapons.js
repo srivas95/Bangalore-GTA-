@@ -81,7 +81,6 @@ export function weaponMesh(key) {
   const g = meshCache.get(key);
   if (!g) return null;
   const m = new THREE.Mesh(g, weaponMat);
-  m.castShadow = true;
   return m;
 }
 

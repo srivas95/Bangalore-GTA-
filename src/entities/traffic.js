@@ -277,35 +277,47 @@ export class Traffic {
     const ox = v.x + lx * (lat - a.lat), oz = v.z + lz * (lat - a.lat);
     const myHalf = v.spec.width / 2;
     const margin = a.erratic ? 0.12 : 0.3;
+    const halfLen = v.spec.length / 2;
     let gap = Infinity, blocker = null;
-    const test = (px, pz, py, r, who, closing = 0, rLat = r) => {
-      if (Math.abs(py - v.y) > 2.5) return;
-      const dx = px - ox, dz = pz - oz;
-      const ahead = dx * fx + dz * fz;
-      if (ahead <= 0 || ahead > look + closing * 2) return;
-      const latd = Math.abs(dx * lx + dz * lz);
-      if (latd > myHalf + rLat + margin) return;
-      // Someone coming head-on closes the gap twice as fast: plan for where they'll be.
-      const g = ahead - v.spec.length / 2 - r - closing * 1.5;
-      if (g < gap) { gap = g; blocker = who; }
-    };
+    // (Inlined rather than a helper closure: captured numbers would be re-boxed on every write.)
     const span = Math.ceil((look + 8) / CELL);
     for (let i = -span; i <= span; i++) for (let j = -span; j <= span; j++) {
       const l = this.grid.get(this.key(v.x + i * CELL, v.z + j * CELL));
       if (!l) continue;
-      for (const b of l) {
+      for (let n = 0; n < l.length; n++) {
+        const b = l[n];
         if (b === a) continue;
-        const dot = Math.sin(b.v.heading) * fx + Math.cos(b.v.heading) * fz;
+        const bv = b.v;
+        if (Math.abs(bv.y - v.y) > 2.5) continue;
+        const dot = Math.sin(bv.heading) * fx + Math.cos(bv.heading) * fz;
         // Oncoming traffic only matters when someone is on the wrong side.
         const oncoming = dot < -0.7;
         if (oncoming && !a.wrongNow && !b.wrongNow) continue;
+        const closing = oncoming ? b.speed : 0;
+        const dx = bv.x - ox, dz = bv.z - oz;
+        const ahead = dx * fx + dz * fz;
+        if (ahead <= 0 || ahead > look + closing * 2) continue;
         const ad = Math.abs(dot);
-        const hl = b.v.spec.length / 2, hw = b.v.spec.width / 2;
-        test(b.v.x, b.v.z, b.v.y, hl * ad + hw * (1 - ad), b, oncoming ? b.speed : 0, hw * ad + hl * (1 - ad));
+        const hl = bv.spec.length / 2, hw = bv.spec.width / 2;
+        if (Math.abs(dx * lx + dz * lz) > myHalf + hw * ad + hl * (1 - ad) + margin) continue;
+        // Someone coming head-on closes the gap twice as fast: plan for where they'll be.
+        const g = ahead - halfLen - (hl * ad + hw * (1 - ad)) - closing * 1.5;
+        if (g < gap) { gap = g; blocker = b; }
       }
     }
-    for (const o of obstacles) test(o.x, o.z, o.y ?? v.y, o.r, o);
-    return { gap, blocker };
+    for (let n = 0; n < obstacles.length; n++) {
+      const o = obstacles[n];
+      if (Math.abs((o.y ?? v.y) - v.y) > 2.5) continue;
+      const dx = o.x - ox, dz = o.z - oz;
+      const ahead = dx * fx + dz * fz;
+      if (ahead <= 0 || ahead > look) continue;
+      if (Math.abs(dx * lx + dz * lz) > myHalf + o.r + margin) continue;
+      const g = ahead - halfLen - o.r;
+      if (g < gap) { gap = g; blocker = o; }
+    }
+    const res = this._gapRes || (this._gapRes = { gap: 0, blocker: null });
+    res.gap = gap; res.blocker = blocker;
+    return res;
   }
 
   update(dt, world) {
