@@ -146,7 +146,7 @@ export function buildRailway(ctx) {
       const n = Math.max(3, Math.round(L / 1.2));
       for (let k = 0; k < n; k++) bb.get('m').box(-sd * (0.3 + (k + 0.5) * (L / n)), -0.07, 0, L / n, 0.14, 0.12, k % 2 ? 0xf2f2f2 : 0xd02020);
       const arm = new THREE.Group();
-      bb.buildAll({ m: boomMat }, arm, { m: { castShadow: true } });
+      bb.buildAll({ m: boomMat }, arm, { m: { castShadow: false } }); // moves: not in the cached shadow map
       const pivot = new THREE.Group();
       const [px, pz] = [f.ox + side * f.c + sd * 9 * f.s, f.oz - side * f.s + sd * 9 * f.c];
       pivot.position.set(px, 1.25, pz);
@@ -294,7 +294,7 @@ function trainGeometry() {
     const B = new BuilderSet();
     fill(B.get('paint'), B.get('glass'));
     const g = new THREE.Group();
-    B.buildAll(mats, g);
+    B.buildAll(mats, g, { paint: { castShadow: false }, glass: { castShadow: false } }); // trains move
     return g;
   };
   const loco = build((p, g) => {

@@ -72,16 +72,19 @@ export class MeshBuilder {
   }
 
   // Axis-aligned box with UVs measured in tiles of tileW x tileH metres.
-  // Opts: top, bottom, sides (bools), topTile (metres), vOffset (tiles), topBuilder (separate builder for the roof).
+  // Opts: top, bottom, sides (bools), topTile (metres), vOffset (tiles), topBuilder (separate builder for the roof),
+  // snapU (stretch the texture to a whole number of half tiles, so windows aren't cut at the corners).
   box(cx, y0, cz, w, h, d, color, opts = {}) {
-    const { tileW = 1, tileH = 1, top = true, bottom = false, sides = true, topTile = 1, vOffset = 0, topBuilder = this, topColor = color } = opts;
+    const { tileW = 1, tileH = 1, top = true, bottom = false, sides = true, topTile = 1, vOffset = 0, topBuilder = this, topColor = color, snapU = false } = opts;
     const x0 = cx - w / 2, x1 = cx + w / 2, z0 = cz - d / 2, z1 = cz + d / 2, y1 = y0 + h;
     const v0 = vOffset, v1 = vOffset + h / tileH;
+    const uw = snapU ? Math.max(1, Math.round((2 * w) / tileW)) / 2 : w / tileW;
+    const ud = snapU ? Math.max(1, Math.round((2 * d) / tileW)) / 2 : d / tileW;
     if (sides) {
-      this.quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], [0, v0, w / tileW, v1], color);
-      this.quad([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], [0, v0, w / tileW, v1], color);
-      this.quad([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], [0, v0, d / tileW, v1], color);
-      this.quad([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], [0, v0, d / tileW, v1], color);
+      this.quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], [0, v0, uw, v1], color);
+      this.quad([x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], [0, v0, uw, v1], color);
+      this.quad([x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], [0, v0, ud, v1], color);
+      this.quad([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], [0, v0, ud, v1], color);
     }
     if (top) {
       topBuilder.quad([x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0],

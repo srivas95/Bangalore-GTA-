@@ -483,7 +483,7 @@ function airport(ctx, block) {
   buildPlane(pb.get('m'), LIVERIES[0]);
   const plane = new THREE.Group();
   plane.userData.dynamic = true;
-  pb.buildAll({ m: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.2 }) }, plane);
+  pb.buildAll({ m: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.2 }) }, plane, { m: { castShadow: false } });
   group.add(plane);
   let t = 20, liv = 0;
   const paint = (k) => {

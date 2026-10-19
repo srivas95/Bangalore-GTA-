@@ -468,7 +468,9 @@ function carGeometries(mats) {
       for (const hz of [-0.95, -0.72, 0.72, 0.95]) p.box(at(0.29), Y + 1.35, hz, 0.03, 0.13, 0.13, 0xf8f6ee);
     } else p.box(len / 2 + 0.3, Y + 0.7, 0, 0.7, 2.6, 2.2, 0x2a2a2a);
     const group = new THREE.Group();
-    B.buildAll({ paint: mats.paint, glass: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.1, metalness: 0.6 }), metal: mats.metal }, group);
+    // Trains move, so they stay out of the cached sun shadow map.
+    const off = { castShadow: false };
+    B.buildAll({ paint: mats.paint, glass: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.1, metalness: 0.6 }), metal: mats.metal }, group, { paint: off, glass: off, metal: off });
     return group;
   };
   const out = {};

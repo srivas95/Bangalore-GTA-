@@ -38,6 +38,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   const B = new BuilderSet({ chunk: CHUNK, release: true });
   const trees = [];
   const lamps = [];
+  let runId = 0; // kerb run of each lamp, so cables only join poles on the same kerb
   const tanks = [];
   const signs = [];
   const pois = { food: [], homes: [], landmarks: [], parking: [], industrial: [], fuel: [] };
@@ -315,14 +316,14 @@ export function buildCity(scene, layout, colliders, renderer) {
     const roofB = B.get('roof');
     if (shop) {
       // The red channel seeds which shop types this frontage gets (see surface.js shopSurface).
-      B.get('shop').box(cx, y, cz, w, SHOP_H, d, _seed.setRGB(rng(), 1, 1), { tileW: T.SHOP_TILE.w, tileH: T.SHOP_TILE.h, top: floors === 0, topBuilder: roofB, topTile: 10, topColor: 0xffffff });
+      B.get('shop').box(cx, y, cz, w, SHOP_H, d, _seed.setRGB(rng(), 1, 1), { tileW: T.SHOP_TILE.w, tileH: T.SHOP_TILE.h, top: floors === 0, topBuilder: roofB, topTile: 10, topColor: 0xffffff, snapU: true });
       y += SHOP_H;
       B.get('stone').box(cx, y - 0.25, cz, w + 0.6, 0.3, d + 0.6, 0xcfc8ba, { top: true });
       addSign(lot, y + 0.1, block);
     }
     const tile = style === 'glass' ? T.GLASS_TILE : T.FACADE_TILE;
     const h = floors * FLOOR_H;
-    if (floors > 0) B.get(style).box(cx, y, cz, w, h, d, tint, { tileW: tile.w, tileH: tile.h, topBuilder: roofB, topTile: 10, topColor: 0xffffff });
+    if (floors > 0) B.get(style).box(cx, y, cz, w, h, d, tint, { tileW: tile.w, tileH: tile.h, topBuilder: roofB, topTile: 10, topColor: 0xffffff, snapU: true });
     const top = y + h;
     if (floors > 0 && style !== 'glass') {
       const p = 0.25, ph = 0.9, st = B.get('stone');
@@ -730,10 +731,11 @@ export function buildCity(scene, layout, colliders, renderer) {
     if (block.zone === 'rural') return;
     kerbRuns(block, 0.4, (k) => {
       const spacing = k.w > 14 ? 36 : 58;
+      runId++;
       for (let s = 12 + rand(0, 10); s < k.len - 8; s += spacing) {
         const [x, z] = k.at(s);
         if (nearRail(x, z, 10)) continue;
-        lamps.push([x, z, k.nx, k.nz]);
+        lamps.push([x, z, k.nx, k.nz, runId]);
       }
     });
   }
@@ -766,7 +768,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     if (camera && (cullT -= dt) <= 0) {
       cullT = 0.25;
       const px = camera.position.x, pz = camera.position.z, far = (camera.far > 900 ? 900 : camera.far);
-      for (const m of cullable) m.visible = Math.hypot(m.userData.c.x - px, m.userData.c.z - pz) - m.userData.r < far;
+      for (const m of cullable) m.visible = Math.hypot(m.userData.c.x - px, m.userData.c.z - pz) - m.userData.r < (m.userData.near || far);
     }
   };
   // Drive night glow and rain wetness from the environment system.
@@ -914,6 +916,30 @@ function buildLamps(group, lamps, colliders, heads) {
   // Open-ended: the caps are never seen.
   const cyl = new THREE.CylinderGeometry(0.08, 0.12, 1, DETAIL.lite ? 4 : 6, 1, true);
   if (DETAIL.min) lamps = lamps.filter((_, k) => k % 2 === 0);
+  // Overhead cable bundles strung pole to pole along each kerb (full detail only, drawn near the
+  // camera): two crossed ribbons per segment so they read from any angle.
+  const cable = DETAIL.lite ? null : b.get('cable');
+  if (cable) {
+    const r = T.mulberry32(91);
+    for (let k = 1; k < lamps.length; k++) {
+      const [x1, z1, ax, az, run1] = lamps[k - 1], [x2, z2, , , run2] = lamps[k];
+      const span = Math.hypot(x2 - x1, z2 - z1);
+      if (run1 !== run2 || span > 65 || span < 8) continue;
+      const n = 3 + (r() < 0.4 ? 1 : 0), segs = 7;
+      for (let c = 0; c < n; c++) {
+        const off = -0.25 - c * 0.12, y0 = 6.5 + c * 0.22, sag = (0.5 + span * 0.016) * (0.7 + r() * 0.7);
+        const ox = -ax * off, oz = -az * off, wdt = 0.035;
+        for (let s = 0; s < segs; s++) {
+          const ta = s / segs, tb = (s + 1) / segs;
+          const pa = [x1 + (x2 - x1) * ta + ox, y0 - sag * 4 * ta * (1 - ta), z1 + (z2 - z1) * ta + oz];
+          const pb = [x1 + (x2 - x1) * tb + ox, y0 - sag * 4 * tb * (1 - tb), z1 + (z2 - z1) * tb + oz];
+          const lx = -(z2 - z1) / span * wdt, lz = (x2 - x1) / span * wdt;
+          cable.quad([pa[0] - lx, pa[1], pa[2] - lz], [pb[0] - lx, pb[1], pb[2] - lz], [pb[0] + lx, pb[1], pb[2] + lz], [pa[0] + lx, pa[1], pa[2] + lz], [0, 1, 0], [0, 0, 1, 1], 0x1c1c1c);
+          cable.quad([pa[0], pa[1] - wdt, pa[2]], [pb[0], pb[1] - wdt, pb[2]], [pb[0], pb[1] + wdt, pb[2]], [pa[0], pa[1] + wdt, pa[2]], [lx / wdt, 0, lz / wdt], [0, 0, 1, 1], 0x1c1c1c);
+        }
+      }
+    }
+  }
   for (const [x, z, ax, az] of lamps) {
     put(pole, cyl, x, 4.15, z, 0x6a6e72, 0, 1, 8, 1);
     b.xf = makeFrame(x, z, Math.atan2(ax, az));
@@ -924,7 +950,9 @@ function buildLamps(group, lamps, colliders, heads) {
     b.xf = null;
     colliders.addCentered(x, z, 0.3, 0.3, 8, 'pole');
   }
-  b.buildAll({ metal: withAO(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.6 })), glow: new THREE.MeshBasicMaterial({ vertexColors: true }) }, group, { glow: { castShadow: false } });
+  const cableMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide });
+  b.buildAll({ metal: withAO(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.6 })), glow: new THREE.MeshBasicMaterial({ vertexColors: true }), cable: cableMat }, group, { glow: { castShadow: false }, cable: { castShadow: false, receiveShadow: false } });
+  for (const m of group.children) if (m.material === cableMat) m.userData.near = 240;
   // Pools of sodium light on the road, only visible at night.
   const poolMat = new THREE.MeshBasicMaterial({ map: T.lightPoolTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false });
   const geo = new THREE.PlaneGeometry(1, 1);

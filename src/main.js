@@ -123,7 +123,17 @@ async function init() {
       composer.addPass(new RenderPass(scene, camera));
       bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.2, 0.5, 0.9);
       composer.addPass(bloom);
-      composer.addPass(new OutputPass());
+      // OutputPass only knows the built-in tone mappings: teach it ours (see CustomToneMapping above).
+      const out = new OutputPass();
+      out.material.fragmentShader = out.material.fragmentShader.replace('#elif defined( NEUTRAL_TONE_MAPPING )',
+        '#elif defined( CUSTOM_TONE_MAPPING )\n\t\t\t\tgl_FragColor.rgb = CustomToneMapping( gl_FragColor.rgb );\n\t\t\t#elif defined( NEUTRAL_TONE_MAPPING )');
+      const outRender = out.render.bind(out);
+      out.render = (...args) => {
+        const fresh = out._toneMapping !== renderer.toneMapping;
+        outRender(...args);
+        if (fresh && renderer.toneMapping === THREE.CustomToneMapping) { out.material.defines.CUSTOM_TONE_MAPPING = ''; out.material.needsUpdate = true; }
+      };
+      composer.addPass(out);
       composer.setPixelRatio(pixelRatio);
       composer.setSize(innerWidth, innerHeight);
     }

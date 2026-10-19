@@ -24,8 +24,10 @@ npm run dev        # open the printed URL (default http://localhost:5173)
 ```
 
 `npm run build` writes a static site to `dist/` that can be hosted anywhere (GitHub Pages, Netlify, etc.).
-On slower machines open **Settings** on the pause screen (quality presets, resolution, shadows, draw distance,
-traffic density) or press **O** for the Low preset.
+On slower machines open **Settings** on the pause screen (quality presets, resolution, dynamic resolution,
+shadows, draw distance, traffic density) or press **O** for the Low preset. Dynamic resolution is on by default:
+when frames run long it renders fewer pixels (down to 60% of your chosen resolution) and goes back up when there's
+headroom.
 
 **Phones and tablets** get touch controls automatically: a joystick on the left for walking and steering, drag on
 the right to look, and buttons that change between on foot and driving.
@@ -161,6 +163,21 @@ and signing.
 - **Monsoon.** Rain showers come on their own, with lightning, wet roads and flooded underpasses.
   Traffic slows down and wades through; drive into the deep end and your engine can drown.
 
+### Look
+
+- **Sky and light.** A time-of-day sky with real twilight (no more black sky the moment the sun
+  sets), a warm glow along the horizon at sunrise and sunset, sun and moon, twinkling stars and
+  drifting clouds that close in for the monsoon. The fog takes the horizon's colour, so the city
+  fades into the haze, and a distant skyline fills the horizon. Lighting comes from the same sky:
+  warm low sun, blue-sky fill, reflections in car paint and window glass, a moonlit floor at night.
+- **A lived-in city.** Weathered paint (cream, ochre, terracotta, sage, dusty blue, cement) on the
+  plaster only, with window frames and glass left alone; monsoon streaks and splash grime; grey
+  concrete roofs; windows that light up at random at night in warm bulbs and cool tubelights;
+  eight kinds of shop front (kirana, shutters, darshini, pharmacy, textile, mobile, hardware,
+  bakery); black-and-yellow kerbs; overhead cables between the poles; leafy trees.
+- **Made for every device.** All of it is a few extra shader instructions on the existing
+  materials, so phones get the same look on the Low preset.
+
 ### Sound
 
 - **Recorded engines.** A real Piaggio Ape auto, a Royal Enfield Bullet and a Rajdoot, a moped, a
@@ -213,7 +230,9 @@ src/
     metro.js           Namma Metro routes, viaducts, stations (elevated and underground), trains
     landmarks.js       Procedural landmark models
     geom.js, path.js   Polygon fill/walls, rectangle overlap, arc-length polylines
-    textures.js        Canvas-painted textures (facades, lit windows, asphalt, pavers, signs, water)
+    textures.js        Canvas-painted textures (facades, lit windows, shop-front atlas, leaves, pavers, signs)
+    sky.js             Time-of-day sky (twilight, sun/moon, stars, clouds) and the distant skyline ring
+    surface.js         Shader detail on city materials: paint masks, grime, lit windows, kerbs, ground variation
     meshBuilder.js     Merged/chunked geometry with local frames, per-vertex PBR material, rigid skinning
     detail.js          World detail levels (Full / Lite / Minimum)
     ao.js              Baked shading: dark wall bases, ground shading map next to buildings and trees
