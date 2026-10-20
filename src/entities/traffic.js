@@ -107,6 +107,7 @@ export class Traffic {
     const two = v.spec.twoWheeler;
     const erratic = two || AUTOS.has(type);
     const a = {
+      id: (this.nextId = (this.nextId || 0) + 1), // the newer of two level vehicles gives way
       v, edge: e, lane, path, s, speed: 0, turning: false,
       cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
       stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
@@ -332,9 +333,9 @@ export class Traffic {
   }
 
   // Distance to the nearest thing ahead within `look`, for a vehicle at lateral offset `lat`.
-  // ghost: breaking a deadlock, so crossing and oncoming traffic is ignored (but never the vehicle
-  // in front going the same way).
-  gapAhead(a, lat, look, obstacles, ghost = false) {
+  // ghost 1: breaking a deadlock, so crossing and oncoming traffic is ignored (but never the vehicle
+  // in front going the same way); ghost 2: a last resort after a long jam, ignoring all traffic.
+  gapAhead(a, lat, look, obstacles, ghost = 0) {
     const v = a.v;
     const fx = Math.sin(v.heading), fz = Math.cos(v.heading);
     const lx = fz, lz = -fx;
@@ -354,7 +355,7 @@ export class Traffic {
         const bv = b.v;
         if (Math.abs(bv.y - v.y) > 2.5) continue;
         const dot = Math.sin(bv.heading) * fx + Math.cos(bv.heading) * fz;
-        if (ghost && dot < 0.7) continue;
+        if (ghost === 2 || (ghost && dot < 0.7)) continue;
         // Oncoming traffic only matters when someone is on the wrong side.
         const oncoming = dot < -0.7;
         if (oncoming && !a.wrongNow && !b.wrongNow) continue;
@@ -364,7 +365,15 @@ export class Traffic {
         const ad = Math.abs(dot);
         const hl = bv.spec.length / 2, hw = bv.spec.width / 2;
         const side = Math.abs(dx * lx + dz * lz), reach = myHalf + hw * ad + hl * (1 - ad);
-        if (ahead <= 0 || ahead > look + closing * 2) continue;
+        if (ahead <= 0) {
+          // Level with each other and overlapping (two lanes squeezing into one, or converging out
+          // of a junction), where neither sees the other ahead: the newer vehicle gives way. If
+          // the other one does see us ahead it's already waiting, so the two never wait on each other.
+          if (!ghost && dot > 0.3 && b.id < a.id && side < reach - 0.1 && ahead > -(halfLen + hl) * 0.8 && gap > 0
+            && (v.x - bv.x) * Math.sin(bv.heading) + (v.z - bv.z) * Math.cos(bv.heading) <= 0) { gap = 0; blocker = b; }
+          continue;
+        }
+        if (ahead > look + closing * 2) continue;
         if (side > reach + margin) continue;
         // Someone coming head-on closes the gap twice as fast: plan for where they'll be.
         const g = ahead - halfLen - (hl * ad + hw * (1 - ad)) - closing * 1.5;
@@ -405,7 +414,7 @@ export class Traffic {
       const two = v.spec.twoWheeler;
       const look = 6 + a.speed * 1.6 + v.spec.length / 2;
 
-      let { gap, blocker } = this.gapAhead(a, a.lat, look, obstacles, a.ghost > 0);
+      let { gap, blocker } = this.gapAhead(a, a.lat, look, obstacles, a.ghost > 0 ? (a.hardGhost ? 2 : 1) : 0);
       let surge = 1;
       if (a.erratic) {
         const [lo, hi] = a.turning ? [-1.2, 1.2] : this.band(a);
@@ -466,7 +475,7 @@ export class Traffic {
         const d = (lc.x - v.x) * Math.sin(v.heading) + (lc.z - v.z) * Math.cos(v.heading);
         if (d > 10.5 && d < look + 20) { target = Math.min(target, Math.max(0, (d - 11.5) * 1.2)); a.waitingSignal = true; } // already past the gate: clear the tracks
       }
-      if (a.ghost > 0) a.ghost -= dt;
+      if (a.ghost > 0 && (a.ghost -= dt) <= 0) a.hardGhost = false;
       if (gap < Infinity) {
         const safe = (two ? 1.0 : a.erratic ? 1.4 : 2.0) + a.speed * (a.erratic ? 0.4 : 0.55);
         if (gap < safe) target = Math.min(target, Math.max(0, (gap - (two ? 0.4 : 1.0)) * 1.5));
@@ -511,7 +520,10 @@ export class Traffic {
         // Only the front of a jam squeezes through (past crossing or oncoming traffic, or something
         // parked in the way): a queue behind it waits its turn instead of driving into each other.
         const queued = blocker?.v && (Math.sin(blocker.v.heading) * fx0 + Math.cos(blocker.v.heading) * fz0 > 0.7 || blocker.ghost > 0);
-        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !queued && !(blocker && (blocker.isPlayer || blocker.isCop))) { a.ghost = 2.5; a.stuck = 0; }
+        const mayPass = !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop));
+        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && mayPass && !queued) { a.ghost = 2.5; a.stuck = 0; }
+        // Still jammed after a long wait (vehicles locked into each other): slip out regardless.
+        else if (a.stuck > 15 && mayPass) { a.ghost = 2.5; a.hardGhost = true; a.stuck = 0; }
         if (a.stuck > 45 && distP > 120 && !a.keep) { this.despawn(a); continue; }
       } else a.stuck = Math.max(0, a.stuck - dt);
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
