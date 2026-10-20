@@ -59,12 +59,14 @@ export class Traffic {
     }
   }
 
-  // Reuse pooled vehicles; building a new one is costly, so allow at most one per frame.
+  // Reuse pooled vehicles. Building a new one is costly (a long hitch on a phone), so at most one
+  // every half second; meanwhile spawn() just picks a type that's in the pool.
   acquire(type) {
     const list = this.pool.get(type);
     if (list && list.length) return list.pop();
-    if (this.builtThisFrame >= 1) return null;
+    if (this.builtThisFrame >= 1 || this.buildCd > 0) return null;
     this.builtThisFrame++;
+    this.buildCd = 0.5;
     return new Vehicle(type, { rng, rider: true, pink: type === 'hoysala' && rng() < 0.25 });
   }
 
@@ -355,6 +357,7 @@ export class Traffic {
   update(dt, world) {
     const { obstacles, audio, camera, focus } = world;
     this.builtThisFrame = 0;
+    this.buildCd = world.initialFill ? 0 : (this.buildCd || 0) - dt;
     this.edgeTimer -= dt;
     if (this.edgeTimer <= 0) { this.refreshNearEdges(focus); this.edgeTimer = 1.5; }
     this.rebuildGrid();

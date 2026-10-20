@@ -26,8 +26,8 @@ npm run dev        # open the printed URL (default http://localhost:5173)
 `npm run build` writes a static site to `dist/` that can be hosted anywhere (GitHub Pages, Netlify, etc.).
 On slower machines open **Settings** on the pause screen (quality presets, resolution, dynamic resolution,
 shadows, draw distance, traffic density) or press **O** for the Low preset. Dynamic resolution is on by default:
-when frames run long it renders fewer pixels (down to 60% of your chosen resolution) and goes back up when there's
-headroom.
+when frames run long for a few seconds it renders fewer pixels (down to 80% of your chosen resolution) and goes
+back up when there's headroom.
 
 **Phones and tablets** get touch controls automatically: a joystick on the left for walking and steering, drag on
 the right to look, and buttons that change between on foot and driving.
@@ -114,7 +114,8 @@ and signing.
 
 - **Waving down an auto.** Stand at any roadside and press **H**: an auto pulls in.
   - Tell the driver where to go: a district, or your GPS waypoint. Each shows a fare estimate.
-  - Ride in the back through the real traffic while the meter runs at the Bengaluru tariff: ₹30 for
+  - Ride in the back while the driver tears through the real traffic (flat out, late on the brakes,
+    through the end of the amber) and the meter runs at the Bengaluru tariff: ₹30 for
     the first 2 km, ₹15 a km after that, one-and-a-half fare from 10 pm.
   - **F** asks him to stop early, and **T** skips the ride.
   - Drivers are drivers: some ask for "twenty extra", and some won't go to the far end of town.
@@ -242,6 +243,7 @@ and signing.
   - **Act I is playable:** five missions, from a parcel run for the market rowdy Kotte Kumar to
     the ambush on Magadi Road.
   - Mission givers are pink markers on the map.
+  - You start a new game with **₹1,000** in your pocket.
   - Progress and money are **saved** in the browser.
 - **Gigs.** Food deliveries and auto fares keep the money coming between missions. Delivery
   orders arrive on your phone; auto fares wave you down from the street.
