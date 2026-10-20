@@ -111,6 +111,8 @@ export class Traffic {
       // Hired autos and route buses: the edges still to drive (else wander), a stop to pull in
       // at {edge, s}, held at a standstill, and never despawned while the player needs them.
       route: null, stop: null, stopped: false, hold: false, keep: false,
+      // In a hurry (a hired auto with the player aboard): no dawdling, fast corners, hard acceleration.
+      rush: false,
     };
     if (erratic) {
       const [lo, hi] = this.band(a);
@@ -405,7 +407,8 @@ export class Traffic {
         surge = a.surge;
       }
 
-      let target = (a.turning ? Math.min(a.cruise, 6.5) : a.cruise * surge) * rainSlow;
+      let target = a.rush ? (a.turning ? Math.min(a.cruise, 10) : a.cruise * Math.max(1, surge)) * rainSlow
+        : (a.turning ? Math.min(a.cruise, 6.5) : a.cruise * surge) * rainSlow;
       a.waitingSignal = false;
       // Signals.
       if (!a.turning && a.edge.to.signal && !(a.edge.flyover && a.lane === 0)) {
@@ -452,12 +455,13 @@ export class Traffic {
         const d = a.stop.s - a.s;
         if (d > -2) {
           if (d < 45) a.latTarget = this.kerbLat(a);
-          target = Math.min(target, Math.max(0, d * 0.7));
+          // (In a rush: brake late and hard, but still stop on the spot.)
+          target = Math.min(target, a.rush ? Math.sqrt(2 * v.spec.brake * 0.6 * Math.max(0, d - 0.5)) : Math.max(0, d * 0.7));
           if (d < 1.5 && a.speed < 0.5) a.stopped = true;
         }
       }
       if (a.hold) target = 0;
-      const acc = target > a.speed ? v.spec.accel * 0.8 : v.spec.brake;
+      const acc = target > a.speed ? v.spec.accel * (a.rush ? 1.6 : 0.8) : v.spec.brake;
       a.speed += Math.sign(target - a.speed) * Math.min(Math.abs(target - a.speed), acc * dt);
 
       // Stuck: honk, and eventually squeeze through anyway (but not at a red light or in water).

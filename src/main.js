@@ -10,7 +10,7 @@ import { Colliders } from './systems/colliders.js';
 import { Input } from './systems/input.js';
 import { CameraRig } from './systems/cameraRig.js';
 import { Audio } from './systems/audio.js';
-import { Missions } from './systems/missions.js';
+import { Missions, START_MONEY } from './systems/missions.js';
 import { Signals } from './systems/signals.js';
 import { Police } from './systems/police.js';
 import { Environment } from './systems/environment.js';
@@ -428,7 +428,7 @@ async function init() {
     else if (!paused) input.lock();
   };
   settings.buildPanel(document.getElementById('help'));
-  settings.onReset = () => { story.reset(); missions.money = 500; hud.setMoney(500, true); world.garages?.reset?.(); };
+  settings.onReset = () => { story.reset(); missions.money = START_MONEY; hud.setMoney(START_MONEY, true); world.garages?.reset?.(); };
   document.getElementById('open-settings').addEventListener('click', () => settings.toggle(true));
   settings.onChange((s) => {
     baseRatio = Math.min(devicePixelRatio, 1.5) * s.resScale;
@@ -450,8 +450,9 @@ async function init() {
   });
 
   // ---------- Dynamic resolution ----------
-  // When frames take clearly longer than the display's refresh interval, render fewer pixels
-  // (down to 60% of the chosen resolution); creep back up when there's headroom again.
+  // When frames take clearly longer than the display's refresh interval for a while, render fewer
+  // pixels (down to 80% of the chosen resolution: lower looked smeared when driving); creep back up
+  // when there's headroom again. Every change resizes the canvas, so it's done rarely.
   function applyPixelRatio() {
     pixelRatio = baseRatio * dynScale;
     renderer.setPixelRatio(pixelRatio);
@@ -468,8 +469,8 @@ async function init() {
     resT -= raw;
     if (frameAvg > target * 1.45) { slowT += raw; fastT = 0; } else if (frameAvg < target * 1.12) { fastT += raw; slowT = 0; } else { slowT = Math.max(0, slowT - raw); fastT = 0; }
     if (resT > 0) return;
-    if (slowT > 1 && dynScale > 0.6) { dynScale = Math.max(0.6, dynScale - 0.1); applyPixelRatio(); resT = 2; slowT = 0; }
-    else if (fastT > 4 && dynScale < 1) { dynScale = Math.min(1, dynScale + 0.05); applyPixelRatio(); resT = 3; fastT = 0; }
+    if (slowT > 2.5 && dynScale > 0.8) { dynScale = Math.max(0.8, dynScale - 0.1); applyPixelRatio(); resT = 4; slowT = 0; }
+    else if (fastT > 5 && dynScale < 1) { dynScale = Math.min(1, dynScale + 0.1); applyPixelRatio(); resT = 4; fastT = 0; }
   }
 
   // ---------- Start / pause ----------

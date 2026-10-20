@@ -430,7 +430,7 @@ export class Rides {
   // Let the vehicle go back to being ordinary traffic.
   freeAgent() {
     const a = this.agent;
-    if (a) { a.keep = false; a.stop = null; a.route = null; a.hold = false; a.stopped = false; }
+    if (a) { a.keep = false; a.stop = null; a.route = null; a.hold = false; a.stopped = false; a.rush = false; }
     this.agent = null;
   }
 
@@ -520,6 +520,11 @@ export class Rides {
             a.route = this.dest.plan.route;
             a.stop = { edge: this.dest.plan.stopEdge, s: this.dest.plan.stopS };
             a.stopped = false;
+            // With a fare on board, the driver floors it: flat out, quick round corners, through
+            // the end of the amber and the start of the red.
+            a.rush = true;
+            a.cruise = a.v.spec.maxSpeed * 1.3;
+            a.jumper = true;
             this.state = 'ride';
           } else {
             this.state = 'busRide';

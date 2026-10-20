@@ -166,10 +166,11 @@ export class Environment {
     this.sunDir.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - elev), THREE.MathUtils.degToRad(az));
     this.sky.update(this.sunDir, elev, this.rain, this.time, this.clouds);
     this.envCooldown -= dt;
-    const key = Math.round(elev / 2.5) * 100 + Math.round(this.rain * 8);
+    // Small steps (1° of sun, an eighth of the rain), so the city's light never visibly jumps.
+    const key = Math.round(elev) * 100 + Math.round(this.rain * 16);
     if (key !== this.envKey && this.envCooldown <= 0) {
       this.envKey = key;
-      this.envCooldown = 0.5;
+      this.envCooldown = 0.25;
       this.cubeCamera.update(this.renderer, this.envScene);
       this.envTarget = this.pmrem.fromCubemap(this.cubeTarget.texture, this.envTarget);
       this.scene.environment = this.envTarget.texture;
@@ -231,7 +232,6 @@ export class Environment {
     this.scene.fog.far = lerp(lerp(800, 560, night), 240, rain) * (this.drawDist ?? 1);
     this.scene.fog.near = Math.min(this.scene.fog.near, this.scene.fog.far * 0.5);
     this.scene.background = null;
-    sky.mesh.position.copy(this.camera.position);
 
     // Distant skyline: just past the fog, coloured like the haze it stands in.
     const sl = this.skyline;

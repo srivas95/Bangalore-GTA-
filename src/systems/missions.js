@@ -1,6 +1,9 @@
 // Gig-economy jobs: food deliveries on anything (auto fares are in autoDuty.js).
 import * as THREE from 'three';
 
+// Cash in your pocket at the start of a new game.
+export const START_MONEY = 1000;
+
 const DISHES = ['Masala Dosa', 'Bisi Bele Bath', 'Chicken Biryani', 'Filter Coffee x4', 'Idli Vada', 'Ragi Mudde', 'Mysore Pak', 'Akki Roti', 'Benne Dosa', 'Chow Chow Bath', 'Mangalore Buns'];
 export class Marker {
   constructor(scene, color) {
@@ -32,7 +35,7 @@ export class Missions {
     this.pois = pois;
     this.hud = hud;
     this.audio = audio;
-    this.money = 500;
+    this.money = START_MONEY;
     this.rating = 4.6;
     this.job = null;
     this.offer = null;

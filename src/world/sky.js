@@ -8,7 +8,9 @@ const SKY_VERT = /* glsl */`
 varying vec3 vDir;
 void main() {
   vDir = position;
-  vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  // Rotation only: the dome is centred on the camera wherever the camera is this frame (it used
+  // to be moved to the camera before the camera moved, and lagged a frame behind at speed).
+  vec4 p = projectionMatrix * vec4(mat3(viewMatrix) * position, 1.0);
   // On the far plane, so it never clips the city and is drawn only where nothing else was.
   gl_Position = p.xyww;
   gl_Position.z = gl_Position.w * 0.99999;
@@ -20,7 +22,8 @@ uniform float uTime, uStars, uCloud, uMoon, uSunVis, uEnvGain;
 uniform vec3 uEnvFloor, uEnvGround;
 varying vec3 vDir;
 float hash3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+// No sin(): sin of large arguments is imprecise on phone GPUs and broke the clouds into blocks.
+float hash2(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
 float noise(vec2 p) {
   vec2 i = floor(p), f = fract(p), u = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash2(i), hash2(i + vec2(1.0, 0.0)), u.x), mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), u.x), u.y);
@@ -54,10 +57,11 @@ void main() {
   }
   col += uSunDisc * smoothstep(0.99955, 0.9998, cs) * uSunVis * (1.0 - ca);
   if (uStars > 0.002 && h > 0.0) {
-    vec3 q = d * 300.0, cell = floor(q);
+    // Cells big enough that a star covers a couple of pixels: smaller ones shimmered as the camera turned.
+    vec3 q = d * 170.0, cell = floor(q);
     float s = hash3(cell);
     float tw = 0.6 + 0.4 * sin(uTime * (1.5 + s * 5.0) + s * 50.0);
-    float star = step(0.9965, s) * smoothstep(0.42, 0.1, length(fract(q) - 0.5)) * tw;
+    float star = step(0.99, s) * smoothstep(0.42, 0.1, length(fract(q) - 0.5)) * tw;
     col += vec3(0.9, 0.93, 1.0) * star * uStars * smoothstep(0.03, 0.25, h) * (1.0 - ca);
   }
   float cm = dot(d, uMoonDir);

@@ -162,4 +162,16 @@ export class Colliders {
     for (const b of hits) if (!b.off && b.h > y && b.y0 < y && (!tag || b.tag === tag) && this.inside(b, x, z)) return true;
     return false;
   }
+
+  // For the camera boom: like pointBlocked, but poles, trunks and posts (under 1.5 m across) don't
+  // count, so the camera doesn't jump in and out passing them.
+  camBlocked(x, z, y) {
+    const hits = this.query(x, x, z, z, this._tmp2 || (this._tmp2 = []));
+    for (const b of hits) {
+      if (b.off || b.h <= y || b.y0 >= y || !this.inside(b, x, z)) continue;
+      const w = b.rot ? b.rot.hw * 2 : b.maxX - b.minX, d = b.rot ? b.rot.hd * 2 : b.maxZ - b.minZ;
+      if (Math.max(w, d) >= 1.5) return true;
+    }
+    return false;
+  }
 }
