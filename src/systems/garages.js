@@ -31,6 +31,7 @@ const SITES = [
 export const FOR_SALE = [
   ['Honda Activa (scooter)', 'scooter', null, 3000],
   ['Royal Enfield Bullet', 'bike', null, 8500],
+  ['KTM Duke (sports bike)', 'sportBike', null, 14000],
   ['Bajaj auto rickshaw', 'auto', null, 6000],
   ['Maruti Alto', 'hatch', 'alto', 11000],
   ['Maruti Swift', 'hatch', 'swift', 16000],

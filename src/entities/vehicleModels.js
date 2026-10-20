@@ -13,6 +13,7 @@ import { CAR_MODELS, TYPE_MODELS, buildCarShell } from './carBodies.js';
 export const VEHICLE_TYPES = {
   scooter: { label: 'Scooter', length: 1.85, width: 0.72, wheelbase: 1.25, maxSpeed: 22, accel: 6.5, brake: 12, reverse: 1.5, steer: 0.6, grip: 10, mass: 130, twoWheeler: true, cam: 4.2, horn: 'scooter', engine: 'scooter', seatY: 0.78, stall: 0.35 },
   delivery: { label: 'Delivery Scooter', length: 1.85, width: 0.72, wheelbase: 1.25, maxSpeed: 23, accel: 6.8, brake: 12, reverse: 1.5, steer: 0.6, grip: 10, mass: 135, twoWheeler: true, cam: 4.4, horn: 'scooterHi', engine: 'scooter', seatY: 0.78, stall: 0.35 },
+  sportBike: { label: 'Sports Bike', length: 2.05, width: 0.76, wheelbase: 1.38, maxSpeed: 38, accel: 9.5, brake: 14, reverse: 1.5, steer: 0.55, grip: 10.5, mass: 175, twoWheeler: true, cam: 4.6, horn: 'sport', engine: 'sport', seatY: 0.84, stall: 0.45 },
   bike: { label: 'Royal Bullet', length: 2.15, width: 0.8, wheelbase: 1.4, maxSpeed: 31, accel: 7.5, brake: 13, reverse: 1.5, steer: 0.55, grip: 10, mass: 195, twoWheeler: true, cam: 4.6, horn: 'bike', engine: 'bike', seatY: 0.8, stall: 0.45 },
   auto: { label: 'Auto Rickshaw', length: 2.65, width: 1.35, wheelbase: 1.9, maxSpeed: 15.5, accel: 3.8, brake: 9, reverse: 3, steer: 0.65, grip: 8, mass: 350, cam: 5.2, horn: 'auto', engine: 'auto', seatY: 0.92, stall: 0.45 },
   goodsAuto: { label: 'Goods Auto', length: 3.1, width: 1.45, wheelbase: 2.0, maxSpeed: 13, accel: 3, brake: 9, reverse: 3, steer: 0.6, grip: 8, mass: 520, cam: 5.8, horn: 'autoLow', engine: 'auto', seatY: 0.95, stall: 0.5 },
@@ -312,6 +313,26 @@ function buildTwoWheeler(type, r, opts) {
     plate(v, -1.04, 0.66, false, 0.24, -1);
     return v.finish(spec, { color: colour });
   }
+  if (type === 'sportBike') {
+    // Duke / Ninja style: a sharp tank and fairing, raised tail, black frame and exhaust can.
+    const colour = opts.color ?? pick([0xf06a00, 0x2a8a2a, 0xd01020, 0x101418, 0xe8e8e8, 0x1a3a9a], r);
+    v.add(tapered(0.32, 0.2, 0.5, 0.7, 0.75, 0.04), P.paint, colour, 0, 0.98, 0.12); // tank
+    v.add(tapered(0.2, 0.12, 0.42, 0.8, 0.6, 0.05), P.paint, colour, 0, 0.98, -0.62, 1, 1, 1, -0.25); // tail
+    v.add(G.rbox, P.cloth, 0x141414, 0, 0.94, -0.3, 0.26, 0.08, 0.42); // seat
+    v.add(G.box, P.matte, 0x1a1a1a, 0, 0.58, 0.02, 0.24, 0.32, 0.46); // engine
+    v.add(G.box, P.matte, 0x111111, 0, 0.62, -0.2, 0.06, 0.08, 0.9, 0.35); // frame rail
+    v.add(G.cyl, P.matte, 0x2a2a2a, 0.17, 0.5, -0.5, 0.07, 0.4, 0.07, Math.PI / 2 - 0.35); // exhaust can
+    v.add(G.box, P.tail, 0xc81010, 0, 0.96, -0.98, 0.1, 0.04, 0.03);
+    const s = v.wheel(0, 0.32, 0.68, 0.32, 0.12, true, { hub: 0.4 });
+    v.add(G.cyl, P.chrome, 0xc8a020, 0.07, 0.74, 0.6, 0.025, 0.8, 0.025, -0.38, 0, 0, s); // gold forks
+    v.add(G.cyl, P.chrome, 0xc8a020, -0.07, 0.74, 0.6, 0.025, 0.8, 0.025, -0.38, 0, 0, s);
+    v.add(tapered(0.3, 0.26, 0.3, 0.8, 0.7, 0.06), P.paint, colour, 0, 1.08, 0.58, 1, 1, 1, 0.4, 0, 0, s); // headlamp cowl
+    v.add(G.box, P.head, 0xfff8e0, 0, 1.06, 0.73, 0.14, 0.06, 0.02, 0, 0, 0, s);
+    v.add(G.cyl, P.matte, 0x111111, 0, 1.16, 0.46, 0.016, 0.66, 0.016, 0, Math.PI / 2, 0, s); // handlebar
+    v.wheel(0, 0.32, -0.7, 0.32, 0.16, false, { hub: 0.4 });
+    plate(v, -1.0, 0.82, false, 0.22, -1);
+    return v.finish(spec, { color: colour });
+  }
   const colour = opts.color ?? pick([0xf2f2f2, 0x202224, 0xb01c22, 0x1c3a7a, 0x8a8e92, 0x3a6a3a, 0xe0a020, 0x6aa0c0], r);
   v.add(G.box, P.matte, 0x222222, 0, 0.32, 0.1, 0.36, 0.06, 0.65); // floorboard
   v.add(tapered(0.42, 0.42, 0.8, 0.9, 0.85, 0.02), P.paint, colour, 0, 0.52, -0.42);
@@ -466,7 +487,7 @@ function buildTruck(type, r, opts) {
 export function buildVehicleModel(type, r = Math.random, opts = {}) {
   switch (type) {
     case 'auto': case 'goodsAuto': return buildAuto(type, r, opts);
-    case 'scooter': case 'delivery': case 'bike': return buildTwoWheeler(type, r, opts);
+    case 'scooter': case 'delivery': case 'bike': case 'sportBike': return buildTwoWheeler(type, r, opts);
     case 'bus': case 'schoolBus': case 'tempo': return buildBus(type, r, opts);
     case 'lorry': case 'tanker': case 'miniTruck': return buildTruck(type, r, opts);
     default: return buildCar(type, r, opts);

@@ -1,10 +1,15 @@
 // The game's sound, built from real recordings (see SOUND_CREDITS.md):
-//  - engines: three recorded RPM layers per vehicle class (scooter, Bullet, auto, car, diesel),
-//    crossfaded and re-pitched with the revs, for your vehicle and the nearest traffic;
+//  - engines: recorded RPM layers per vehicle class (scooter, Bullet, sports bike, auto, car,
+//    diesel, which also idles on a deep marine diesel), crossfaded and re-pitched with the revs,
+//    for your vehicle and the nearest traffic; engine starts when you get on a motorbike;
 //  - horns and the Hoysala siren, placed in the stereo field and muffled with distance;
-//  - ambience beds for the city by day, parks, crickets at night, frogs by the lakes, rain, and the
-//    inside of a metro train, mixed by time of day, weather and where you are;
-//  - hits, crashes, guns, doors, footsteps, tyre screech, thunder, cows;
+//  - ambience beds for the city by day and night, passing traffic, parks, crickets at night, frogs
+//    by the lakes, rain on the streets and monsoon storms, and the inside of a metro train, mixed by
+//    time of day, weather and where you are; street dogs barking after dark;
+//  - rolling noise: road roar in a closed car, metro and railway trains running past, lorries and
+//    buses whooshing by, all pitched by speed;
+//  - hits, crashes, guns, doors, footsteps, tyre screech (tarmac, gravel, motorbike), bodywork
+//    scraping along walls, thunder, cows;
 //  - a small room reverb that opens up in underpasses and the metro.
 // Everything decodes off the main thread while the city builds. Until a sound is ready (or if the
 // files can't be fetched) the old synthesised version plays instead.
@@ -20,16 +25,24 @@ const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t
 const ENG = {
   scooter: { idle: 48.9, max: 132, gears: 1, vol: 0.5 },
   bike: { idle: 9.3, max: 50, gears: 4, vol: 0.75 },
+  sport: { idle: 39.9, max: 205, gears: 6, vol: 0.6 },
   auto: { idle: 30.6, max: 96, gears: 4, vol: 0.7 },
   car: { idle: 22.7, max: 118, gears: 5, vol: 0.55 },
-  bus: { idle: 50.2, max: 140, gears: 4, vol: 0.85 },
+  bus: { idle: 25.45, max: 140, gears: 4, vol: 0.85 },
 };
+
+// An engine's layers, lowest first: an optional idle recording, then the three RPM layers.
+const LAYERS = {};
+function engineLayers(cls) {
+  return LAYERS[cls] || (LAYERS[cls] = [`eng_${cls}_idle`, `eng_${cls}_0`, `eng_${cls}_1`, `eng_${cls}_2`].filter((k) => BANK[k]));
+}
 
 // Horns: which recording, pitch, level and how long a blast lasts. Bengaluru honks in bursts.
 const HORNS = {
   scooter: { s: 'horn_small', p: 1.0, v: 0.5, d: [0.11, 0.2] },
   scooterHi: { s: 'horn_small', p: 1.2, v: 0.45, d: [0.09, 0.16] },
-  bike: { s: 'horn_small', p: 0.8, v: 0.6, d: [0.16, 0.3] },
+  bike: { s: 'horn_moto', p: 0.9, v: 0.6, d: [0.16, 0.3] },
+  sport: { s: 'horn_moto2', p: 1.0, v: 0.55, d: [0.1, 0.2] },
   auto: { s: 'horn_small', p: 1.32, v: 0.55, d: [0.12, 0.22] },
   autoLow: { s: 'horn_small', p: 1.08, v: 0.55, d: [0.14, 0.26] },
   car: { s: 'horn_car', p: 1.0, v: 0.6, d: [0.16, 0.34] },
@@ -48,7 +61,7 @@ const HORNS = {
 
 // Loaded on first use rather than at start. Ambience beds other than the city's are also dropped
 // again after a while unheard, to keep memory down on phones.
-const LAZY = /^(thunder|amb_(?!city)|rain_|metro_chime|explosion)/;
+const LAZY = /^(thunder|amb_(?!city$)|rain_|metro_chime|explosion|train_run|rail_run|dog_|passby_|cabin_road)/;
 const VOICES = () => (DETAIL.min ? 3 : DETAIL.lite ? 5 : 8);
 
 // Parks and lakes as rough circles, for the ambience.
@@ -96,7 +109,7 @@ function mono(ab) {
   return out;
 }
 
-// One running engine: three looping RPM layers -> low-pass -> level -> pan.
+// One running engine: looping RPM layers -> low-pass -> level -> pan.
 class EngineVoice {
   constructor(au, cls, dest) {
     const c = au.ctx;
@@ -106,8 +119,8 @@ class EngineVoice {
     this.pan = c.createStereoPanner ? c.createStereoPanner() : null;
     this.lp.connect(this.out);
     if (this.pan) this.out.connect(this.pan).connect(dest); else this.out.connect(dest);
-    this.layers = [0, 1, 2].map((i) => {
-      const key = `eng_${cls}_${i}`, info = BANK[key];
+    this.layers = engineLayers(cls).map((key) => {
+      const info = BANK[key];
       const src = c.createBufferSource();
       src.buffer = au.buf[key];
       src.loop = true;
@@ -125,7 +138,7 @@ class EngineVoice {
     const t = this.ctx.currentTime, L = this.layers;
     let i = 0;
     while (i < L.length - 1 && f > L[i + 1].b) i++;
-    const w = [0, 0, 0];
+    const w = L.map(() => 0);
     if (f <= L[0].b) w[0] = 1;
     else if (i === L.length - 1) w[i] = 1;
     else {
@@ -146,6 +159,39 @@ class EngineVoice {
     this.out.gain.setTargetAtTime(0, t, fade / 3);
     for (const l of this.layers) l.src.stop(t + fade + 0.05);
     setTimeout(() => this.pan?.disconnect(), (fade + 0.2) * 1000);
+  }
+}
+
+// A looping sound whose level, pitch and place change every frame (tyres, road roar, trains).
+class LoopVoice {
+  constructor(au, key, dest) {
+    const c = au.ctx, info = BANK[key];
+    this.ctx = c;
+    this.src = c.createBufferSource();
+    this.src.buffer = au.buf[key];
+    this.src.loop = true; this.src.loopStart = info.loop[0]; this.src.loopEnd = info.loop[1];
+    this.lp = c.createBiquadFilter(); this.lp.type = 'lowpass'; this.lp.frequency.value = 18000;
+    this.g = c.createGain(); this.g.gain.value = 0;
+    this.pan = c.createStereoPanner ? c.createStereoPanner() : null;
+    this.src.connect(this.lp).connect(this.g);
+    if (this.pan) this.g.connect(this.pan).connect(dest); else this.g.connect(dest);
+    this.src.start(c.currentTime, info.loop[0] + Math.random() * (info.loop[1] - info.loop[0]));
+    this.quiet = 0;
+  }
+
+  // p: a place() result, or null for a sound that's on you.
+  set(vol, rate, p, tc = 0.08) {
+    const t = this.ctx.currentTime;
+    this.g.gain.setTargetAtTime(vol * (p ? p.g : 1), t, tc);
+    this.src.playbackRate.setTargetAtTime(rate, t, tc);
+    this.lp.frequency.setTargetAtTime(p ? p.lp : 18000, t, 0.1);
+    if (this.pan) this.pan.pan.setTargetAtTime(p ? p.pan : 0, t, 0.05);
+  }
+
+  stop(fade = 0.2) {
+    const t = this.ctx.currentTime;
+    this.g.gain.setTargetAtTime(0, t, fade / 3);
+    this.src.stop(t + fade + 0.05);
   }
 }
 
@@ -339,7 +385,8 @@ export class Audio {
     this.updateAmbience(dt, s, riding);
     this.updateFootsteps(player, riding, dt);
     if (!this.synth.quiet && this.has('amb_city', 'eng_car_0', 'siren_near')) this.synth.silence();
-    this.updateSkid(player.vehicle);
+    this.updateTyres(player.vehicle, s.world?.layout);
+    this.updateTrains(s, riding);
     // Reverb: a hint on the street, a lot in underpasses and inside the metro.
     const under = player.vehicle ? player.vehicle.y : player.y;
     const wet = riding ? 0.5 : under < -1.6 ? 0.9 : 0.3;
@@ -352,19 +399,32 @@ export class Audio {
     const { world, player } = s;
     const L = this.lis, max = riding ? 0 : VOICES(), R = 65;
     const cand = [];
+    const exposed = !player.vehicle || player.vehicle.spec.twoWheeler || player.vehicle.spec.engine === 'auto';
+    const passed = this.passed || (this.passed = new WeakMap());
+    let moving = 0;
     const consider = (v) => {
       if (!v || v === player.vehicle || !v.driver || v.wrecked || v.engineDead || !v.group?.visible) return;
       const d = Math.hypot(v.x - L.x, v.z - L.z);
+      if (d < 45 && v.speed > 3) moving++;
       if (d < R) cand.push({ v, d });
+      // A lorry or bus thundering past within a few metres of you on foot (or on a bike): the
+      // whoosh as it goes by, once per pass.
+      if (v.spec.engine === 'bus' && exposed && d < 7 && v.speed > 7) {
+        const was = passed.get(v);
+        if (was !== undefined && d > was + 0.05 && was < 5.5 && !v._passed) { v._passed = true; this.play('passby_truck', { vol: 0.75 * smooth(7, 16, v.speed), x: v.x, z: v.z, ref: 6, rate: 0.9 + v.speed / 80, verb: 0.15 }); }
+        passed.set(v, d);
+      } else if (d > 12) { passed.delete(v); v._passed = false; }
     };
     for (const v of world.vehicles) consider(v);
     for (const v of world.dynamic) consider(v);
+    // How busy the road around you is, for the passing-traffic bed.
+    this.busy = (this.busy || 0) + (Math.min(1, moving / 10) - (this.busy || 0)) * Math.min(1, dt * 0.8);
     cand.sort((a, b) => a.d - b.d);
     const keep = new Set(cand.slice(0, max).map((c) => c.v));
     for (const [v, voice] of this.traffic) if (!keep.has(v)) { voice.stop(0.3); this.traffic.delete(v); }
     for (const { v, d } of cand.slice(0, max)) {
       const cls = v.spec.engine;
-      if (!ENG[cls] || !this.has(`eng_${cls}_0`, `eng_${cls}_1`, `eng_${cls}_2`)) continue;
+      if (!ENG[cls] || !this.has(...engineLayers(cls))) continue;
       let voice = this.traffic.get(v);
       if (!voice) { voice = new EngineVoice(this, cls, this.trafficBus); this.traffic.set(v, voice); }
       const sp = v.speed;
@@ -380,6 +440,22 @@ export class Audio {
       const vr = ((v.vx - L.vx) * dx + (v.vz - L.vz) * dz) / dd;
       const dop = clamp(343 / (343 + vr), 0.88, 1.12);
       voice.set(f, E.vol * (0.45 + 0.4 * thr + 0.15 * r) * p.g * 0.9, Math.min(p.lp, 1200 + 5000 * (0.35 + 0.65 * Math.max(thr, r))), p.pan, dop, 0.08);
+    }
+  }
+
+  // The nearest metro train and the nearest railway train rumble past, pitched by their speed.
+  updateTrains(s, riding) {
+    const w = s.world;
+    for (const [name, key, list, ref, top] of [['metro', 'train_run', w?.metroTrains, 18, 22], ['rail', 'rail_run', w?.railTrains, 22, 25]]) {
+      let best = null, bd = 220;
+      for (const t of list || []) {
+        const d = Math.hypot(t.x - this.lis.x, t.z - this.lis.z);
+        if (d < bd && t.speed > 0.5) { bd = d; best = t; }
+      }
+      // Aboard the metro, the cabin bed is the train.
+      const vol = best && !(riding && name === 'metro') ? 0.9 * smooth(0.5, 6, best.speed) : 0;
+      const p = best ? this.place(best.x, best.z, ref, 1.2) : null;
+      this.loopSet(name, key, vol, best ? 0.65 + 0.45 * clamp(best.speed / top, 0, 1) : 1, p, this.trafficBus);
     }
   }
 
@@ -418,7 +494,12 @@ export class Audio {
       }
       b.g.gain.setTargetAtTime(v, t, tc);
     };
-    level('amb_city', (0.5 * day + 0.14) * (1 - 0.45 * rain) * (1 - 0.6 * Math.max(park, lake)));
+    const open = 1 - 0.6 * Math.max(park, lake);
+    level('amb_city', (0.5 * day + 0.14) * (1 - 0.45 * rain) * open);
+    // After dark the Mumbai street gives way to a softer, distant city hum.
+    level('amb_city_night', 0.4 * smooth(0.3, 0.9, night) * (1 - 0.5 * rain) * open);
+    // Cars swishing past, as busy as the road you're on.
+    level('amb_traffic', 0.5 * smooth(0.05, 0.8, this.busy || 0) * (1 - 0.4 * rain) * open, 0.8);
     // Chatter of the crowds you're among (signal corners, chai stalls, markets).
     let crowd = 0;
     for (const p of s.world?.streetLife?.peds || []) if (Math.abs(p.x - L.x) < 30 && Math.abs(p.z - L.z) < 30) crowd++;
@@ -427,8 +508,22 @@ export class Audio {
     level('amb_park', (0.55 * Math.max(park, lake * 0.6) * day + 0.25 * chorus) * (1 - 0.7 * rain));
     level('amb_night', 0.45 * smooth(0.3, 0.9, night) * (1 - 0.8 * rain) * (1 - 0.5 * lake));
     level('amb_frogs', 0.6 * lake * smooth(0.4, 0.9, night + rain * 0.5));
-    level('rain_light', 0.75 * smooth(0.02, 0.4, rain));
-    level('rain_heavy', 0.8 * smooth(0.45, 1, rain));
+    level('rain_light', 0.55 * smooth(0.02, 0.4, rain));
+    level('rain_heavy', 0.55 * smooth(0.45, 1, rain));
+    // Rain on a city street: tyres hissing through the wet; a full monsoon storm on top.
+    level('rain_city', 0.6 * smooth(0.08, 0.5, rain) * open);
+    level('rain_storm', 0.7 * smooth(0.7, 1, rain));
+    // Street dogs set each other off after dark.
+    if (night > 0.6 && !riding && rain < 0.5 && (this.dogT = (this.dogT ?? 8) - dt) <= 0) {
+      this.dogT = 12 + Math.random() * 35;
+      const a = Math.random() * Math.PI * 2, d = 25 + Math.random() * 60, x = L.x + Math.cos(a) * d, z = L.z + Math.sin(a) * d;
+      const n = 1 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < n; k++) {
+        const key = this.pick('dog');
+        if (key) this.play(key, { vol: 0.45, x, z, ref: 12, rate: 0.9 + Math.random() * 0.25, delay: k * (0.35 + Math.random() * 0.4), verb: 0.3, bus: this.ambIn });
+        else for (let i = 0; i < 4; i++) this.get(`dog_${i}`);
+      }
+    }
     // Inside the metro the city goes quiet and the train takes over.
     if (riding || this.beds.amb_metro) level('amb_metro', riding ? 0.8 / duck : 0, 0.5);
     // A closed car muffles the street; an auto or a two-wheeler doesn't.
@@ -453,22 +548,42 @@ export class Audio {
     this.lastPhase = h.phase;
   }
 
-  updateSkid(v) {
-    if (!this.buf.skid) return;
-    const t = this.ctx.currentTime;
-    let level = 0;
-    if (v && v.driver === 'player' && !v.spec.twoWheeler && (v.y ?? 0) > -5) {
-      level = smooth(0.14, 0.4, v.slip || 0) * smooth(4, 12, v.speed) * (v.waterDepth > 0.1 ? 0 : 1) * (1 - 0.6 * this.rainLevel);
+  // A named running loop: started once it's audible (and loaded), then level, pitch and place
+  // follow every frame; released after a few seconds of silence. p: a place() result or null.
+  loopSet(name, key, vol, rate = 1, p = null, bus = null) {
+    const loops = this.loops || (this.loops = {});
+    let l = loops[name];
+    if (l && l.key !== key) { l.v.stop(0.25); delete loops[name]; l = null; }
+    if (!l) {
+      if (vol < 0.005 || !this.get(key)) return;
+      l = loops[name] = { key, quiet: 0, v: new LoopVoice(this, key, bus || this.sfx) };
     }
-    if (!this.skid && level > 0.01) {
-      const info = BANK.skid;
-      this.skid = this.play('skid', { vol: 1, loop: info.loop, offset: info.loop[0], verb: 0.15 });
-      if (this.skid) this.skid.g.gain.value = 0;
+    l.v.set(vol, rate, p);
+    if (vol >= 0.005) l.quiet = 0;
+    else if (++l.quiet > 180) { l.v.stop(0.1); delete loops[name]; }
+  }
+
+  // Tyres: tarmac screech for cars, gravel off the road in parks and fields, and a motorbike's
+  // rear wheel lighting up. Bodywork grinding along a wall. Road roar inside a closed car.
+  updateTyres(v, layout) {
+    let level = 0, key = 'skid', scrape = 0, roar = 0, sp = 0;
+    if (v && v.driver === 'player' && (v.y ?? 0) > -5) {
+      sp = v.speed;
+      const wet = (v.waterDepth > 0.1 ? 0 : 1) * (1 - 0.6 * this.rainLevel);
+      if (v.spec.twoWheeler) { key = 'skid_moto'; level = smooth(0.1, 0.32, v.slip || 0) * smooth(4, 10, sp) * wet; }
+      else {
+        level = smooth(0.14, 0.4, v.slip || 0) * smooth(4, 12, sp) * wet;
+        const b = level > 0.01 && layout?.blockContaining(v.x, v.z);
+        if (b && (b.zone === 'park' || b.zone === 'rural' || b.zone === 'lake')) key = 'skid_gravel';
+      }
+      scrape = v.touchT > 0 ? smooth(1.5, 10, sp) : 0;
+      if (!v.spec.twoWheeler) roar = smooth(2, 24, sp) * (v.spec.engine === 'auto' ? 0.35 : 0.5);
     }
-    if (this.skid) {
-      this.skid.g.gain.setTargetAtTime(level * 0.55, t, level > 0 ? 0.04 : 0.12);
-      this.skid.src.playbackRate.setTargetAtTime(0.9 + 0.2 * level, t, 0.1);
-    }
+    // The other tyre loops fade out when the surface changes.
+    for (const k of ['skid', 'skid_gravel', 'skid_moto']) this.loopSet(k, k, k === key ? level * 0.55 : 0, 0.9 + 0.2 * level);
+    this.loopSet('scrape', 'scrape', scrape * 0.6, 0.8 + 0.4 * smooth(2, 20, sp));
+    // Rolling road noise, rising in pitch with speed.
+    this.loopSet('cabin_road', 'cabin_road', roar, 0.75 + 0.45 * smooth(0, 30, sp), null, this.engBus);
   }
 
   // ---------- the player's engine ----------
@@ -477,7 +592,7 @@ export class Audio {
     if (!this.enabled) return;
     if (!vehicle) { this.stopEngine(); this.synth.engine(null); return; }
     const cls = vehicle.spec.engine;
-    if (!this.has(`eng_${cls}_0`, `eng_${cls}_1`, `eng_${cls}_2`)) { this.synth.engine(vehicle); return; }
+    if (!this.has(...engineLayers(cls))) { this.synth.engine(vehicle); return; }
     if (!this.synth.quiet) this.synth.engine(null);
     if (vehicle.stalled || vehicle.engineDead || vehicle.wrecked) {
       if (this.pEng) { this.pEng.stop(0.4); this.pEng = null; }
@@ -485,6 +600,8 @@ export class Audio {
     }
     if (!this.pEng || this.pEng.cls !== cls || this.pEngV !== vehicle) {
       this.pEng?.stop(0.2);
+      // Getting on a motorbike: the starter and the first catch of the engine.
+      if (this.pEngV !== vehicle && (cls === 'sport' || cls === 'bike')) this.play(cls === 'sport' ? 'start_sport' : 'start_moto', { vol: 0.55, rate: cls === 'bike' ? 0.8 : 1, verb: 0.1, bus: this.engBus });
       this.pEng = new EngineVoice(this, cls, this.engBus);
       this.pEngV = vehicle;
       this.rpm = 0;
@@ -654,9 +771,11 @@ export class Audio {
     if (!this.enabled) return;
     if (kind === 'mount') { const k = this.pick('step'); if (k) this.play(k, { vol: 0.35, rate: 0.8 }); return; }
     if (!this.buf.door_open) return this.synth.door();
-    if (kind === 'open' || kind === 'exit') this.play('door_open', { vol: 0.55, rate: 0.95 + Math.random() * 0.1 });
-    if (kind === 'close') this.play('door_close', { vol: 0.7, rate: 0.95 + Math.random() * 0.1 });
-    if (kind === 'exit') this.play('door_close', { vol: 0.7, delay: 0.65, rate: 0.95 + Math.random() * 0.1 });
+    // Two recorded doors (an Opel and a Mustang), picked at random.
+    const alt = (k) => (Math.random() < 0.5 && this.buf[k + '_b'] ? k + '_b' : k);
+    if (kind === 'open' || kind === 'exit') this.play(alt('door_open'), { vol: 0.55, rate: 0.95 + Math.random() * 0.1 });
+    if (kind === 'close') this.play(alt('door_close'), { vol: 0.7, rate: 0.95 + Math.random() * 0.1 });
+    if (kind === 'exit') this.play(alt('door_close'), { vol: 0.7, delay: 0.65, rate: 0.95 + Math.random() * 0.1 });
   }
 
   moo(x, z, camera) {
@@ -668,7 +787,9 @@ export class Audio {
 
   thunder(delay = 1, strength = 1) {
     if (!this.enabled) return;
-    const key = strength > 0.85 ? 'thunder_near' : 'thunder_far';
+    const base = strength > 0.85 ? 'thunder_near' : 'thunder_far';
+    const key = Math.random() < 0.5 && this.buf[base + '_b'] ? base + '_b' : base;
+    this.get(base + '_b');
     if (!this.buf[key]) { this.get(key); return this.synth.thunder(delay, strength); }
     this.play(key, { vol: 0.45 + 0.5 * strength, delay, rate: 0.9 + Math.random() * 0.2, verb: 0, bus: this.ambIn });
   }

@@ -52,3 +52,32 @@ whoosh1|2023|InspectorJ - 96 General Library/WHSH_InsJ_Whooshing_Low_Double_01-0
 whoosh2|2023|Justsoundeffects - Transition Whooshes Vol. 1/SWSH_Woodstick Swish 03_JSE_TW1.mp3
 train_door|2023|InspectorJ - 96 General Library/TRNMech_InsJ_Train-Door_Closing-Beeping_Distant_02.mp3
 metro_inside|2018|George Karagioules - The Source. Ambiences from Athens/Athens Metro. Inside the moving Train..mp3
+
+# Sonniss #GameAudioGDC 2026 bundle (release "Sonniss_Sounds" in this repository, zips 1-5).
+# Extract these into a folder and run: python3 tools/sounds/build_sonniss.py <folder> .
+zx10r_leave|2026|VEHMoto_Kawasaki Ninja ZX 10R Engine Start Leave 06_SNDBTS_MCK.wav
+cb500_burnout|2026|VEHSkid_Honda CB500F Engine Start Tires Skidding Stop 02_SNDBTS_MCH.wav
+boat_diesel|2026|BOATMotr_Diesel Engine Boat Idle Steady Rpm Hum Motor Mic One 01_ESM_CPS.wav
+horn_cb500|2026|VEHHorn_Honda CB500F Horn Long 02_SNDBTS_MCH.wav
+horn_zx10r|2026|VEHHorn_Kawasaki Ninja ZX 10R Horn Single 03_SNDBTS_MCK.wav
+gravel|2026|VEHSkid_Tire Skids on Gravel 15 06_SNDBTS_CRS-MMM.wav
+door_mustang|2026|VEHDoor_Car Foley Car Door Open and Close Exterior 04 Perspective A_SNDBTS_CRS-MMM.wav
+cabin|2026|VEHCar_TownDrivingAmbience06_InMotionAudio_CarInteriorDrivingAmbience.wav
+traffic_pass|2026|AMBTraf_Traffic Multiple Cars Passing By 25_SNDBTS_PB-TTC2.wav
+truck_pass|2026|VEHFrght_Freight Truck Pass By 22_SNDBTS_PB-TTC2.wav
+train_electric|2026|TRNElec_Train Electric Passenger By Close Right To_The Noisery_Transit Tunes_ The German Train Collection_01.wav
+train_pass|2026|TRNMisc_Pass By Train 41_SNDBTS_PB-TTC2.wav
+madrid|2026|AMBUrbn_Ambience, City, Madrid, Spain, Soft Traffic and Human Activity, Some Birds-Surround_KSL_KS016.wav
+city_rain|2026|RAINConc_Rain Medium Exterior Splatter City Traffic 6_The Noisery_City Rain.wav
+city_storm|2026|SBsna_City Block Square Storm 003.wav
+texas_storm|2026|STORM_Texas Rain Thunder Initial Crash Boom Storm 01 Clap Lightning_ESM_CPS.wav
+int_thunder|2026|THUN_Interior Thunder Rumble_JF_INT Storm_01.wav
+punch4|2026|FGHTImpt_4 x Punch, Body 02_344 Audio_Cinematic Fight Vol 1.wav
+punch_smack|2026|FGHTImpt_Combat Punch Impact Light Hit Delay Crunchy Vintage Quick Smack 05_ESM_AG.wav
+metal_thud|2026|DSGNImpt_Metal Hit Thud Thump Low Ring Geofon 1_The Noisery_Moaning Metal.wav
+metal_swing|2026|METLImpt_METAL SWING HIT Weapon Swing To Metallic Body Impact And Resonant Tail 01_DDUMAIS_MWP2.wav
+tire_iron|2026|METLImpt_Metal Old File Impact Tap Against Tire Iron Metallic Hit 01_ESM_HDGM.wav
+metal_bangs|2026|METLImpt_Metal Bangs, Metal Hits, Banging On Doors_344 Audio_Haunting Ambiences Vol 3.wav
+glass_shards|2026|GLASMvmt_Whoosh Glass Crystal Fragments Sharp Shards Dry 05_ESM_EMWI.wav
+scrape|2026|DSGNTonl_Metal Scrape Low Tonal LFE 4_The Noisery_Moaning Metal.wav
+dogs|2026|ANMLDog_Dog Barks, Multiple, Indoors, Perspective,_344 Audio_Dog Vocalisations_02.wav

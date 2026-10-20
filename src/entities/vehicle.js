@@ -85,7 +85,7 @@ export class Vehicle {
   }
 
   addRider(rng = Math.random, opts) {
-    const open = ['scooter', 'delivery', 'bike', 'auto', 'goodsAuto'].includes(this.type);
+    const open = ['scooter', 'delivery', 'bike', 'sportBike', 'auto', 'goodsAuto'].includes(this.type);
     if (this.rider || !open) return;
     const two = this.spec.twoWheeler;
     const o = opts || {
@@ -267,9 +267,11 @@ export class Vehicle {
   collideStatic(colliders) {
     let impact = 0;
     const circles = this.circles(this._c || (this._c = []));
+    this.touchT = Math.max(0, (this.touchT || 0) - 1); // frames since rubbing against something
     for (const c of circles) {
       const hit = colliders.resolveCircle(c.x, c.z, c.r, this.y);
       if (!hit) continue;
+      this.touchT = 4;
       this.x += hit.x - c.x; this.z += hit.z - c.z;
       // Velocity of the contact point (body velocity plus rotation).
       const px = c.x - this.x, pz = c.z - this.z;

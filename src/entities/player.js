@@ -497,7 +497,7 @@ export class Player {
 
   seat(v) {
     const h = this.human;
-    if (['scooter', 'delivery', 'bike', 'auto', 'goodsAuto'].includes(v.type)) {
+    if (['scooter', 'delivery', 'bike', 'sportBike', 'auto', 'goodsAuto'].includes(v.type)) {
       poseSit(h);
       v.seatHuman(h);
       h.group.visible = true;

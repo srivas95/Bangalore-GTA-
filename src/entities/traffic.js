@@ -8,7 +8,7 @@ import { LANE_W } from '../config.js';
 
 const rng = mulberry32(4242);
 const BASE_MIX = {
-  scooter: 0.2, delivery: 0.07, bike: 0.07, auto: 0.16, goodsAuto: 0.03, hatch: 0.1, sedan: 0.06, taxi: 0.07,
+  scooter: 0.2, delivery: 0.07, bike: 0.06, sportBike: 0.03, auto: 0.16, goodsAuto: 0.03, hatch: 0.1, sedan: 0.06, taxi: 0.07,
   suv: 0.05, tempo: 0.025, miniTruck: 0.03, bus: 0.055, schoolBus: 0.015, lorry: 0.015, tanker: 0.012, hoysala: 0.008,
 };
 const HEAVY = new Set(['bus', 'schoolBus', 'lorry', 'tanker', 'tempo', 'goodsAuto', 'miniTruck']);

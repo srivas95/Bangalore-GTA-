@@ -198,7 +198,7 @@ async function init() {
       park(type, p.x, p.z, heading, o);
     });
   }
-  const types = ['scooter', 'scooter', 'bike', 'auto', 'hatch', 'sedan', 'taxi', 'suv', 'delivery'];
+  const types = ['scooter', 'scooter', 'bike', 'sportBike', 'auto', 'hatch', 'sedan', 'taxi', 'suv', 'delivery'];
   for (const b of layout.blocks) {
     if (b.edge || b.zone === 'lake' || b.zone === 'park' || b.zone === 'industrial' || b.zone === 'landmark' || b.zone === 'rural') continue;
     const cbd = Math.hypot(b.cx - 300, b.cz) < 650;
@@ -242,6 +242,8 @@ async function init() {
     footpathNear, park, metroRide,
   };
   world.free = free;
+  world.metroTrains = metro.trains;
+  world.railTrains = city.rail.trains;
   const story = new Story(scene, hud, audio, missions, world);
   world.saveGame = () => story.save();
   const garages = new Garages(scene, layout, colliders, hud, audio, missions, world, city.pois);

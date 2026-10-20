@@ -7,6 +7,7 @@ const HORNS = {
   scooter: { kind: 'beep', f: [610, 770], type: 'square', dur: 0.15, vol: 0.14, lp: 2600 },
   scooterHi: { kind: 'beep', f: [760, 960], type: 'square', dur: 0.11, vol: 0.13, lp: 3000 },
   bike: { kind: 'beep', f: [355, 450], type: 'sawtooth', dur: 0.24, vol: 0.2, lp: 1500 },
+  sport: { kind: 'beep', f: [520, 640], type: 'square', dur: 0.14, vol: 0.15, lp: 2600 },
   auto: { kind: 'bulb', f: [930], type: 'square', dur: 0.17, vol: 0.18, lp: 2400 },
   autoLow: { kind: 'bulb', f: [690], type: 'square', dur: 0.2, vol: 0.18, lp: 2000 },
   car: { kind: 'beep', f: [415, 505], type: 'sawtooth', dur: 0.28, vol: 0.17, lp: 2200 },
@@ -97,7 +98,7 @@ export class SynthAudio {
     if (!vehicle || vehicle.stalled) { this.eGain.gain.setTargetAtTime(0, t, 0.1); return; }
     const s = vehicle.spec.engine;
     const sp = Math.abs(vehicle.forwardSpeed) / vehicle.spec.maxSpeed;
-    const gears = s === 'car' ? 5 : s === 'bus' ? 4 : s === 'bike' ? 4 : 1;
+    const gears = s === 'car' ? 5 : s === 'bus' ? 4 : s === 'bike' ? 4 : s === 'sport' ? 6 : 1;
     const g = Math.min(gears - 1, Math.floor(sp * gears));
     const rpm = gears > 1 ? (sp * gears - g) * 0.7 + 0.3 : sp;
     const base = { scooter: 90, bike: 42, auto: 55, car: 60, bus: 38 }[s];

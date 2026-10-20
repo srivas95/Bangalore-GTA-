@@ -9,7 +9,7 @@ inside its build only, so don't publish the `public/audio` folder (or this repos
 sound pack. Licence: <https://sonniss.com/gdc-bundle-license/>.
 
 We credit the recordists anyway, because they made the city sound like a city. The source files
-are listed in `tools/sounds/sources.txt`, and `tools/sounds/` has the script that cut, looped and
+are listed in `tools/sounds/sources.txt`, and `tools/sounds/` has the scripts that cut, looped and
 encoded them.
 
 | Used for | Recording | Publisher / recordist |
@@ -48,6 +48,34 @@ encoded them.
 | Splash | Magic Elements vol. 2 | Articulated Sounds |
 | Cows | Animal Farm | Sound Ex Machina |
 | Footsteps | Edward – Foleyart Collection, extended footsteps (asphalt) | Tovusound |
+
+### From the 2026 bundle
+
+These come from the Sonniss #GameAudioGDC 2026 bundle (parts 1–5), under the same royalty-free
+licence. `tools/sounds/build_sonniss.py` cuts them from the bundle's WAV files.
+
+| Used for | Recording | Publisher / recordist |
+|---|---|---|
+| Sports bike engine (idle and revs, pitch-flattened into loops), start-up | Kawasaki Ninja ZX-10R engine start and leave | SoundBits (Motorcycles – Kawasaki) |
+| Motorbike start-up; motorbike tyre skid | Honda CB500F engine start, tyres skidding, stop | SoundBits (Motorcycles – Honda) |
+| Motorbike horns | Honda CB500F horn (long); Kawasaki Ninja ZX-10R horn (single) | SoundBits |
+| Bus and lorry idle | Diesel engine boat idle, steady rpm | Epic Stock Media (Public Spaces – Basic Transportation) |
+| Tyres on gravel | Tire skids on gravel | SoundBits (Cars – Mad Mustang Mercury) |
+| Car doors (second set) | Car door open and close, exterior | SoundBits (Cars – Mad Mustang Mercury) |
+| Road roar inside a car | Town driving ambience (car interior) | InMotionAudio |
+| Passing traffic | Traffic, multiple cars passing by | SoundBits (Pass-By – Trains, Trucks & Cars 2) |
+| Lorries and buses going past | Freight truck pass-by | SoundBits (Pass-By – Trains, Trucks & Cars 2) |
+| Railway trains | Pass-by train | SoundBits (Pass-By – Trains, Trucks & Cars 2) |
+| Metro trains | Electric passenger train, close pass-by (The German Train Collection) | The Noisery (Transit Tunes) |
+| City at night | City ambience, Madrid: soft traffic and human activity | Sonik Sound Library (Urban Life) |
+| Rain on city streets | Rain, medium, exterior splatter, city traffic | The Noisery (City Rain) |
+| Monsoon storms | City block square storm | Sonic Bat (Stormy Night Ambience) |
+| Thunder (more takes) | Texas rain and thunder, initial crash; interior thunder rumble | Epic Stock Media; Jake Fielding |
+| Punches (more takes) | 4 x punch, body; combat punch impact | 344 Audio (Cinematic Fight); Epic Stock Media (Anime Game) |
+| Crashes and metal hits (more takes) | Metal bangs and hits; metal hit thud; metal swing hit; tyre-iron tap | 344 Audio (Haunting Ambiences); The Noisery (Moaning Metal); David Dumais Audio; Epic Stock Media |
+| Bodywork scraping along walls | Metal scrape, low tonal | The Noisery (Moaning Metal) |
+| Glass (more takes) | Glass crystal fragments | Epic Stock Media (Elemental Mutation) |
+| Street dogs at night | Dog barks, multiple | 344 Audio (Dog Vocalisations) |
 
 ## Voices
 
