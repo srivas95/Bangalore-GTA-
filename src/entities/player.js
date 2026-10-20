@@ -226,6 +226,7 @@ export class Player {
       const target = this.nearestTarget(world, 2.4);
       if (target) this.heading = Math.atan2(target.x - this.x, target.z - this.z);
       world.audio?.whoosh();
+      world.audio?.effort(false);
     }
 
     const f = input.axis(['KeyS', 'ArrowDown'], ['KeyW', 'ArrowUp']);
@@ -414,6 +415,7 @@ export class Player {
         v.removeRider();
         world.streetLife.spawnFleeing(v.x - Math.cos(v.heading) * 1.5, v.z + Math.sin(v.heading) * 1.5, this.x, this.z, opts);
         world.hud.say(`"${LINES.carjacked[Math.floor(Math.random() * LINES.carjacked.length)]}"`, 3);
+        world.audio?.voice(Math.random() < 0.5 ? 'vo_hi_chor' : 'vo_kn_nanage_sahaya_madi', { x: v.x, z: v.z, gender: opts.female ? 'f' : 'm' });
       } else world.hud.say('Conductor: "Ticket ticket! ...oh. You\'re DRIVING it?"', 3);
       world.crime?.(v.spec.police ? 'Stealing a Hoysala' : 'Vehicle theft', v.x, v.z, v.spec.police ? 2 : 1);
     }

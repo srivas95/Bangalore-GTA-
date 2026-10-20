@@ -2,7 +2,7 @@
 // (and jaywalk), chai-stall regulars, cows, and how people react when you hit them.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { createHuman, animateWalk, poseIdle, poseDown, poseWait, posePunch, poseFight, poseHandsUp, poseStagger } from './human.js';
+import { createHuman, animateWalk, poseIdle, poseDown, poseWait, posePunch, poseFight, poseHandsUp, poseStagger, poseHail } from './human.js';
 import { MeshBuilder, BuilderSet } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 import { mulberry32 } from '../world/textures.js';
@@ -38,6 +38,14 @@ function loopPoint(L, t, lat) {
   for (const q of L.segs) { if (t < q.t0 + q.l) { s = q; break; } }
   const d = t - s.t0;
   return { x: s.x + s.ux * d + s.nx * lat, z: s.z + s.uz * d + s.nz * lat };
+}
+
+// The outward (roadside) direction at distance t round the loop.
+function loopNormal(L, t) {
+  t = ((t % L.len) + L.len) % L.len;
+  let s = L.segs[L.segs.length - 1];
+  for (const q of L.segs) { if (t < q.t0 + q.l) { s = q; break; } }
+  return s;
 }
 
 function nearestT(L, x, z) {
@@ -85,6 +93,7 @@ export class StreetLife {
   freePed(p, index) {
     this.scene.remove(p.h.group);
     if (this.pool.length < 80 && !p.temp) this.pool.push(p.h);
+    else { p.h.torso.geometry.dispose(); p.h.torso.skeleton.dispose(); } // pool full: free its GPU buffers
     if (index >= 0) this.peds.splice(index, 1);
   }
 
@@ -166,18 +175,25 @@ export class StreetLife {
   // Killed: down for good.
   kill(p, vx, vz, audio) {
     if (p.dead) return;
+    audio?.death(p.h.female, p.x, p.z);
     if (p.kind === 'crowd' || p.kind === 'stall') this.detach(p);
     p.state = 'walk'; // so knock() takes effect
     this.knock(p, vx, vz, audio);
     p.dead = true; p.deadT = 0; p.health = 0;
   }
 
-  // Gunfire or a blade nearby: everyone runs.
+  // Gunfire or a blade nearby: everyone runs, and a few of them scream.
   panic(x, z, r) {
+    let screams = 0, n = 0;
     for (const q of this.peds) {
       if (q.state === 'down' || q.dead) continue;
-      if (Math.abs(q.x - x) < r && Math.abs(q.z - z) < r) this.scare(q, x, z);
+      if (Math.abs(q.x - x) < r && Math.abs(q.z - z) < r) {
+        if (q.state !== 'flee' && screams < 2 && rng() < 0.35) { screams++; this.audio?.scream(q.h.female, q.x, q.z); }
+        this.scare(q, x, z);
+        n++;
+      }
     }
+    if (n > 6) this.audio?.crowdScream(x, z);
   }
 
   // Player melee (or a bullet) lands on a pedestrian.
@@ -185,7 +201,7 @@ export class StreetLife {
     if (p.dead) return;
     p.health -= dmg;
     world.audio?.punch(kick);
-    world.audio?.grunt(p.h.female);
+    world.audio?.grunt(p.h.female, p.x, p.z);
     if (lethal && p.health <= 0) {
       this.kill(p, dirX * 5, dirZ * 5, world.audio);
       this.panic(p.x, p.z, 30);
@@ -213,6 +229,33 @@ export class StreetLife {
     const a = Math.atan2(q.x - fromX, q.z - fromZ) + rand(-0.5, 0.5);
     q.state = 'flee'; q.timer = rand(3, 6);
     q.vx = Math.sin(a) * 4.5; q.vz = Math.cos(a) * 4.5;
+  }
+
+  // Someone waving down an auto at the kerb (until they're picked up, or give up and walk on).
+  hail(p) {
+    if (p.kind !== 'walker') this.detach(p);
+    p.state = 'hail';
+  }
+
+  unhail(p) {
+    if (p.state === 'hail') { p.state = 'walk'; p.lat = 0; }
+  }
+
+  // They got into a vehicle: off the street, and their figure goes with them.
+  take(p) {
+    const i = this.peds.indexOf(p);
+    if (i >= 0) this.peds.splice(i, 1);
+    return p.h;
+  }
+
+  // Back on the street after a ride: walk off along the nearest footpath.
+  adopt(h, x, z) {
+    this.scene.add(h.group);
+    h.group.visible = true;
+    h.group.rotation.set(0, 0, 0);
+    const L = this.nearestLoop(x, z);
+    const p = this.newPed(h, { kind: 'walker', L, t: nearestT(L, x, z), dir: rng() < 0.5 ? 1 : -1, speed: rand(1.1, 1.5), lat: 0, x, z, temp: false });
+    return p;
   }
 
   // Crowd/stall people become ordinary walkers once disturbed.
@@ -343,6 +386,14 @@ export class StreetLife {
         case 'idle':
           poseIdle(p.h, t);
           break;
+        case 'hail': {
+          p.lat += (1.75 - p.lat) * Math.min(1, dt * 2);
+          const q = loopPoint(p.L, p.t, p.lat), n = loopNormal(p.L, p.t);
+          p.x = q.x; p.z = q.z;
+          turnTo(p.h, Math.atan2(n.nx, n.nz), dt * 6);
+          poseHail(p.h, t);
+          break;
+        }
         case 'wait': {
           const n = p.node;
           if (sig.pedPhase(n) && !p.crossed && rng() < dt * 1.5) { p.crossed = true; this.startCrossing(p, rng() < 0.5); }

@@ -220,7 +220,7 @@ export class Police {
     if (c.dead) return;
     c.health -= dmg;
     this.audio?.punch(kick);
-    this.audio?.grunt(false);
+    this.audio?.grunt(false, c.x, c.z);
     if (lethal && c.health <= 0) { c.dead = true; c.state = 'down'; c.timer = 1e9; c.vx = fx * 4; c.vz = fz * 4; c.h.weaponMesh && (c.h.weaponMesh.visible = false); }
     else if (c.health <= 0 || kick) { c.state = 'down'; c.timer = 5; c.vx = fx * (kick ? 6 : 3); c.vz = fz * (kick ? 6 : 3); }
     else { c.x += fx * 0.6; c.z += fz * 0.6; c.flinch = 0.35; }

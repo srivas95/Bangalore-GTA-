@@ -53,14 +53,14 @@ and signing.
 | Tab / 1-9 | Switch weapon |
 | C | Look behind while driving |
 | F (or E) | Get in or out of a vehicle. Works on traffic too ("borrowing") |
-| H (or Q) | Horn (every vehicle type sounds different) |
+| H (or Q) | Horn (every vehicle type sounds different). On foot by a road: wave down an auto |
 | G | Siren, when you're driving a Hoysala |
-| E | At a metro station entrance: buy a token and ride |
-| J | Accept the gig on your phone |
+| E | At a metro station entrance: buy a token and ride. At a BMTC bus stop: pick a bus and a stop |
+| J | Accept the gig on your phone. In an auto: go on (or off) duty and pick up fares |
 | M | City map (scroll or pinch to zoom, drag to move, click or tap to set a GPS waypoint) |
 | R | Radio on/off |
 | K | Summon (or stop) the monsoon |
-| T | Fast-forward time ×30; on the metro, skip the wait or the ride |
+| T | Fast-forward time ×30; on the metro, a bus or an auto: skip the wait or the ride |
 | O | Quick switch to the Low graphics preset |
 | Esc | Pause |
 
@@ -109,6 +109,31 @@ and signing.
     if needed (the two lines' halls are on different levels).
   - Wait on the platform for a real train going your way, then ride it.
   - **T** skips the wait or the ride.
+
+### Autos and BMTC buses
+
+- **Waving down an auto.** Stand at any roadside and press **H**: an auto pulls in.
+  - Tell the driver where to go: a district, or your GPS waypoint. Each shows a fare estimate.
+  - Ride in the back through the real traffic while the meter runs at the Bengaluru tariff: ₹30 for
+    the first 2 km, ₹15 a km after that, one-and-a-half fare from 10 pm.
+  - **F** asks him to stop early, and **T** skips the ride.
+  - Drivers are drivers: some ask for "twenty extra", and some won't go to the far end of town.
+- **BMTC buses.** Nine routes after real ones (500D Hebbal–Silk Board, 335E Majestic–Whitefield, 13
+  to Banashankari, G-3 to Electronic City Road and more) run both ways.
+  - Their stops have shelters on the footpath and show as blue dots on the minimap.
+  - At a stop, press **E**, pick a stop further down one of its routes, and wait for the bus.
+  - The conductor sells you a ticket by stage (₹6 a stage).
+  - The bus stops at every stop on the way. **E** gets you off at the next one, and **T** skips
+    ahead.
+
+### Driving an auto for a living
+
+- **Going on duty.** In any auto (yours, borrowed or stolen), press **J**.
+- **Picking up fares.** People on the footpaths wave you down (yellow markers). Pull up beside one;
+  they climb in the back and say where they're going, and the GPS shows the way.
+- **The meter.** It runs at the real tariff. Drive gently and they tip. Crash, speed or bring the
+  police along and they make you stop, then walk off without paying.
+- **When it's busy.** Rain and rush hour bring more fares.
 
 ### Vehicles and driving
 
@@ -192,6 +217,12 @@ and signing.
 - **The city around you.** An Indian junction by day, birds and temple bells in the parks at dawn
   and dusk, crickets at night, frogs by the lakes, rain that builds into a downpour, the inside of
   a metro train. A closed car muffles it all.
+- **Real voices.** Fights, falls and panics use recorded grunts, efforts, screams and gasps, men's
+  and women's, instead of synthesised ones. Crowds chatter with Indian voices.
+  - Passengers, auto drivers and conductors speak real Kannada and Hindi words (*sari*, *illi
+    nillisi*, *dhanyavadagalu*, *tikat*) recorded by native speakers for Lingua Libre.
+  - A carjacked driver shouts "*Chor!*".
+  - Credits and licences are in [SOUND_CREDITS.md](SOUND_CREDITS.md).
 - **Hits, guns and the rest** are recordings too: punches, crashes, glass, a revolver and a
   country-made katta, doors, footsteps, tyre screech, thunder and cows. Underpasses and the metro
   add an echo.
@@ -212,7 +243,8 @@ and signing.
     the ambush on Magadi Road.
   - Mission givers are pink markers on the map.
   - Progress and money are **saved** in the browser.
-- **Gigs.** Food deliveries and auto fares keep the money coming between missions.
+- **Gigs.** Food deliveries and auto fares keep the money coming between missions. Delivery
+  orders arrive on your phone; auto fares wave you down from the street.
 
 See **[docs/GAME_OUTLINE.md](docs/GAME_OUTLINE.md)** for the game outline: pillars, map, core loop, systems,
 art direction and what's next.
@@ -254,6 +286,9 @@ src/
   systems/
     story.js           Story missions (step scripts), mission givers, saving
     metroRide.js       Tokens, platforms, riding, interchange, skipping
+    rides.js           Hailing autos and riding them; BMTC routes, stops, shelters and bus rides
+    autoDuty.js        Driving an auto for fares: hailers, the meter, passengers' moods
+    route.js           Shortest paths on the road graph (GPS, hired autos, bus routes)
     police.js          Wanted level, Hoysala pursuit AI, constables, busting
     weapons.js         Weapon table, raycasts, pickups
     signals.js         Signal phases by approach, heads, traffic constables
@@ -263,7 +298,7 @@ src/
     soundBank.json     Loop points and pitches for public/audio/*.mp3 (built by tools/sounds)
     settings.js        Graphics/control settings and presets
     garages.js         Repair stalls, Chikka Motors, owned vehicles
-    missions.js        Gigs; also cameraRig.js, colliders.js (incl. oriented boxes), particles.js, input.js
+    missions.js        Delivery gigs; also cameraRig.js, colliders.js (incl. oriented boxes), particles.js, input.js
   ui/hud.js            Minimap, health ring, wanted stars, clock/weather, map, mission panel
   ui/touch.js          On-screen joystick, look drag and context buttons for phones
 apps/

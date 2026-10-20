@@ -1,4 +1,4 @@
-# Graphics engine options (review, October 2026)
+# Graphics engine options (review, October 2026; updated for v0.9.0)
 
 **Question:** should the game move to a different graphics engine or rendering model to fix how it looks
 and runs?
@@ -52,14 +52,33 @@ to WebGL2 by itself.
 
 1. **Done in v0.8.0:** performance fixes and an art and lighting pass in the current WebGL2 renderer (see "Look"
    in the README).
-2. **Next:** upgrade three.js to the current release, still on WebGLRenderer. Re-check shadows (PCFSoftShadowMap
-   was removed upstream), the energy-conserving PBR change, and Clock → Timer.
-3. **Then:** port the custom shaders (`ao.js`, `blobs.js`, `surface.js`, `meshBuilder.js` PBR, `halos.js`,
-   `sky.js`, particles) to TSL node materials and switch to WebGPURenderer with its WebGL2 fallback. Add tiered
-   post-processing:
-   - phones: bloom and LUT grading;
-   - desktop: GTAO, TRAA and SSR.
+2. **Done in v0.9.0:** three.js upgraded from r170 to r186, still on WebGLRenderer. Every shader hook the game
+   patches still exists in r186. PCFSoftShadowMap is gone, so shadows use r186's PCF, which samples a rotated
+   Vogel disk (`shadow.radius` 2.5). Clock was replaced by Timer.
+3. **Deferred, after measuring:** porting the custom shaders to TSL node materials and switching to
+   WebGPURenderer. The benchmark below says it would make the game slower on most devices today.
 4. **Only if native-quality mobile becomes the goal:** prototype a native Godot build alongside the web game.
+
+### WebGPURenderer, measured (October 2026, three.js r186)
+
+A city-like test scene (462 draw calls, 433k triangles, a cached sun shadow map, fog and an environment
+map) was timed in headless Chromium with software rendering. The figure is the CPU time spent in
+`renderer.render()` per frame:
+
+| Renderer | Median | 90th percentile |
+|---|---|---|
+| WebGLRenderer (what the game uses) | 2.4–2.7 ms | 6.0–6.8 ms |
+| WebGPURenderer, WebGL2 fallback | 4.4–5.4 ms | 8.7–9.1 ms |
+| WebGPURenderer, WebGPU | failed: r186 asks for texture-view swizzle, which this Chromium build lacks | – |
+
+- **The fallback is about twice as expensive.** That's the path most Android phones would take: only about
+  three in four Android browsers have WebGPU, and older WebViews lack features r186 relies on. On those
+  phones, the switch would cost frame rate rather than add it.
+- **The visual gains need WebGPU proper.** Those gains are GTAO, SSR and TRAA, which are post effects for
+  fast desktop GPUs.
+- **Revisit when three.js closes the overhead gap,** or if the game moves to a desktop-first visual tier.
+  The port itself is contained: 6 `onBeforeCompile` patches, 6 shader materials, 2 global shader-chunk
+  patches and the bloom pass.
 
 Sources: [three.js WebGPURenderer manual](https://threejs.org/manual/pages/webgpurenderer.html),
 [gpuweb implementation status](https://github.com/gpuweb/gpuweb/wiki/Implementation-Status),

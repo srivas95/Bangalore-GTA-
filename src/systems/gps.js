@@ -1,5 +1,6 @@
 // GPS: a waypoint set on the big map, and the shortest route to it along the road network,
 // recalculated when you stray from it. Drawn on the minimap and the big map.
+import { planNodes } from './route.js';
 
 export class GPS {
   constructor(layout) {
@@ -44,77 +45,13 @@ export class GPS {
     return best;
   }
 
-  // A* over junctions, entering and leaving the network at the nearest points on the nearest roads.
+  // Shortest route, entering and leaving the network at the nearest points on the nearest roads.
   plan(x, z, tx, tz) {
-    const L = this.layout;
-    const hs = L.edgeAt(x, z), ht = L.edgeAt(tx, tz);
-    if (!hs || !ht) return [[x, z], [tx, tz]];
+    const r = planNodes(this.layout, x, z, tx, tz);
+    if (!r) return [[x, z], [tx, tz]];
     const proj = (h) => [h.e.a.x + (h.e.b.x - h.e.a.x) * h.t, h.e.a.z + (h.e.b.z - h.e.a.z) * h.t];
-    const ps = proj(hs), pt = proj(ht);
-    if (hs.e === ht.e) return [[x, z], ps, pt, [tx, tz]];
-    const heur = (n) => Math.hypot(n.x - pt[0], n.z - pt[1]);
-    const g = new Map(), prev = new Map(), done = new Set();
-    const heap = new Heap();
-    const open = (n, cost, from) => {
-      if (cost >= (g.get(n) ?? Infinity)) return;
-      g.set(n, cost); prev.set(n, from);
-      heap.push(cost + heur(n), n);
-    };
-    open(hs.e.a, hs.t * hs.e.len, null);
-    open(hs.e.b, (1 - hs.t) * hs.e.len, null);
-    const goalCost = new Map([[ht.e.a, ht.t * ht.e.len], [ht.e.b, (1 - ht.t) * ht.e.len]]);
-    let best = null, bestCost = Infinity;
-    while (heap.size) {
-      const n = heap.pop();
-      if (done.has(n)) continue;
-      done.add(n);
-      const c = g.get(n);
-      if (c + heur(n) >= bestCost) break;
-      if (goalCost.has(n) && c + goalCost.get(n) < bestCost) { bestCost = c + goalCost.get(n); best = n; }
-      for (const h of n.adj) {
-        const m = h.e.a === n ? h.e.b : h.e.a;
-        if (!done.has(m)) open(m, c + h.e.len, n);
-      }
-    }
-    if (!best) return [[x, z], [tx, tz]];
-    const nodes = [];
-    for (let n = best; n; n = prev.get(n)) nodes.push([n.x, n.z]);
-    nodes.reverse();
-    return [[x, z], ps, ...nodes, pt, [tx, tz]];
-  }
-}
-
-// Minimal binary min-heap of (priority, item).
-class Heap {
-  constructor() { this.p = []; this.v = []; }
-  get size() { return this.v.length; }
-  push(p, v) {
-    const P = this.p, V = this.v;
-    let i = V.length;
-    P.push(p); V.push(v);
-    while (i > 0) {
-      const j = (i - 1) >> 1;
-      if (P[j] <= P[i]) break;
-      [P[i], P[j]] = [P[j], P[i]]; [V[i], V[j]] = [V[j], V[i]];
-      i = j;
-    }
-  }
-  pop() {
-    const P = this.p, V = this.v, top = V[0];
-    const lp = P.pop(), lv = V.pop();
-    if (V.length) {
-      P[0] = lp; V[0] = lv;
-      let i = 0;
-      for (;;) {
-        const l = 2 * i + 1, r = l + 1;
-        let m = i;
-        if (l < V.length && P[l] < P[m]) m = l;
-        if (r < V.length && P[r] < P[m]) m = r;
-        if (m === i) break;
-        [P[i], P[m]] = [P[m], P[i]]; [V[i], V[m]] = [V[m], V[i]];
-        i = m;
-      }
-    }
-    return top;
+    const ps = proj(r.hs), pt = proj(r.ht);
+    if (r.hs.e === r.ht.e) return [[x, z], ps, pt, [tx, tz]];
+    return [[x, z], ps, ...r.nodes.map((n) => [n.x, n.z]), pt, [tx, tz]];
   }
 }

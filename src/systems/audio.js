@@ -300,9 +300,21 @@ export class Audio {
     return { src, g, t, gv };
   }
 
-  pick(prefix) {
-    const keys = Object.keys(BANK).filter((k) => k.startsWith(prefix + '_') && this.buf[k]);
+  pick(prefix, gender) {
+    let keys = Object.keys(BANK).filter((k) => k.startsWith(prefix + '_') && this.buf[k]);
+    if (gender) { const g = keys.filter((k) => BANK[k].g === gender); if (g.length) keys = g; }
     return keys.length ? keys[Math.floor(Math.random() * keys.length)] : null;
+  }
+
+  // A recorded voice: a random take of a key prefix (such as 'vo_hit_m'), placed in the world, or
+  // close by when no position is given. False when there's no recording for it (yet).
+  // gender 'm' or 'f' prefers that speaker's takes.
+  voice(prefix, { x, z, vol = 0.9, ref = 6, rate, gender } = {}) {
+    if (!this.enabled) return false;
+    const key = this.pick(prefix, gender);
+    if (!key) return false;
+    this.play(key, { vol: vol * (BANK[key].gain ?? 1), x, z, ref, roll: 1.4, rate: rate ?? 0.97 + Math.random() * 0.06, verb: 0.08 });
+    return true;
   }
 
   distGain(x, z, camera, ref = 25) {
@@ -407,6 +419,11 @@ export class Audio {
       b.g.gain.setTargetAtTime(v, t, tc);
     };
     level('amb_city', (0.5 * day + 0.14) * (1 - 0.45 * rain) * (1 - 0.6 * Math.max(park, lake)));
+    // Chatter of the crowds you're among (signal corners, chai stalls, markets).
+    let crowd = 0;
+    for (const p of s.world?.streetLife?.peds || []) if (Math.abs(p.x - L.x) < 30 && Math.abs(p.z - L.z) < 30) crowd++;
+    this.crowd = (this.crowd || 0) + (Math.min(1, crowd / 14) - (this.crowd || 0)) * Math.min(1, dt);
+    level('amb_walla_0', 0.55 * this.crowd * (0.4 + 0.6 * day) * (1 - 0.7 * rain));
     level('amb_park', (0.55 * Math.max(park, lake * 0.6) * day + 0.25 * chorus) * (1 - 0.7 * rain));
     level('amb_night', 0.45 * smooth(0.3, 0.9, night) * (1 - 0.8 * rain) * (1 - 0.5 * lake));
     level('amb_frogs', 0.6 * lake * smooth(0.4, 0.9, night + rain * 0.5));
@@ -615,7 +632,16 @@ export class Audio {
     this.play(k, { vol: 0.35, rate: 0.9 + Math.random() * 0.3, verb: 0 });
   }
 
-  grunt(high = false) { if (this.enabled) this.synth.grunt(high); }
+  // Voices: recorded takes (see SOUND_CREDITS.md), with the synthesised grunt as a fallback.
+  // high: a woman's voice. x, z: where it comes from (else right here).
+  grunt(high = false, x, z) { if (this.enabled && !this.voice(high ? 'vo_hit_f' : 'vo_hit_m', { x, z })) this.synth.grunt(high); }
+  effort(high = false) { if (this.enabled && Math.random() < 0.6) this.voice(high ? 'vo_effort_f' : 'vo_effort_m', { vol: 0.7 }); }
+  scream(high, x, z) { if (this.enabled) this.voice(high ? 'vo_scream_f' : 'vo_scream_m', { x, z, ref: 10, vol: 0.8 }); }
+  death(high, x, z) { if (this.enabled && !this.voice(high ? 'vo_death_f' : 'vo_death_m', { x, z })) this.synth.grunt(high); }
+  crowdScream(x, z) {
+    if (!this.enabled || this.ctx.currentTime < (this.crowdT || 0)) return;
+    if (this.voice('vo_crowd_scream', { x, z, ref: 14, vol: 0.7 })) this.crowdT = this.ctx.currentTime + 8;
+  }
 
   splash() {
     if (!this.enabled) return;

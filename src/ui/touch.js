@@ -10,6 +10,7 @@ const BUTTONS = [
   { id: 'jump', label: 'JUMP', code: 'Space', foot: true },
   { id: 'run', label: 'RUN', code: 'ShiftLeft', toggle: true, foot: true },
   { id: 'weapon', label: '⇆', code: 'Tab', foot: true },
+  { id: 'hail', label: '🛺 AUTO', code: 'KeyH', foot: true, when: (c) => c.hail },
   // Driving
   { id: 'hand', label: 'BRAKE', code: 'Space', hold: true, car: true, big: true },
   { id: 'horn', label: 'HORN', code: 'KeyH', hold: true, car: true },
@@ -23,8 +24,10 @@ const TOP = [
   { id: 'pause', label: '❚❚', act: 'pause' },
   { id: 'map', label: 'MAP', code: 'KeyM' },
   { id: 'gig', label: '📱 ACCEPT', code: 'KeyJ', when: (c) => c.offer },
-  { id: 'skip', label: 'SKIP ⏩', code: 'KeyT', when: (c) => c.metro },
-  { id: 'leave', label: 'LEAVE', code: 'KeyQ', when: (c) => c.metro },
+  { id: 'duty', label: '🛺 DUTY', code: 'KeyJ', when: (c) => c.duty },
+  { id: 'skip', label: 'SKIP ⏩', code: 'KeyT', when: (c) => c.metro || ['wait', 'ride', 'busRide'].includes(c.ride) },
+  { id: 'stop', label: 'GET OFF', code: 'KeyF', when: (c) => c.ride === 'ride' || c.ride === 'busRide' },
+  { id: 'leave', label: 'LEAVE', code: 'KeyQ', when: (c) => c.metro || ['hail', 'wait'].includes(c.ride) },
 ];
 
 export class TouchControls {
@@ -145,7 +148,7 @@ export class TouchControls {
     for (const b of this.buttons) {
       let show = b.both || (b.foot && !car) || (b.car && car);
       if (show && b.when) show = b.when(ctx);
-      if (ctx.metro && b.id !== 'use') show = false;
+      if ((ctx.metro || ctx.ride) && b.id !== 'use') show = false;
       if (b.el.style.display !== (show ? '' : 'none')) {
         b.el.style.display = show ? '' : 'none';
         if (!show) this.up(b, true), this.toggled.delete(b.id), b.el.classList.remove('on');

@@ -62,7 +62,7 @@ export class Gangs {
   hit(m, dmg, fx, fz, world, lethal = true, knock = false) {
     if (m.dead) return;
     m.health -= dmg;
-    world.audio?.grunt(false);
+    world.audio?.grunt(false, m.x, m.z);
     this.alert(m, world);
     if (m.health <= 0) {
       m.dead = true; m.state = 'down'; m.vx = fx * 4; m.vz = fz * 4; m.deadT = 0;

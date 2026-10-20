@@ -65,6 +65,7 @@ export class Environment {
     Object.assign(this.sun.shadow.camera, { left: -S, right: S, top: S, bottom: -S, near: 1, far: 500 });
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.04;
+    this.sun.shadow.radius = 2.5;
     scene.add(this.sun, this.sun.target);
     // The shadow map holds only the static city (vehicles and people have soft contact shadows),
     // so it's redrawn only when the light moves: the sun turning, or the area re-centring.
@@ -328,7 +329,7 @@ export class Environment {
     this.sun.castShadow = mode === 'near' || mode === 'full';
     const size = near ? 1024 : this.maxShadowMap || 2048, S = near ? 45 : 85;
     const sh = this.sun.shadow;
-    if (sh.mapSize.x !== size) { sh.mapSize.set(size, size); sh.map?.dispose(); sh.map = null; }
+    if (sh.mapSize.x !== size) { sh.mapSize.set(size, size); sh.map?.dispose(); sh.map = null; this.renderer.shadowMap.needsUpdate = true; }
     Object.assign(sh.camera, { left: -S, right: S, top: S, bottom: -S });
     sh.camera.updateProjectionMatrix();
     this.shadowSize = S;

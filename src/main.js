@@ -23,6 +23,8 @@ import { Pickups, WEAPONS } from './systems/weapons.js';
 import { Gangs } from './entities/gangs.js';
 import { HUD } from './ui/hud.js';
 import { MetroRide } from './systems/metroRide.js';
+import { AutoDuty } from './systems/autoDuty.js';
+import { Rides } from './systems/rides.js';
 import { Story } from './systems/story.js';
 import { Settings, PRESETS } from './systems/settings.js';
 import { TouchControls } from './ui/touch.js';
@@ -84,7 +86,8 @@ async function init() {
   renderer.setPixelRatio(pixelRatio);
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // PCF with a rotated Vogel disk: soft edges from five hardware-filtered taps.
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   // Khronos PBR Neutral plus a grade (see CustomToneMapping above).
   renderer.toneMapping = THREE.CustomToneMapping;
   renderer.toneMappingExposure = 0.9;
@@ -391,6 +394,7 @@ async function init() {
   const respawn = () => {
     const p = nearestOf(pending.list, player.pos);
     if (player.vehicle) player.exitVehicle(world, true);
+    rides.abort(world);
     player.respawn(p.x, p.z);
     police.reset();
     missions.job && missions.fail('You missed the job.');
@@ -408,6 +412,11 @@ async function init() {
   // GPS: tap the big map to set a waypoint (tap it again to clear).
   const gps = new GPS(layout);
   hud.gps = gps;
+  // Driving an auto for fares, and riding autos and BMTC buses as a passenger.
+  const autoDuty = new AutoDuty(scene, hud, audio, missions, gps, streetLife, city.pois);
+  const rides = new Rides(scene, layout, traffic, hud, audio, missions, gps, colliders);
+  world.rides = rides;
+  streetLife.audio = audio;
   hud.onMapTap = (x, z, slop) => {
     if (gps.target && Math.hypot(gps.target.x - x, gps.target.z - z) < Math.max(25, slop)) { gps.clear(); hud.say('Waypoint cleared', 1.5); return; }
     gps.set(x, z);
@@ -508,11 +517,13 @@ async function init() {
   };
 
   // ---------- Loop ----------
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();
+  timer.connect(document); // a hidden tab doesn't come back to one enormous frame
   let elapsed = 0;
   const tick = () => {
     requestAnimationFrame(tick);
-    const rawDt = clock.getDelta();
+    timer.update();
+    const rawDt = timer.getDelta();
     const dt = Math.min(rawDt, 1 / 20);
     if (!paused) update(dt);
     // The sun's shadow map holds only the static city, so it's redrawn only when the light moves.
@@ -532,7 +543,7 @@ async function init() {
     if (input.hit('KeyM')) hud.toggleMap();
     if (input.hit('KeyR')) { radioOn = !radioOn; hud.say(radioOn ? 'Radio on' : 'Radio off', 1.2); }
     if (input.hit('KeyK')) { env.setRain(!env.raining); hud.say(env.raining ? 'Dark clouds roll in over Bengaluru…' : 'The rain eases off.', 2.5); }
-    if (input.hit('KeyT') && !metroRide.active) { env.timeScale = env.timeScale > 1 ? 1 : 30; hud.say(env.timeScale > 1 ? 'Time ×30' : 'Time normal', 1.5); }
+    if (input.hit('KeyT') && !metroRide.active && !rides.active) { env.timeScale = env.timeScale > 1 ? 1 : 30; hud.say(env.timeScale > 1 ? 'Time ×30' : 'Time normal', 1.5); }
     if (input.hit('KeyO')) togglePerf();
 
     // Rush hour is real.
@@ -546,13 +557,21 @@ async function init() {
     for (const u of police.units) world.vehicles.push(u.v);
 
     // Namma Metro: entrances on the street, and the ride itself.
-    const entrance = !player.vehicle && !pending && !metroRide.active ? metroRide.nearEntrance(player.pos) : null;
+    const entrance = !player.vehicle && !pending && !metroRide.active && !rides.active ? metroRide.nearEntrance(player.pos) : null;
     if (entrance && input.hit('KeyE')) { input.pressed.delete('KeyE'); metroRide.open(entrance, world); }
+    // BMTC shelters (E) and waving down an auto (H), on foot.
+    const onFoot = !player.vehicle && !pending && !metroRide.active && !rides.active && !player.transition && !garages.menu;
+    const shelter = onFoot && !entrance ? rides.nearShelter(player.pos) : null;
+    if (shelter && input.hit('KeyE')) { input.pressed.delete('KeyE'); rides.stopMenu(shelter, world); }
+    if (onFoot && input.hit('KeyH')) rides.hailAuto(world);
+    let rideCam = null;
     if (pending) {
       screenT -= dt;
       if (screenT <= 0) respawn();
     } else if (metroRide.active) {
       metroRide.update(dt, input, world, missions, camera);
+    } else if (rides.active) {
+      rideCam = rides.update(dt, input, world);
     } else if (garages.menu) {
       garages.update(dt, input);
     } else {
@@ -582,7 +601,7 @@ async function init() {
 
     world.obstacles.length = 0;
     if (player.vehicle) world.obstacles.push({ x: player.vehicle.x, z: player.vehicle.z, y: player.vehicle.y, r: player.vehicle.spec.length / 2, isPlayer: true });
-    else if (player.y < 0.05) world.obstacles.push(player);
+    else if (player.y < 0.05 && !rides.carrying) world.obstacles.push(player);
     for (const v of world.dynamic) if (v !== player.vehicle) world.obstacles.push({ x: v.x, z: v.z, y: v.y, r: v.spec.length / 2, isCop: v.driver === 'police' });
     for (const c of police.cops) world.obstacles.push(c);
     streetLife.collectObstacles(world.obstacles);
@@ -595,32 +614,40 @@ async function init() {
     city.update(dt, elapsed, camera);
     particles.update(dt, camera, renderer);
     env.update(dt, world.focus, player, police);
+    missions.busy = metroRide.active || rides.active;
     missions.update(dt, input, player);
+    autoDuty.update(dt, input, player, world);
     story.update(dt, input);
     audio.setRain(env.rain);
 
-    if (metroRide.active || garages.menu) hud.prompt('');
+    if (metroRide.active || garages.menu || rides.active) hud.prompt('');
     else if (garages.nearStall) { /* the garage set its own prompt */ }
     else if (entrance) hud.prompt(`E  Namma Metro · ${entrance.st.en}`);
+    else if (shelter) hud.prompt(`E  BMTC bus stop · ${shelter.name}`);
     else if (!player.vehicle && !pending) {
       let near = null;
       for (const v of world.vehicles) {
         const d = Math.hypot(v.x - player.x, v.z - player.z) - v.spec.length / 2;
         if (d < 2.2 && Math.abs(v.y - player.y) < 2 && (!near || d < near.d)) near = { v, d };
       }
-      hud.prompt(near ? (near.v.driver === 'ai' || near.v.driver === 'police' ? `F  "Borrow" the ${near.v.spec.label}` : `F  Get in the ${near.v.spec.label}`) : '');
+      hud.prompt(near ? (near.v.driver === 'ai' || near.v.driver === 'police' ? `F  "Borrow" the ${near.v.spec.label}` : `F  Get in the ${near.v.spec.label}`) : rides.roadside(player) ? 'H  Wave down an auto' : '');
     } else hud.prompt(player.vehicle && player.vehicle.speed <= 8 ? (player.vehicle.spec.police ? 'F  Get out  ·  G  Siren' : 'F  Get out') : '');
 
-    if (!window.__freeCam && !metroRide.active) rig.update(dt, input, player, colliders);
+    if (!window.__freeCam && !metroRide.active) rig.update(dt, input, rideCam || player, colliders);
+    if (!rides.active) rides.banner.classList.remove('show');
     if (!metroRide.active) metroRide.banner.classList.remove('show');
     audio.engine(player.vehicle, dt);
     audio.update?.(dt, { world, camera, env, player, metro: metroRide.state });
-    const markers = missions.markers.concat(story.markers);
+    const markers = missions.markers.concat(story.markers, autoDuty.mapMarkers, player.vehicle || rides.active ? [] : rides.mapMarkers(player.x, player.z));
     for (const u of police.units) markers.push({ x: u.v.x, z: u.v.z, color: Math.floor(elapsed * 4) % 2 ? '#e02020' : '#2050ff', small: true });
     if (gps.update(dt, player.x, player.z) === 'arrived') { hud.say('You have arrived.', 2.5); audio.click?.(); }
     if (gps.target) markers.push({ x: gps.target.x, z: gps.target.z, color: '#c050ff' });
     hud.update(dt, player, rig.yaw, markers);
-    touch.update({ driving: !!player.vehicle, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police, use: !!entrance || !!story.active || garages.nearStall || !!garages.menu, offer: !!missions.offer, metro: metroRide.active });
+    touch.update({
+      driving: !!player.vehicle, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police,
+      use: !!entrance || !!shelter || !!story.active || garages.nearStall || !!garages.menu, offer: !!missions.offer, metro: metroRide.active,
+      ride: rides.state, hail: onFoot && !entrance && !shelter, duty: player.vehicle?.type === 'auto' && !autoDuty.fare,
+    });
     { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
     world.rigPitch = rig.pitch;
     hud.setClock(env.clockString(), env.rain > 0.6 ? '⛈ Monsoon' : env.rain > 0.1 ? '🌧 Rain' : env.night > 0.5 ? '🌙 Clear' : '☀ Clear');
@@ -637,6 +664,9 @@ async function init() {
     // (Drawn to the screen, so the shader variants are the ones used in play, but into a single
     // pixel behind the menu.)
     renderer.setViewport(0, 0, 1, 1);
+    // The sun's shadow map must exist before anything that receives shadows is drawn: its shadow
+    // sampler can't read the placeholder texture three.js binds in the meantime.
+    renderer.shadowMap.needsUpdate = true;
     renderer.render(scene, cam);
     renderer.setViewport(0, 0, innerWidth, innerHeight);
   }
@@ -656,7 +686,7 @@ async function init() {
   tick();
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { audio, story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
+  window.__game = { audio, story, metroRide, rides, autoDuty, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.

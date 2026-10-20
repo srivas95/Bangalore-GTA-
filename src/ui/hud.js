@@ -187,6 +187,9 @@ export class HUD {
   }
 
   mission(title, body, timer) {
+    const key = title ? `${title}|${body}|${timer != null ? Math.ceil(timer) : ''}` : '';
+    if (key === this._mission) return;
+    this._mission = key;
     if (!title) { this.el.mission.classList.remove('show'); return; }
     this.el.mission.classList.add('show');
     this.el.missionTitle.textContent = title;

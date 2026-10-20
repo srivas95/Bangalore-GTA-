@@ -59,8 +59,8 @@ float svGlass = 0.0;
   float lum = dot( sampledDiffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) );
   svGlass = 1.0 - smoothstep( 0.03, 0.12, lum );
   float wall = smoothstep( 0.24, 0.42, lum ) * ( 1.0 - smoothstep( 0.78, 0.88, lum ) );
-  float bh = fract( sin( dot( vColor, vec3( 12.989, 78.233, 37.719 ) ) ) * 43758.5453 );
-  vec3 tint = mix( vec3( dot( vColor, vec3( 0.3, 0.59, 0.11 ) ) ), vColor, 0.8 ) * mix( 0.9, 1.06, bh ) * mix( 0.9, 1.05, svNoise( vAOPos.xz * 0.02 ) );
+  float bh = fract( sin( dot( vColor.rgb, vec3( 12.989, 78.233, 37.719 ) ) ) * 43758.5453 );
+  vec3 tint = mix( vec3( dot( vColor.rgb, vec3( 0.3, 0.59, 0.11 ) ) ), vColor.rgb, 0.8 ) * mix( 0.9, 1.06, bh ) * mix( 0.9, 1.05, svNoise( vAOPos.xz * 0.02 ) );
   diffuseColor.rgb *= mix( vec3( 1.0 ), tint, wall );
   // Monsoon streaks running down the walls, and splash grime along the foot.
   float streak = svFbm( vec2( ( vAOPos.x + vAOPos.z ) * 1.7, vAOPos.y * 0.12 + bh * 9.0 ) );

@@ -341,6 +341,17 @@ export function poseDown(h) {
   b.thL.rotation.x = -0.3; b.knL.rotation.x = 0.6; b.thR.rotation.z = -0.15;
 }
 
+// Flagging down an auto: arm out towards the road, hand patting the air.
+export function poseHail(h, t) {
+  reset(h);
+  const b = h.bones;
+  b.shR.rotation.x = -1.2 + Math.sin(t * 7 + h.phase) * 0.2;
+  b.shR.rotation.z = -0.2;
+  b.elR.rotation.x = -0.15;
+  b.shL.rotation.z = 0.08; b.elL.rotation.x = -0.15;
+  b.neck.rotation.y = Math.sin(t * 0.7 + h.phase) * 0.25;
+}
+
 export function poseHandsUp(h, t) {
   reset(h);
   const b = h.bones;

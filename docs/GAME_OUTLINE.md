@@ -61,8 +61,19 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 
 - **Story missions (implemented, Act I):** mission givers on the map start scripted missions (go, talk, fight a
   crew, lose the police, steal and deliver). Rewards in ₹; progress is saved. See [STORY.md](STORY.md).
-- **Gigs (implemented):** food deliveries on any vehicle; auto fares when driving an auto. Timed, paid in ₹, with
-  speed bonuses, tips and a star rating.
+- **Gigs (implemented):**
+  - **Food deliveries** on any vehicle, offered on your phone. They're timed, paid in ₹, with speed bonuses,
+    tips and a star rating.
+  - **Driving an auto (implemented):** go on duty in any auto (J).
+    - People on the footpaths wave you down; pull up and they climb in the back.
+    - The meter runs at the Bengaluru tariff.
+    - Passengers' comfort sets the tip, and sometimes makes them demand to be let off without paying.
+- **Getting around (implemented):**
+  - **Hired autos:** wave one down from any roadside (H). Pick a district or your waypoint, then ride
+    through traffic on the meter.
+  - **BMTC buses:** ride nine routes, both ways, with stops and shelters along them. Pick a stop, wait for the
+    bus, ride it stop by stop, pay by stage.
+  - T skips the ride.
 - **Side activities (planned):** water-tanker runs during shortages, wedding-procession escorts, cricket betting at
   Chinnaswamy, auto-rickshaw races, rooftop parties in Indiranagar, startup pitches in Koramangala.
 - **Economy (planned):** buy vehicles (a used Activa up to a Royal Bullet), rent a PG then a flat, pay EMIs, bribe
@@ -84,9 +95,11 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 | Gangs | Rowdies at markets and yards after dark; mission crews that alert together and use guns or blades |
 | Police | Wanted level 0–5; crimes witnessed or reported; Hoysalas route by Dijkstra and pure-pursuit, brake for corners, ram; constables on foot; armed officers at 3★+; busted/wasted |
 | Namma Metro | Purple and Green Lines on real alignments; elevated and underground stations; trains both ways; buy a token, wait, ride, change at Majestic, skip with T |
+| Autos and buses | Hail an auto anywhere (H) and ride on the meter; nine BMTC routes with stops, shelters, stage fares; AI-driven rides through real traffic (`route.js` plans the way) |
+| Auto job | On-duty mode in any auto: street hailers, meter, passenger comfort, tips and ratings |
 | Railway | KSR–Yeshwanthpur and KSR–Cantonment lines, level crossings, stations, trains |
 | Day/night & monsoon | 24-minute day, night glow and bloom; rain, lightning, wet roads, flooded underpasses, drowned engines |
-| Sound | Recorded sounds (Sonniss GDC bundles): RPM-layered engines for you and the nearest traffic (panned, distance-muffled, Doppler), real horns and siren, ambience by time of day, weather, parks and lakes, cabin muffling, underpass and metro reverb, footsteps, tyre screech, hits, guns, crashes |
+| Sound | Recorded sounds (Sonniss GDC bundles): RPM-layered engines for you and the nearest traffic (panned, distance-muffled, Doppler), real horns and siren, ambience by time of day, weather, parks and lakes, cabin muffling, underpass and metro reverb, footsteps, tyre screech, hits, guns, crashes; recorded voices (grunts, screams, crowd walla, Kannada and Hindi words from Lingua Libre) |
 | Brands | 26 real Bengaluru brands, fuel stations, hotels and malls with lit crowns |
 | Story | Act I (five missions), mission givers, dialogue, saving to localStorage, daily Majestic collections after Act I |
 | Garages | Puncture/service stalls citywide and Chikka Motors: repairs, resprays that can shed up to 3 stars, buying vehicles, owned vehicles saved and delivered to any garage |
@@ -100,7 +113,7 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 2. **Phone UI:** contacts, gig apps, map, UPI payments, mission calls.
 3. **Police escalation:** roadblocks at 4★, Cheetah patrol bikes, bribe negotiation.
 4. **Safehouses** (Raghu's lodge, later a flat) as save points.
-5. **Kannada radio stations** and voiced barks.
+5. **Kannada radio stations** and more voiced lines (the recorded grunts, screams and Kannada words are in).
 6. **Yellow Line** to Electronic City; flights you can board at the airport.
 
 ## 5. Art direction and models
@@ -124,7 +137,8 @@ Planned additions: Electronic City proper with the Yellow Line, and Nandi Hills 
 
 ## 6. Technical notes
 
-- Browser, Three.js r170, Vite. No asset downloads.
+- Browser, Three.js r186 (WebGLRenderer; WebGPU measured and deferred, see [GRAPHICS_ENGINE.md](GRAPHICS_ENGINE.md)), Vite.
+  No asset downloads.
 - The road network is generated at load from real polylines (`roadnet.js`, pure JS); buildings are authored in each
   lot's local frame and placed with a frame transform in the mesh builder, with oriented-box colliders.
 - The city is merged into chunked meshes (320 m cells), culled by distance beyond the fog, and trees use instancing

@@ -85,32 +85,57 @@ export class Traffic {
       if (this.occupied(p.x, p.z, 9)) continue;
       const v = this.acquire(type);
       if (!v) continue;
-      v.x = p.x; v.z = p.z; v.heading = p.h; v.y = 0; v.vx = v.vz = 0;
-      v.driver = 'ai';
-      v.stalled = false;
-      if (!v.rider) v.addRider(rng);
-      this.scene.add(v.group);
-      const two = v.spec.twoWheeler;
-      const erratic = two || AUTOS.has(type);
-      const a = {
-        v, edge: e, lane, path, s, speed: 0, turning: false,
-        cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
-        stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
-        jumper: rng() < (two ? 0.3 : type === 'auto' ? 0.25 : HEAVY.has(type) ? 0.05 : 0.1),
-        impatience: rng(),
-        // Lane-ignoring weavers, and the ones who'll happily ride against the traffic.
-        erratic, weaveT: rng() * 2, surge: 1, surgeT: rng() * 4,
-        wrongProne: erratic && rng() < (two ? 0.3 : 0.18), wrong: false, wrongNow: false,
-      };
-      if (erratic) {
-        const [lo, hi] = this.band(a);
-        a.lat = a.latTarget = lo + rng() * (hi - lo);
-      }
-      this.agents.push(a);
-      this.addToGrid(a);
-      return a;
+      return this.addAgent(v, e, lane, path, s, p);
     }
     return null;
+  }
+
+  addAgent(v, e, lane, path, s, p) {
+    const type = v.type;
+    v.x = p.x; v.z = p.z; v.heading = p.h; v.y = 0; v.vx = v.vz = 0;
+    v.driver = 'ai';
+    v.stalled = false;
+    if (!v.rider) v.addRider(rng);
+    this.scene.add(v.group);
+    const two = v.spec.twoWheeler;
+    const erratic = two || AUTOS.has(type);
+    const a = {
+      v, edge: e, lane, path, s, speed: 0, turning: false,
+      cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
+      stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
+      jumper: rng() < (two ? 0.3 : type === 'auto' ? 0.25 : HEAVY.has(type) ? 0.05 : 0.1),
+      impatience: rng(),
+      // Lane-ignoring weavers, and the ones who'll happily ride against the traffic.
+      erratic, weaveT: rng() * 2, surge: 1, surgeT: rng() * 4,
+      wrongProne: erratic && rng() < (two ? 0.3 : 0.18), wrong: false, wrongNow: false,
+      // Hired autos and route buses: the edges still to drive (else wander), a stop to pull in
+      // at {edge, s}, held at a standstill, and never despawned while the player needs them.
+      route: null, stop: null, stopped: false, hold: false, keep: false,
+    };
+    if (erratic) {
+      const [lo, hi] = this.band(a);
+      a.lat = a.latTarget = lo + rng() * (hi - lo);
+    }
+    this.agents.push(a);
+    this.addToGrid(a);
+    return a;
+  }
+
+  // A vehicle of this type on a given road, `s` metres along its lane (hired autos and route
+  // buses). Built straight away if the pool has none.
+  spawnOn(type, e, s) {
+    const lane = this.chooseLane(e, type);
+    const path = this.edgePath(e, lane);
+    s = Math.max(0, Math.min(path.length - 1, s));
+    const list = this.pool.get(type);
+    const v = list && list.length ? list.pop() : new Vehicle(type, { rng, rider: true });
+    return this.addAgent(v, e, lane, path, s, sample(path, s));
+  }
+
+  // Where to sit across the carriageway to pull in at the kerb.
+  kerbLat(a) {
+    const [, hi] = this.band(a);
+    return hi - Math.max(0, a.v.spec.width / 2 - 0.55);
   }
 
   chooseLane(e, type, fromTurn = false) {
@@ -186,6 +211,11 @@ export class Traffic {
   }
 
   chooseNext(a) {
+    if (a.route) {
+      const next = a.route[0];
+      if (next && next.from === a.edge.to) { a.route.shift(); return next; }
+      if (next) a.route = null; // knocked off the route: wander from here
+    }
     const node = a.edge.to;
     let opts = node.out.filter((e) => e.to !== a.edge.from);
     if (!opts.length) opts = node.out;
@@ -333,7 +363,7 @@ export class Traffic {
       const a = this.agents[ai];
       const v = a.v;
       const distP = Math.hypot(v.x - focus.x, v.z - focus.z);
-      if (distP > this.radius + 70) { this.despawn(a); continue; }
+      if (distP > this.radius + 70 && !a.keep) { this.despawn(a); continue; }
       const two = v.spec.twoWheeler;
       const look = 6 + a.speed * 1.6 + v.spec.length / 2;
 
@@ -417,11 +447,21 @@ export class Traffic {
       v.stalled = false;
       if (depthAhead > 0.06) target = Math.min(target, Math.max(2.2, 7.5 - depthAhead * (two ? 7 : 5)));
 
+      // Pull in at a stop on this stretch (a fare, a passenger, a bus stop) and wait there.
+      if (a.stop && !a.turning && a.edge === a.stop.edge) {
+        const d = a.stop.s - a.s;
+        if (d > -2) {
+          if (d < 45) a.latTarget = this.kerbLat(a);
+          target = Math.min(target, Math.max(0, d * 0.7));
+          if (d < 1.5 && a.speed < 0.5) a.stopped = true;
+        }
+      }
+      if (a.hold) target = 0;
       const acc = target > a.speed ? v.spec.accel * 0.8 : v.spec.brake;
       a.speed += Math.sign(target - a.speed) * Math.min(Math.abs(target - a.speed), acc * dt);
 
       // Stuck: honk, and eventually squeeze through anyway (but not at a red light or in water).
-      if (a.speed < 0.5 && target < 0.5 && a.stunned <= 0) {
+      if (a.speed < 0.5 && target < 0.5 && a.stunned <= 0 && !a.stopped && !a.hold) {
         a.stuck += dt;
         a.honkCd -= dt;
         if (a.honkCd <= 0 && (blocker || a.waitingSignal) && distP < 160) {
@@ -429,7 +469,7 @@ export class Traffic {
           if (!a.waitingSignal || rng() < 0.4) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
         }
         if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop))) { a.ghost = 2.5; a.stuck = 0; }
-        if (a.stuck > 45 && distP > 120) { this.despawn(a); continue; }
+        if (a.stuck > 45 && distP > 120 && !a.keep) { this.despawn(a); continue; }
       } else a.stuck = Math.max(0, a.stuck - dt);
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
 
