@@ -564,7 +564,7 @@ async function init() {
     if (entrance && input.hit('KeyE')) { input.pressed.delete('KeyE'); metroRide.open(entrance, world); }
     // BMTC shelters (E) and waving down an auto (H), on foot.
     const onFoot = !player.vehicle && !pending && !metroRide.active && !rides.active && !player.transition && !garages.menu;
-    const shelter = onFoot && !entrance ? rides.nearShelter(player.pos) : null;
+    const shelter = onFoot && !entrance && !garages.nearStall ? rides.nearShelter(player.pos) : null;
     if (shelter && input.hit('KeyE')) { input.pressed.delete('KeyE'); rides.stopMenu(shelter, world); }
     if (onFoot && input.hit('KeyH')) rides.hailAuto(world);
     let rideCam = null;

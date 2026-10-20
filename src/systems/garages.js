@@ -153,7 +153,7 @@ export class Garages {
   close() {
     this.menu = null;
     this.el.classList.remove('show');
-    this.cool = 3;
+    this.cool = 1.5;
   }
 
   items() {
@@ -280,8 +280,9 @@ export class Garages {
     const v = pl.vehicle;
     for (const s of this.sites) {
       if (v) {
-        if (Math.hypot(v.x - s.bay.x, v.z - s.bay.z) < 3 && v.speed < 2.5 && v.driver === 'player') { this.open(s, true); return; }
-      } else if (Math.hypot(pl.x - s.x, pl.z - s.z) < 2.8) {
+        if (Math.hypot(v.x - s.bay.x, v.z - s.bay.z) < 3.5 && v.speed < 3 && v.driver === 'player') { this.open(s, true); return; }
+      } else if (Math.hypot(pl.x - s.x, pl.z - s.z) < 3.8 || Math.hypot(pl.x - s.bay.x, pl.z - s.bay.z) < 3) {
+        // Anywhere at the stall front, or on foot in its service ring.
         this.hud.prompt(`E  ${s.name}`);
         if (input.hit('KeyE')) { input.pressed.delete('KeyE'); this.open(s, false); }
         this.nearStall = true;

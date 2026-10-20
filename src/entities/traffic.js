@@ -107,6 +107,7 @@ export class Traffic {
     const two = v.spec.twoWheeler;
     const erratic = two || AUTOS.has(type);
     const a = {
+      id: (this.nextId = (this.nextId || 0) + 1), // older agents have right of way in a merge
       v, edge: e, lane, path, s, speed: 0, turning: false,
       cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
       stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
@@ -309,7 +310,9 @@ export class Traffic {
   }
 
   // Distance to the nearest thing ahead within `look`, for a vehicle at lateral offset `lat`.
-  gapAhead(a, lat, look, obstacles) {
+  // ghost: breaking a deadlock, so crossing and oncoming traffic is ignored (but never the vehicle
+  // in front going the same way).
+  gapAhead(a, lat, look, obstacles, ghost = false) {
     const v = a.v;
     const fx = Math.sin(v.heading), fz = Math.cos(v.heading);
     const lx = fz, lz = -fx;
@@ -329,16 +332,24 @@ export class Traffic {
         const bv = b.v;
         if (Math.abs(bv.y - v.y) > 2.5) continue;
         const dot = Math.sin(bv.heading) * fx + Math.cos(bv.heading) * fz;
+        if (ghost && dot < 0.7) continue;
         // Oncoming traffic only matters when someone is on the wrong side.
         const oncoming = dot < -0.7;
         if (oncoming && !a.wrongNow && !b.wrongNow) continue;
         const closing = oncoming ? b.speed : 0;
         const dx = bv.x - ox, dz = bv.z - oz;
         const ahead = dx * fx + dz * fz;
-        if (ahead <= 0 || ahead > look + closing * 2) continue;
         const ad = Math.abs(dot);
         const hl = bv.spec.length / 2, hw = bv.spec.width / 2;
-        if (Math.abs(dx * lx + dz * lz) > myHalf + hw * ad + hl * (1 - ad) + margin) continue;
+        const side = Math.abs(dx * lx + dz * lz), reach = myHalf + hw * ad + hl * (1 - ad);
+        if (ahead <= 0) {
+          // Alongside and overlapping, heading the same way (two lanes squeezing into one after a
+          // junction): the older vehicle goes first, the other waits rather than drive into it.
+          if (dot > 0.3 && b.id < a.id && side < reach - 0.1 && ahead > -(halfLen + hl) * 0.8 && gap > 0) { gap = 0; blocker = b; }
+          continue;
+        }
+        if (ahead > look + closing * 2) continue;
+        if (side > reach + margin) continue;
         // Someone coming head-on closes the gap twice as fast: plan for where they'll be.
         const g = ahead - halfLen - (hl * ad + hw * (1 - ad)) - closing * 1.5;
         if (g < gap) { gap = g; blocker = b; }
@@ -346,6 +357,7 @@ export class Traffic {
     }
     for (let n = 0; n < obstacles.length; n++) {
       const o = obstacles[n];
+      if (ghost && !o.isPlayer) continue;
       if (Math.abs((o.y ?? v.y) - v.y) > 2.5) continue;
       const dx = o.x - ox, dz = o.z - oz;
       const ahead = dx * fx + dz * fz;
@@ -377,7 +389,7 @@ export class Traffic {
       const two = v.spec.twoWheeler;
       const look = 6 + a.speed * 1.6 + v.spec.length / 2;
 
-      let { gap, blocker } = this.gapAhead(a, a.lat, look, obstacles);
+      let { gap, blocker } = this.gapAhead(a, a.lat, look, obstacles, a.ghost > 0);
       let surge = 1;
       if (a.erratic) {
         const [lo, hi] = a.turning ? [-1.2, 1.2] : this.band(a);
@@ -439,7 +451,7 @@ export class Traffic {
         if (d > 10.5 && d < look + 20) { target = Math.min(target, Math.max(0, (d - 11.5) * 1.2)); a.waitingSignal = true; } // already past the gate: clear the tracks
       }
       if (a.ghost > 0) a.ghost -= dt;
-      else if (gap < Infinity) {
+      if (gap < Infinity) {
         const safe = (two ? 1.0 : a.erratic ? 1.4 : 2.0) + a.speed * (a.erratic ? 0.4 : 0.55);
         if (gap < safe) target = Math.min(target, Math.max(0, (gap - (two ? 0.4 : 1.0)) * 1.5));
         // Somebody's coming at you on your side of the road: lean on the horn.
@@ -480,7 +492,10 @@ export class Traffic {
           a.honkCd = (a.waitingSignal ? 3 : 1.2) + rng() * 2.5;
           if (!a.waitingSignal || rng() < 0.4) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
         }
-        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop))) { a.ghost = 2.5; a.stuck = 0; }
+        // Only the front of a jam squeezes through (past crossing or oncoming traffic, or something
+        // parked in the way): a queue behind it waits its turn instead of driving into each other.
+        const queued = blocker?.v && (Math.sin(blocker.v.heading) * fx0 + Math.cos(blocker.v.heading) * fz0 > 0.7 || blocker.ghost > 0);
+        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !queued && !(blocker && (blocker.isPlayer || blocker.isCop))) { a.ghost = 2.5; a.stuck = 0; }
         if (a.stuck > 45 && distP > 120 && !a.keep) { this.despawn(a); continue; }
       } else a.stuck = Math.max(0, a.stuck - dt);
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
