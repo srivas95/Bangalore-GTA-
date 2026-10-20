@@ -107,7 +107,6 @@ export class Traffic {
     const two = v.spec.twoWheeler;
     const erratic = two || AUTOS.has(type);
     const a = {
-      id: (this.nextId = (this.nextId || 0) + 1), // older agents have right of way in a merge
       v, edge: e, lane, path, s, speed: 0, turning: false,
       cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
       stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
@@ -342,13 +341,7 @@ export class Traffic {
         const ad = Math.abs(dot);
         const hl = bv.spec.length / 2, hw = bv.spec.width / 2;
         const side = Math.abs(dx * lx + dz * lz), reach = myHalf + hw * ad + hl * (1 - ad);
-        if (ahead <= 0) {
-          // Alongside and overlapping, heading the same way (two lanes squeezing into one after a
-          // junction): the older vehicle goes first, the other waits rather than drive into it.
-          if (dot > 0.3 && b.id < a.id && side < reach - 0.1 && ahead > -(halfLen + hl) * 0.8 && gap > 0) { gap = 0; blocker = b; }
-          continue;
-        }
-        if (ahead > look + closing * 2) continue;
+        if (ahead <= 0 || ahead > look + closing * 2) continue;
         if (side > reach + margin) continue;
         // Someone coming head-on closes the gap twice as fast: plan for where they'll be.
         const g = ahead - halfLen - (hl * ad + hw * (1 - ad)) - closing * 1.5;
