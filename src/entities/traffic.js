@@ -308,6 +308,29 @@ export class Traffic {
     return false;
   }
 
+  // Is a vehicle level with `a` on side `dir` (+1: towards +lat), close enough that moving that
+  // way would run into it?
+  alongside(a, dir) {
+    const v = a.v;
+    const fx = Math.sin(v.heading), fz = Math.cos(v.heading);
+    const myHalf = v.spec.width / 2, halfLen = v.spec.length / 2;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const l = this.grid.get(this.key(v.x + i * CELL, v.z + j * CELL));
+      if (!l) continue;
+      for (let n = 0; n < l.length; n++) {
+        const b = l[n];
+        if (b === a) continue;
+        const bv = b.v;
+        if (Math.abs(bv.y - v.y) > 2.5) continue;
+        const dx = bv.x - v.x, dz = bv.z - v.z;
+        const side = (dx * fz - dz * fx) * dir; // distance out on that side
+        if (side <= 0 || side > myHalf + bv.spec.width / 2 + 0.35) continue;
+        if (Math.abs(dx * fx + dz * fz) < halfLen + bv.spec.length / 2 + 0.2) return true;
+      }
+    }
+    return false;
+  }
+
   // Distance to the nearest thing ahead within `look`, for a vehicle at lateral offset `lat`.
   // ghost: breaking a deadlock, so crossing and oncoming traffic is ignored (but never the vehicle
   // in front going the same way).
@@ -502,7 +525,12 @@ export class Traffic {
       // Sideways moves: weavers dart across, everyone else drifts gently.
       const latSpeed = two ? 2.6 : a.erratic ? 1.8 : 1.2;
       const cap = latSpeed * Math.min(1, 0.1 + a.speed / 4); // no sliding sideways at a standstill
-      const wantVel = Math.max(-cap, Math.min(cap, (a.latTarget - a.lat) * 2));
+      let wantVel = Math.max(-cap, Math.min(cap, (a.latTarget - a.lat) * 2));
+      // Never slide sideways into someone alongside: hold the line until they've gone by.
+      if (Math.abs(wantVel) > 0.05 || Math.abs(a.latVel) > 0.05) {
+        const dir = Math.sign(Math.abs(wantVel) > 0.05 ? wantVel : a.latVel);
+        if (this.alongside(a, dir)) { wantVel = 0; a.latVel *= 0.5; a.latTarget = a.lat; }
+      }
       a.latVel += (wantVel - a.latVel) * Math.min(1, dt * 4);
       a.lat += a.latVel * dt;
       a.wrongNow = !a.turning && this.layout.laneOffset(a.edge.road, a.lane) + a.lat < 0;
