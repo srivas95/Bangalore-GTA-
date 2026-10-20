@@ -61,10 +61,10 @@ export class Traffic {
 
   // Reuse pooled vehicles. Building a new one is costly (a long hitch on a phone), so at most one
   // every half second; meanwhile spawn() just picks a type that's in the pool.
-  acquire(type) {
+  acquire(type, build = true) {
     const list = this.pool.get(type);
     if (list && list.length) return list.pop();
-    if (this.builtThisFrame >= 1 || this.buildCd > 0) return null;
+    if (!build || this.builtThisFrame >= 1 || this.buildCd > 0) return null;
     this.builtThisFrame++;
     this.buildCd = 0.5;
     return new Vehicle(type, { rng, rider: true, pink: type === 'hoysala' && rng() < 0.25 });
@@ -74,7 +74,12 @@ export class Traffic {
     const focus = world.focus;
     const edges = this.nearEdges;
     if (!edges.length) return null;
-    for (let tries = 0; tries < 12; tries++) {
+    // Pooled vehicles first; a new one is built only if a dozen tries found nothing in the pool
+    // (and then rarely once the streets are mostly full).
+    const short = this.agents.length < this.target * (world.trafficScale ?? 1) * 0.8;
+    for (let tries = 0; tries < 13; tries++) {
+      const build = tries === 12 && (initial || short || this.buildCd < -2);
+      if (tries === 12 && !build) break;
       const e = edges[Math.floor(rng() * edges.length)];
       const blk = this.layout.blockAt(e.from.x, e.from.z);
       const type = pickType(world.hour ?? 12, blk.zone === 'industrial');
@@ -85,7 +90,7 @@ export class Traffic {
       const d = Math.hypot(p.x - focus.x, p.z - focus.z);
       if (d > this.radius || d < (initial ? 25 : 140)) continue;
       if (this.occupied(p.x, p.z, 9)) continue;
-      const v = this.acquire(type);
+      const v = this.acquire(type, build);
       if (!v) continue;
       return this.addAgent(v, e, lane, path, s, p);
     }
