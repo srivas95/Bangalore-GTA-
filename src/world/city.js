@@ -13,6 +13,7 @@ import { metroRoutes } from './metro.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CURB_H, SHOP_SIGNS, FUEL_BRANDS } from '../config.js';
 import { DETAIL, textScale } from './detail.js';
+import { SignAtlas } from './signAtlas.js';
 import { withAO } from './ao.js';
 
 const rng = T.mulberry32(20240607);
@@ -725,8 +726,11 @@ export function buildCity(scene, layout, colliders, renderer) {
   const lampHeads = [];
   const lampPools = buildLamps(group, lamps, colliders, lampHeads);
   const tankLod = buildTanks(group, DETAIL.min ? [] : tanks);
-  const textSignMats = buildTextSigns(group, signs);
-  for (const m of textSignMats) nightMats.push([m, 0.05, 0.8]);
+  // Shop signs (and the hoardings) in shared atlases, lit up a little at night.
+  const atlas = new SignAtlas();
+  buildTextSigns(atlas, signs);
+  const signMats = atlas.build(group, (t) => new THREE.MeshStandardMaterial({ map: t, roughness: 0.7, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.05 }), { anisotropy: Math.min(8, aniso) });
+  for (const m of signMats) nightMats.push([m, 0.05, 0.8]);
 
   // Nothing beyond the fog is drawn: cull chunked meshes by distance every few frames.
   const cullable = group.children.filter((m) => m.geometry && m.name !== 'ground' && !m.isInstancedMesh);
@@ -739,7 +743,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     if (camera) tankLod(camera);
     if (camera && (cullT -= dt) <= 0) {
       cullT = 0.25;
-      const px = camera.position.x, pz = camera.position.z, far = (camera.far > 900 ? 900 : camera.far);
+      const px = camera.position.x, pz = camera.position.z, far = Math.min(900, camera.far);
       for (const m of cullable) m.visible = Math.hypot(m.userData.c.x - px, m.userData.c.z - pz) - m.userData.r < far;
     }
   };
@@ -752,7 +756,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     for (const m of wetMats) { m.roughness = 0.95 - wet * 0.55; m.color.setScalar(1 - wet * 0.3); }
   };
   sharedUniforms.uWet.value = 0;
-  return { group, pois, update, setLighting, materials: mats, lampPositions: lamps, rail: infra.rail, trees, lampHeads };
+  return { group, pois, update, setLighting, materials: mats, lampPositions: lamps, rail: infra.rail, trees, lampHeads, signs: atlas };
 }
 
 function rectPoly(r) {
@@ -774,7 +778,9 @@ function distToPolyline(x, z, pts) {
 const BOXG = new THREE.BoxGeometry(1, 1, 1);
 const CHIMNEY = new THREE.CylinderGeometry(1, 1, 1, 12);
 
-// Trees are instanced per type and 320 m chunk, with a cheap canopy for distant chunks.
+// Trees: a cheap canopy for every tree, instanced per type and 320 m chunk; the trees round the
+// camera swap one by one to a detailed canopy that also casts the shadows (one instanced draw
+// per type), so neither the detail nor the shadow pass ever covers a whole chunk.
 function buildInstancedTrees(group, trees, colliders) {
   const trunkGeo = new THREE.CylinderGeometry(0.22, 0.4, 1, 6);
   trunkGeo.translate(0, 0.5, 0);
@@ -802,7 +808,7 @@ function buildInstancedTrees(group, trees, colliders) {
     g.computeVertexNormals();
     return g;
   };
-  const hi = DETAIL.lite ? [canopy(true, 1, 4), canopy(false, 1, 3), canopy(false, 0, 3)] : [canopy(true, 1, 6), canopy(false, 1, 5), canopy(false, 1, 4)];
+  const hi = DETAIL.lite ? [canopy(true, 1, 4), canopy(false, 1, 3), canopy(false, 0, 3)] : [canopy(true, 1, 5), canopy(false, 1, 4), canopy(false, 1, 3)];
   const lo = [canopy(true, 0, 3), canopy(false, 0, 3), canopy(false, 0, 2)];
   const trunkH = [4.2, 3.2, 1.8];
   const colours = [
@@ -819,10 +825,14 @@ function buildInstancedTrees(group, trees, colliders) {
   }
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color();
   const r = T.mulberry32(77);
+  const N = trees.length;
+  // Per tree: its canopy and trunk matrices, colour, and where its far canopy lives.
+  const canM = new Float32Array(N * 16), trunkM = new Float32Array(N * 16), col = new Float32Array(N * 3);
+  const recType = new Uint8Array(N), recK = new Uint32Array(N), recX = new Float32Array(N), recZ = new Float32Array(N), recMesh = [];
   const chunks = [];
   const trunkChunks = new Map();
+  let n = 0;
   for (const { type, list, cx, cz } of buckets.values()) {
-    const ih = new THREE.InstancedMesh(hi[type], mat, list.length);
     const il = new THREE.InstancedMesh(lo[type], mat, list.length);
     const tkey = `${cx},${cz}`;
     if (!trunkChunks.has(tkey)) trunkChunks.set(tkey, { list: [], cx, cz });
@@ -830,40 +840,97 @@ function buildInstancedTrees(group, trees, colliders) {
       const h = trunkH[type] * t.s;
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), r() * Math.PI * 2);
       m.compose(p.set(t.x, h + 0.8 * t.s + (t.y || 0), t.z), q, s.set(t.s, t.s, t.s));
-      ih.setMatrixAt(k, m); il.setMatrixAt(k, m);
+      il.setMatrixAt(k, m);
+      m.toArray(canM, n * 16);
       const pal = colours[type];
       c.setHex(pal[Math.floor(r() * pal.length)]).offsetHSL(0, 0, (r() - 0.5) * 0.06);
-      ih.setColorAt(k, c); il.setColorAt(k, c);
+      il.setColorAt(k, c);
+      c.toArray(col, n * 3);
       m.compose(p.set(t.x, 0.1 + (t.y || 0), t.z), q, s.set(t.s, h + 0.8, t.s));
       trunkChunks.get(tkey).list.push(m.clone());
+      m.toArray(trunkM, n * 16);
+      recType[n] = type; recK[n] = k; recX[n] = t.x; recZ[n] = t.z; recMesh[n] = il;
+      n++;
       if (!t.noCollide && type !== 2) colliders.addCentered(t.x, t.z, 0.7 * t.s, 0.7 * t.s, 6, 'tree');
     });
-    for (const im of [ih, il]) { im.instanceColor.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; group.add(im); }
+    il.instanceColor.needsUpdate = true;
+    il.computeBoundingSphere();
+    il.receiveShadow = true;
     il.castShadow = false;
-    chunks.push({ ih, il, cx, cz });
+    group.add(il);
+    chunks.push({ il, cx, cz });
   }
   const trunkMeshes = [];
   for (const { list, cx, cz } of trunkChunks.values()) {
     const tm = new THREE.InstancedMesh(trunkGeo, trunkMat, list.length);
     list.forEach((mm, k) => tm.setMatrixAt(k, mm));
-    tm.castShadow = true;
+    tm.castShadow = false;
     tm.computeBoundingSphere();
     group.add(tm);
     trunkMeshes.push({ mesh: tm, cx, cz });
   }
-  // Swap canopy detail by distance from the camera; nothing past the fog.
-  const nearRange = DETAIL.lite ? 40 : 140;
+
+  // The detailed canopies round the camera, and the trunks' shadows (a shadow-only copy: the
+  // chunk trunks already draw them).
+  const NEAR = DETAIL.lite ? 65 : 95, CAP = DETAIL.lite ? 450 : 900;
+  const nearCan = hi.map((g) => {
+    const im = new THREE.InstancedMesh(g, mat, CAP);
+    im.count = 0; im.frustumCulled = false; im.castShadow = true; im.receiveShadow = true;
+    im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    im.setColorAt(0, c);
+    group.add(im);
+    return im;
+  });
+  const nearTrunk = new THREE.InstancedMesh(trunkGeo, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }), CAP * 3);
+  nearTrunk.count = 0; nearTrunk.frustumCulled = false; nearTrunk.castShadow = true;
+  group.add(nearTrunk);
+  const GRID = 40, grid = new Map();
+  for (let i = 0; i < N; i++) {
+    const key = Math.floor(recX[i] / GRID) * 4096 + Math.floor(recZ[i] / GRID);
+    let l = grid.get(key);
+    if (!l) grid.set(key, (l = []));
+    l.push(i);
+  }
+  const HIDE = new THREE.Matrix4().makeScale(0, 0, 0).elements;
+  let nearSet = new Set(), lastX = Infinity, lastZ = Infinity;
+  const dirty = new Set();
+  const refreshNear = (cx, cz) => {
+    const found = [[], [], []];
+    const g0 = Math.floor((cx - NEAR) / GRID), g1 = Math.floor((cx + NEAR) / GRID);
+    const h0 = Math.floor((cz - NEAR) / GRID), h1 = Math.floor((cz + NEAR) / GRID);
+    for (let gx = g0; gx <= g1; gx++) for (let gz = h0; gz <= h1; gz++) {
+      const l = grid.get(gx * 4096 + gz);
+      if (!l) continue;
+      for (const i of l) { const d = Math.hypot(recX[i] - cx, recZ[i] - cz); if (d < NEAR) found[recType[i]].push([d, i]); }
+    }
+    const now = new Set();
+    for (const f of found) {
+      if (f.length > CAP) { f.sort((a, b) => a[0] - b[0]); f.length = CAP; }
+      for (const [, i] of f) now.add(i);
+    }
+    // Far canopies: hide the ones now drawn in detail, bring back the ones left behind.
+    for (const i of nearSet) if (!now.has(i)) { recMesh[i].instanceMatrix.array.set(canM.subarray(i * 16, i * 16 + 16), recK[i] * 16); dirty.add(recMesh[i]); }
+    for (const i of now) if (!nearSet.has(i)) { recMesh[i].instanceMatrix.array.set(HIDE, recK[i] * 16); dirty.add(recMesh[i]); }
+    for (const im of dirty) im.instanceMatrix.needsUpdate = true;
+    dirty.clear();
+    nearSet = now;
+    let nt = 0;
+    found.forEach((f, type) => {
+      const im = nearCan[type], ma = im.instanceMatrix.array, ca = im.instanceColor.array;
+      f.forEach(([, i], k) => { ma.set(canM.subarray(i * 16, i * 16 + 16), k * 16); ca.set(col.subarray(i * 3, i * 3 + 3), k * 3); nearTrunk.instanceMatrix.array.set(trunkM.subarray(i * 16, i * 16 + 16), nt++ * 16); });
+      im.count = f.length;
+      im.instanceMatrix.needsUpdate = true;
+      im.instanceColor.needsUpdate = true;
+    });
+    nearTrunk.count = nt;
+    nearTrunk.instanceMatrix.needsUpdate = true;
+  };
   return (camera) => {
     if (!camera) return;
-    for (const ch of chunks) {
-      const dx = Math.abs(ch.cx - camera.position.x), dz = Math.abs(ch.cz - camera.position.z);
-      // Detailed canopies only in chunks within nearRange of the camera (they're most of the
-      // triangles drawn); simple ones out to the fog.
-      const near = Math.hypot(Math.max(0, dx - CHUNK / 2), Math.max(0, dz - CHUNK / 2)) < nearRange;
-      const far = Math.hypot(dx, dz) > 900 + CHUNK * 0.7;
-      ch.ih.visible = near; ch.il.visible = !near && !far;
-    }
-    for (const tc of trunkMeshes) tc.mesh.visible = Math.hypot(tc.cx - camera.position.x, tc.cz - camera.position.z) < 900 + CHUNK * 0.7;
+    const cx = camera.position.x, cz = camera.position.z, far = Math.min(900, camera.far) + CHUNK * 0.7;
+    for (const ch of chunks) ch.il.visible = Math.hypot(ch.cx - cx, ch.cz - cz) < far;
+    for (const tc of trunkMeshes) tc.mesh.visible = Math.hypot(tc.cx - cx, tc.cz - cz) < far;
+    if (Math.hypot(cx - lastX, cz - lastZ) > 6) { lastX = cx; lastZ = cz; refreshNear(cx, cz); }
   };
 }
 
@@ -937,19 +1004,11 @@ function buildTanks(group, tanks) {
   };
 }
 
-function buildTextSigns(group, signs) {
-  const cache = new Map();
+function buildTextSigns(atlas, signs) {
   for (const sg of signs) {
-    let mat = cache.get(sg.key);
-    if (!mat) {
-      const t = T.textTexture(sg.text, { bg: sg.bg || '#2a2622', fg: sg.fg || '#f2e6c8', w: 1024, h: Math.max(64, Math.round(1024 * sg.h / sg.w)), scale: textScale(sg.w), ...(sg.font && { font: sg.font }), fonts: sg.fonts });
-      mat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.7, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.05 });
-      cache.set(sg.key, mat);
-    }
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(sg.w, sg.h), mat);
-    mesh.position.set(sg.x, sg.y, sg.z);
-    mesh.rotation.y = sg.rotY ?? FACE_ROT[sg.face];
-    group.add(mesh);
+    const sc = textScale(sg.w), W = 1024, H = Math.max(64, Math.round((1024 * sg.h) / sg.w));
+    const opts = { bg: sg.bg || '#2a2622', fg: sg.fg || '#f2e6c8', w: W, h: H, ...(sg.font && { font: sg.font }), fonts: sg.fonts };
+    const slot = atlas.slot(sg.key, W * sc, H * sc, (ctx, pw, ph) => T.paintText(ctx, sg.text, pw, ph, opts));
+    atlas.quad(slot, sg.w, sg.h, sg.x, sg.y, sg.z, sg.rotY ?? FACE_ROT[sg.face]);
   }
-  return [...cache.values()];
 }

@@ -11,7 +11,7 @@ const PUNCH_T = 0.42, KICK_T = 0.62;
 export class Player {
   constructor(scene, x, z) {
     this.scene = scene;
-    this.human = createHuman({ outfit: 'shirt', top: 0x3a6ea5, bottom: 0x22304a, skin: 0xa8693c, shoes: 0xeeeeee, female: false });
+    this.human = createHuman({ outfit: 'shirt', top: 0x3a6ea5, bottom: 0x22304a, skin: 0xa8693c, shoes: 0xeeeeee, female: false, castShadow: true });
     scene.add(this.human.group);
     this.x = x; this.z = z; this.y = 0; this.vy = 0;
     this.heading = 0;

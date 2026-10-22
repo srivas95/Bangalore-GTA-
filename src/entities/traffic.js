@@ -41,6 +41,7 @@ export class Traffic {
     this.grid = new Map();
     this.nearEdges = [];
     this.edgeTimer = 0;
+    this.cand = { lat: new Float32Array(256), lim: new Float32Array(256), g: new Float32Array(256), who: [], n: 0 };
   }
 
   // Edges with at least one end within range of the player.
@@ -106,6 +107,7 @@ export class Traffic {
         const [lo, hi] = this.band(a);
         a.lat = a.latTarget = lo + rng() * (hi - lo);
       }
+      a.fx = Math.sin(p.h); a.fz = Math.cos(p.h);
       this.agents.push(a);
       this.addToGrid(a);
       return a;
@@ -258,8 +260,9 @@ export class Traffic {
     l.push(a);
   }
   rebuildGrid() {
-    this.grid.clear();
-    for (const a of this.agents) this.addToGrid(a);
+    if (this.grid.size > 3000) this.grid.clear(); // (cells are reused, but not kept forever)
+    for (const l of this.grid.values()) l.length = 0;
+    for (const a of this.agents) { a.fx = Math.sin(a.v.heading); a.fz = Math.cos(a.v.heading); this.addToGrid(a); }
   }
   occupied(x, z, r) {
     for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
@@ -269,43 +272,56 @@ export class Traffic {
     return false;
   }
 
-  // Distance to the nearest thing ahead within `look`, for a vehicle at lateral offset `lat`.
-  gapAhead(a, lat, look, obstacles) {
-    const v = a.v;
-    const fx = Math.sin(v.heading), fz = Math.cos(v.heading);
-    const lx = fz, lz = -fx;
-    const ox = v.x + lx * (lat - a.lat), oz = v.z + lz * (lat - a.lat);
-    const myHalf = v.spec.width / 2;
-    const margin = a.erratic ? 0.12 : 0.3;
-    let gap = Infinity, blocker = null;
-    const test = (px, pz, py, r, who, closing = 0, rLat = r) => {
-      if (Math.abs(py - v.y) > 2.5) return;
-      const dx = px - ox, dz = pz - oz;
-      const ahead = dx * fx + dz * fz;
-      if (ahead <= 0 || ahead > look + closing * 2) return;
-      const latd = Math.abs(dx * lx + dz * lz);
-      if (latd > myHalf + rLat + margin) return;
-      // Someone coming head-on closes the gap twice as fast: plan for where they'll be.
-      const g = ahead - v.spec.length / 2 - r - closing * 1.5;
-      if (g < gap) { gap = g; blocker = who; }
+  // Everything that could be ahead of `a` within `look`, gathered once a frame: the squeeze
+  // search tries a dozen sideways offsets, all against the same handful of candidates.
+  // For each one: its sideways offset from our centre line, how close it may come sideways
+  // before it's in our way, and the gap to it if it is.
+  gather(a, look, obstacles) {
+    const v = a.v, C = this.cand;
+    const fx = a.fx, fz = a.fz, lx = fz, lz = -fx;
+    const lim0 = v.spec.width / 2 + (a.erratic ? 0.12 : 0.3), front = v.spec.length / 2;
+    let n = 0;
+    const push = (lat, lim, g, who) => {
+      if (n === C.lat.length) for (const k of ['lat', 'lim', 'g']) { const b = new Float32Array(n * 2); b.set(C[k]); C[k] = b; }
+      C.lat[n] = lat; C.lim[n] = lim; C.g[n] = g; C.who[n] = who; n++;
     };
-    const span = Math.ceil((look + 8) / CELL);
+    const span = Math.ceil((look + 8) / CELL), ix = Math.floor(v.x / CELL), iz = Math.floor(v.z / CELL);
     for (let i = -span; i <= span; i++) for (let j = -span; j <= span; j++) {
-      const l = this.grid.get(this.key(v.x + i * CELL, v.z + j * CELL));
+      const l = this.grid.get(((ix + i) * 73856093) ^ ((iz + j) * 19349663));
       if (!l) continue;
       for (const b of l) {
         if (b === a) continue;
-        const dot = Math.sin(b.v.heading) * fx + Math.cos(b.v.heading) * fz;
-        // Oncoming traffic only matters when someone is on the wrong side.
+        const bv = b.v;
+        if (Math.abs(bv.y - v.y) > 2.5) continue;
+        const dx = bv.x - v.x, dz = bv.z - v.z, ahead = dx * fx + dz * fz;
+        if (ahead <= 0 || ahead > look + 50) continue;
+        const dot = b.fx * fx + b.fz * fz;
+        // Oncoming traffic only matters when someone is on the wrong side; then it closes the
+        // gap twice as fast, so plan for where they'll be.
         const oncoming = dot < -0.7;
         if (oncoming && !a.wrongNow && !b.wrongNow) continue;
-        const ad = Math.abs(dot);
-        const hl = b.v.spec.length / 2, hw = b.v.spec.width / 2;
-        test(b.v.x, b.v.z, b.v.y, hl * ad + hw * (1 - ad), b, oncoming ? b.speed : 0, hw * ad + hl * (1 - ad));
+        const closing = oncoming ? b.speed : 0;
+        if (ahead > look + closing * 2) continue;
+        const ad = Math.abs(dot), hl = bv.spec.length / 2, hw = bv.spec.width / 2;
+        push(dx * lx + dz * lz, lim0 + hw * ad + hl * (1 - ad), ahead - front - (hl * ad + hw * (1 - ad)) - closing * 1.5, b);
       }
     }
-    for (const o of obstacles) test(o.x, o.z, o.y ?? v.y, o.r, o);
-    return { gap, blocker };
+    for (const o of obstacles) {
+      if (Math.abs((o.y ?? v.y) - v.y) > 2.5) continue;
+      const dx = o.x - v.x, dz = o.z - v.z, ahead = dx * fx + dz * fz;
+      if (ahead <= 0 || ahead > look) continue;
+      push(dx * lx + dz * lz, lim0 + o.r, ahead - front - o.r, o);
+    }
+    C.n = n;
+  }
+
+  // Gap to the nearest gathered candidate for a vehicle shifted `shift` sideways (blocker in this.blocker).
+  gapAt(shift) {
+    const C = this.cand;
+    let gap = Infinity, who = null;
+    for (let k = 0; k < C.n; k++) if (C.g[k] < gap && Math.abs(C.lat[k] - shift) <= C.lim[k]) { gap = C.g[k]; who = C.who[k]; }
+    this.blocker = who;
+    return gap;
   }
 
   update(dt, world) {
@@ -325,7 +341,8 @@ export class Traffic {
       const two = v.spec.twoWheeler;
       const look = 6 + a.speed * 1.6 + v.spec.length / 2;
 
-      let { gap, blocker } = this.gapAhead(a, a.lat, look, obstacles);
+      this.gather(a, look, obstacles);
+      let gap = this.gapAt(0), blocker = this.blocker;
       let surge = 1;
       if (a.erratic) {
         const [lo, hi] = a.turning ? [-1.2, 1.2] : this.band(a);
@@ -351,8 +368,7 @@ export class Traffic {
           const from = a.wrong ? wl : lo, steps = a.wrong ? 9 : 6;
           for (let k = 0; k <= steps; k++) {
             const cand = from + ((hi - from) * k) / steps;
-            const r = this.gapAhead(a, cand, look, obstacles);
-            const score = r.gap - Math.abs(cand - a.lat) * 0.4;
+            const score = this.gapAt(cand - a.lat) - Math.abs(cand - a.lat) * 0.4;
             if (score > bestGap + 1.2) { bestGap = score; best = cand; }
           }
           a.latTarget = best;

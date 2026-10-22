@@ -36,7 +36,12 @@ export class Environment {
     this.envSky = this.makeSky();
     this.envScene = new THREE.Scene();
     this.envScene.add(this.envSky);
+    // Image-based light from the sky: the sky is rendered into a small cube map and prefiltered
+    // into one reused target, and only again once the sun or the weather has moved on.
     this.pmrem = new THREE.PMREMGenerator(renderer);
+    this.cubeRT = new THREE.WebGLCubeRenderTarget(128, { type: THREE.HalfFloatType });
+    this.cubeCam = new THREE.CubeCamera(0.1, 3000, this.cubeRT);
+    this.envKey = null;
     scene.environmentIntensity = 0.55;
 
     scene.fog = new THREE.Fog(0xaebdcc, 150, 800);
@@ -77,7 +82,7 @@ export class Environment {
     const n = 1500, pos = new Float32Array(n * 3);
     for (let k = 0; k < n; k++) {
       const u = Math.random() * Math.PI * 2, v = Math.random() * 0.9 + 0.05;
-      const r = 1500;
+      const r = 900; // inside the camera's far plane on every preset
       pos[k * 3] = Math.cos(u) * Math.sqrt(1 - v * v) * r;
       pos[k * 3 + 1] = v * r;
       pos[k * 3 + 2] = Math.sin(u) * Math.sqrt(1 - v * v) * r;
@@ -86,7 +91,7 @@ export class Environment {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     this.stars = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false }));
     this.scene.add(this.stars);
-    this.moon = new THREE.Mesh(new THREE.SphereGeometry(30, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf4f0e0, fog: false, transparent: true, opacity: 0 }));
+    this.moon = new THREE.Mesh(new THREE.SphereGeometry(18, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf4f0e0, fog: false, transparent: true, opacity: 0 }));
     this.scene.add(this.moon);
   }
 
@@ -152,6 +157,7 @@ export class Environment {
 
   // Water depth at a point (y disambiguates the flyover deck from the road beneath).
   waterDepth(x, z, y) {
+    if (this.accum <= 0) return 0; // dry: the drains are empty (asked hundreds of times a frame)
     const g = this.layout.groundHeight(x, z, y);
     let d = 0;
     const u = this.layout.underpassAt(x, z);
@@ -174,12 +180,13 @@ export class Environment {
       u.mieDirectionalG.value = 0.82;
       u.sunPosition.value.copy(this.sunDir);
     }
-    if (force || this.envTimer <= 0) {
-      this.envTimer = 3;
-      const old = this.envTarget;
-      this.envTarget = this.pmrem.fromScene(this.envScene, 0, 0.1, 3000);
+    const stale = !this.envKey || Math.abs(elev - this.envKey.elev) > 1.5 || Math.abs(rain - this.envKey.rain) > 0.04;
+    if (force || (stale && this.envTimer <= 0)) {
+      this.envTimer = 1;
+      this.envKey = { elev, rain };
+      this.cubeCam.update(this.renderer, this.envScene);
+      this.envTarget = this.pmrem.fromCubemap(this.cubeRT.texture, this.envTarget || null);
       this.scene.environment = this.envTarget.texture;
-      old?.dispose(); // dispose the whole render target, not just its texture
     }
     return elev;
   }
@@ -226,6 +233,10 @@ export class Environment {
     this.scene.fog.near = lerp(150, 25, rain);
     this.scene.fog.far = lerp(lerp(800, 520, night), 240, rain) * (this.drawDist ?? 1);
     this.scene.fog.near = Math.min(this.scene.fog.near, this.scene.fog.far * 0.5);
+    // Nothing past the fog can be seen, so don't draw it: the far plane (and with it the city's
+    // distance culling) follows the fog in, which in the rain or at night is a lot of the city.
+    const far = Math.min(this.maxFar ?? 1400, Math.max(260, this.scene.fog.far * 1.08 + 40));
+    if (Math.abs(this.camera.far - far) > 4) { this.camera.far = far; this.camera.updateProjectionMatrix(); }
 
     this.sky.position.copy(this.camera.position);
     // Under monsoon clouds the sky is a flat grey: show the fog colour instead of the clear-sky model.
@@ -233,10 +244,14 @@ export class Environment {
     this.sky.visible = !overcast;
     this.scene.background = overcast ? this.scene.fog.color : null;
     // Stars, moon.
+    // (Kept just inside the far plane, scaled so the moon's size on screen stays the same.)
+    const skyR = this.camera.far * 0.85;
     this.stars.material.opacity = night * (1 - rain);
     this.stars.position.copy(this.camera.position);
+    this.stars.scale.setScalar(skyR / 900);
     const md = this.sunDir.clone().negate();
-    this.moon.position.copy(this.camera.position).addScaledVector(md, 1400);
+    this.moon.position.copy(this.camera.position).addScaledVector(md, skyR);
+    this.moon.scale.setScalar(skyR / 850);
     this.moon.material.opacity = smooth(0.3, 1, night) * (1 - rain) * (md.y > 0 ? 1 : 0);
 
     // Lightning and thunder in heavy rain.
@@ -278,7 +293,7 @@ export class Environment {
     this.city.setLighting(night, this.wetness);
 
     // Shadow frustum follows the player, snapped to texels to avoid shimmer.
-    const texel = (85 * 2) / 2048;
+    const sc = this.sun.shadow.camera, texel = (sc.right - sc.left) / this.sun.shadow.mapSize.x;
     const x = Math.round(focus.x / texel) * texel, z = Math.round(focus.z / texel) * texel;
     this.sun.target.position.set(x, 0, z);
     this.sun.position.set(x + this.lightDir.x * 250, this.lightDir.y * 250, z + this.lightDir.z * 250);

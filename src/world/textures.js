@@ -480,7 +480,7 @@ export function signAtlas() {
   return t;
 }
 
-function fitText(ctx, text, x, y, maxW) {
+export function fitText(ctx, text, x, y, maxW) {
   const w = ctx.measureText(text).width;
   if (w > maxW) {
     ctx.save();
@@ -500,12 +500,20 @@ export function signUV(k) {
 
 // fonts: optional per-line fonts (e.g. a big brand name over a small tagline).
 // scale: paint the w x h layout into a smaller canvas (signs far smaller than 1024 px on screen).
-export function textTexture(lines, { w = 512, h = 128, bg = '#1f4e8c', fg = '#fff', font = 'bold 44px "Noto Sans Kannada", Arial, sans-serif', fonts, scale = 1 } = {}) {
-  const [c, ctx] = canvas(Math.max(16, Math.round(w * scale)), Math.max(8, Math.round(h * scale)));
-  ctx.scale(c.width / w, c.height / h);
+// Lines of centred text on a plain board, laid out on a w x h canvas and painted into a
+// cw x ch box at the context's origin.
+export function paintText(ctx, lines, cw, ch, { w = 512, h = 128, bg = '#1f4e8c', fg = '#fff', font = 'bold 44px "Noto Sans Kannada", Arial, sans-serif', fonts } = {}) {
+  ctx.save();
+  ctx.scale(cw / w, ch / h);
   ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   lines.forEach((l, k) => { ctx.font = fonts?.[k] ?? font; fitText(ctx, l, w / 2, (h / (lines.length + 1)) * (k + 1), w - 20); });
+  ctx.restore();
+}
+
+export function textTexture(lines, { w = 512, h = 128, scale = 1, ...opts } = {}) {
+  const [c, ctx] = canvas(Math.max(16, Math.round(w * scale)), Math.max(8, Math.round(h * scale)));
+  paintText(ctx, lines, c.width, c.height, { w, h, ...opts });
   const t = toTexture(c, { repeat: false });
   // Static signs: drop the canvas pixels once they're on the GPU.
   t.onUpdate = () => { c.width = c.height = 1; };

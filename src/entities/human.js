@@ -17,8 +17,13 @@ const G = {
   box: new THREE.BoxGeometry(1, 1, 1),
   limb: new THREE.CylinderGeometry(1, 0.85, 1, 8),
   cyl: new THREE.CylinderGeometry(1, 1, 1, 8),
-  head: new THREE.SphereGeometry(1, 12, 9),
+  head: new THREE.SphereGeometry(1, 14, 10),
   cap: new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
+  // Hair shells: down to just above the equator (men) or a little below it (women), and a ring
+  // round the sides and back for the balding.
+  capM: new THREE.SphereGeometry(1, 18, 8, 0, Math.PI * 2, 0, Math.PI * 0.49),
+  capF: new THREE.SphereGeometry(1, 18, 9, 0, Math.PI * 2, 0, Math.PI * 0.56),
+  band: new THREE.SphereGeometry(1, 12, 3, Math.PI * 5 / 6, Math.PI * 4 / 3, Math.PI * 0.36, Math.PI * 0.21), // (open at the front)
   cone: new THREE.CylinderGeometry(1, 1.4, 1, 12, 1, true),
   sphere: new THREE.SphereGeometry(1, 6, 4),
 };
@@ -26,6 +31,10 @@ const G = {
 // Bone indices.
 export const B = { root: 0, hips: 1, spine: 2, chest: 3, neck: 4, shL: 5, elL: 6, shR: 7, elR: 8, thL: 9, knL: 10, thR: 11, knR: 12 };
 const HIP_Y = 0.92;
+const GREY = 0x8a8a88;
+const HEAD = [0, 1.64, 0.005], HR = [0.1, 0.12, 0.11];
+// Depth of the face's surface at (x, y), for putting eyes, nose and mouth on it.
+const zOn = (x, y) => HEAD[2] + HR[2] * Math.sqrt(Math.max(0, 1 - (x / HR[0]) ** 2 - ((y - HEAD[1]) / HR[1]) ** 2));
 
 function makeBones() {
   const mk = (x, y, z) => { const b = new THREE.Bone(); b.position.set(x, y, z); return b; };
@@ -58,7 +67,7 @@ export function createHuman(opts = {}, r = Math.random) {
   if (outfit === 'churidar') { top = pick(SAREES, r); bottom = pick([0xf4f0e8, 0x2a2a2a, 0xe8c070], r); }
   const blouse = saree ? pick([0xd8a020, 0x2a2a6a, 0x8a1a1a, saree], r) : top;
   const shoes = opts.shoes ?? (outfit === 'police' ? 0x1a1208 : pick([0x2a2018, 0x111111, 0x6a4a2a, 0xe8e8e8], r));
-  const hair = r() < 0.12 && !female ? 0x8a8a88 : 0x15100c;
+  const hair = r() < 0.12 && !female ? GREY : female && r() < 0.12 ? 0x2e1a10 : 0x15100c;
 
   const b = new MeshBuilder({ skin: true });
   const at = (bone, geo, x, y, z, color, sx, sy, sz, rx = 0, rz = 0, ry = 0) => { b.bone = bone; put(b, geo, x, y, z, color, ry, sx, sy, sz, rx, rz); };
@@ -70,23 +79,46 @@ export function createHuman(opts = {}, r = Math.random) {
   at(B.chest, G.rbox, 0, 1.34, 0, blouse, female ? 0.35 : 0.39, 0.3, female ? 0.22 : 0.21);
   if (outfit === 'office' && r() < 0.6) at(B.chest, G.box, 0.06, 1.3, 0.112, 0xf0f0f0, 0.05, 0.07, 0.01); // ID badge
   if (outfit === 'police') at(B.chest, G.box, -0.08, 1.38, 0.11, 0x2a2a6a, 0.06, 0.02, 0.01); // name tag
-  // Neck and head.
+  // Neck and head. The head is an ellipsoid centred at HEAD with semi-axes HR; features are
+  // placed on its surface (zOn) so they neither sink in nor float off it.
   at(B.neck, G.cyl, 0, 1.53, 0, skin, 0.05, 0.08, 0.05);
-  at(B.neck, G.head, 0, 1.64, 0.005, skin, 0.1, 0.12, 0.11);
-  at(B.neck, G.box, 0, 1.625, 0.105, skin, 0.022, 0.04, 0.03); // nose
-  for (const s of [-1, 1]) at(B.neck, G.sphere, s * 0.037, 1.66, 0.095, 0x1a1410, 0.014, 0.012, 0.01);
-  if (!female && r() < 0.55) at(B.neck, G.box, 0, 1.597, 0.104, hair, 0.065, 0.014, 0.012); // moustache
-  if (!female && r() < 0.15) at(B.neck, G.cap, 0, 1.6, 0.02, hair, 0.105, 0.07, 0.11, Math.PI); // beard
+  at(B.neck, G.head, HEAD[0], HEAD[1], HEAD[2], skin, HR[0], HR[1], HR[2]);
+  at(B.neck, G.head, 0, 1.572, 0.03, skin, 0.064, 0.042, 0.066); // jaw and chin
+  for (const s of [-1, 1]) at(B.neck, G.head, s * 0.097, 1.636, -0.006, skin, 0.016, 0.027, 0.02); // ears
+  const shade = (c, k) => new THREE.Color(c).multiplyScalar(k).getHex();
+  // Eyes: whites, then dark irises just proud of them; brows above in the hair colour.
+  for (const s of [-1, 1]) {
+    const ex = s * 0.036, ey = 1.656, ez = zOn(ex, ey);
+    at(B.neck, G.head, ex, ey, ez - 0.0035, 0xece4da, 0.015, 0.0088, 0.008);
+    at(B.neck, G.head, ex + s * 0.001, ey - 0.0005, ez + 0.001, 0x20140c, 0.0075, 0.0082, 0.0065);
+    at(B.neck, G.box, s * 0.037, 1.682, zOn(s * 0.037, 1.682) + 0.002, hair, 0.034, female ? 0.006 : 0.009, 0.01, 0, s * -0.12);
+  }
+  at(B.neck, G.rbox, 0, 1.628, zOn(0, 1.628) + 0.004, skin, 0.022, 0.044, 0.026, -0.22); // nose
+  at(B.neck, G.box, 0, 1.592, zOn(0, 1.592) - 0.002, shade(female ? 0x9a3a3a : skin, female ? 1 : 0.62), 0.04, 0.01, 0.012); // lips
+  if (female && r() < 0.7) at(B.neck, G.head, 0, 1.676, zOn(0, 1.676) - 0.001, 0xb01020, 0.006, 0.006, 0.004); // bindi
+  if (!female && r() < 0.55) at(B.neck, G.box, 0, 1.604, zOn(0, 1.604) + 0.003, hair, 0.062, 0.013, 0.012); // moustache
+  if (!female && r() < 0.15) at(B.neck, G.capM, 0, 1.6, 0.006, hair, HR[0] * 1.06, 0.085, HR[2] * 1.06, Math.PI + 0.5); // beard (round the jaw, clear of the mouth)
+  // Hair: a shell a little bigger than the head, tilted back so it comes down to a hairline on
+  // the forehead and to the nape behind (it never lets the scalp poke through).
+  const shell = (geo, k, tilt, color = hair) => at(B.neck, geo, HEAD[0], HEAD[1], HEAD[2], color, HR[0] * k, HR[1] * k, HR[2] * k, tilt);
   if (opts.helmet) at(B.neck, G.cap, 0, 1.655, 0, opts.helmet === true ? pick([0x111111, 0xc0182a, 0xf0f0f0, 0x2a4ac0, 0xe8c020], r) : opts.helmet, 0.145, 0.15, 0.155);
-  else if (outfit === 'police') { at(B.neck, G.cap, 0, 1.7, 0, 0x2a2a6a, 0.13, 0.06, 0.135, -0.1); at(B.neck, G.cap, 0, 1.665, -0.005, hair, 0.115, 0.08, 0.115); }
-  else {
-    at(B.neck, G.cap, 0, 1.665, -0.01, hair, 0.113, female ? 0.12 : 0.09, 0.118);
-    if (female) {
-      if (r() < 0.6) { // long plait down the back, often with jasmine
-        at(B.neck, G.cyl, 0, 1.4, -0.11, hair, 0.035, 0.42, 0.03, 0.12);
-        if (r() < 0.6) for (let k = 0; k < 5; k++) at(B.neck, G.sphere, (k % 2 ? 0.03 : -0.03), 1.6 - k * 0.025, -0.12, 0xfafaf0, 0.02, 0.02, 0.02);
-      } else at(B.neck, G.head, 0, 1.67, -0.12, hair, 0.06, 0.055, 0.05); // bun
-    }
+  else if (outfit === 'police') { shell(G.capM, 1.1, -0.56); at(B.neck, G.cap, 0, 1.712, 0, 0x2a2a6a, 0.128, 0.06, 0.136, -0.1); at(B.neck, G.box, 0, 1.712, 0.12, 0x111111, 0.15, 0.012, 0.06, 0.2); }
+  else if (female) {
+    shell(G.capF, 1.1, -0.74);
+    for (const s of [-1, 1]) at(B.neck, G.head, s * 0.088, 1.62, -0.035, hair, 0.03, 0.075, 0.06, 0, s * 0.15); // falling past the ears
+    const style = r();
+    if (style < 0.55) { // a long plait down the back, often with jasmine
+      at(B.neck, G.cyl, 0, 1.43, -0.118, hair, 0.034, 0.36, 0.03, 0.14);
+      at(B.neck, G.head, 0, 1.25, -0.095, hair, 0.026, 0.04, 0.024);
+      if (r() < 0.6) for (let k = 0; k < 6; k++) at(B.neck, G.sphere, (k % 2 ? 0.032 : -0.032), 1.63 - k * 0.022, -0.125 + k * 0.002, 0xfafaf0, 0.016, 0.016, 0.016);
+    } else if (style < 0.8) at(B.neck, G.head, 0, 1.655, -0.125, hair, 0.058, 0.052, 0.048); // bun
+    else at(B.neck, G.rbox, 0, 1.53, -0.1, hair, 0.17, 0.24, 0.045, 0.12); // worn open
+  } else {
+    const style = r();
+    if (hair === GREY && style < 0.5) shell(G.band, 1.08, -0.25); // balding: a fringe round the back and sides
+    else if (style < 0.25) shell(G.capM, 1.16, -0.48); // a fuller, combed-up cut
+    else shell(G.capM, 1.1, -0.56);
+    for (const s of [-1, 1]) at(B.neck, G.box, s * 0.097, 1.648, 0.028, hair, 0.012, 0.045, 0.022); // sideburns
   }
   // Clothing pieces bound to the hips.
   if (saree) {
@@ -122,8 +154,8 @@ export function createHuman(opts = {}, r = Math.random) {
   }
 
   const bones = makeBones();
-  const mesh = buildSkinned(b, humanMaterial, bones);
-  mesh.receiveShadow = false;
+  // (People sit on blob shadows: skinned meshes are costly to draw twice, and there are hundreds.)
+  const mesh = buildSkinned(b, humanMaterial, bones, { castShadow: !!opts.castShadow, receiveShadow: false });
   const group = new THREE.Group();
   group.add(mesh);
   group.userData.blob = { w: 1.2, l: 1.2 };

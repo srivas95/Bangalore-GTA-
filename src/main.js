@@ -411,13 +411,19 @@ async function init() {
     renderer.setPixelRatio(pixelRatio);
     composer?.setPixelRatio(pixelRatio);
     env.setShadows(s.shadows);
+    // Phones get the 4-tap-per-texel PCF filter rather than the soft one (four times the lookups).
+    const shadowType = s.shadows === 'full' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    if (renderer.shadowMap.type !== shadowType) {
+      renderer.shadowMap.type = shadowType;
+      scene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; });
+    }
     useBloom = s.bloom;
     env.drawDist = s.drawDist;
-    camera.far = 400 + 1000 * s.drawDist;
-    camera.updateProjectionMatrix();
+    env.maxFar = 400 + 1000 * s.drawDist; // (env pulls the far plane in to the fog)
     traffic.target = Math.round(170 * s.traffic);
     traffic.radius = 260 + 120 * Math.min(1, s.drawDist);
     streetLife.walkerTarget = Math.round(110 * s.peds);
+    streetLife.visRange = 60 + 110 * Math.min(1, s.drawDist);
     rig.sens = s.sensitivity;
     rig.invert = s.invertY;
     audio.setVolume?.(s.volume);
@@ -639,7 +645,7 @@ async function init() {
   requestAnimationFrame(tick);
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { audio, voices, radio, metroDrive, interiors, story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
+  window.__game = { city, audio, voices, radio, metroDrive, interiors, story, metroRide, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.

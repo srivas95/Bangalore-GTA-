@@ -91,7 +91,7 @@ export class Signals {
       if (n.name) this.addTrafficCop(scene, n);
     }
     B.buildAll({ metal: withAO(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.5 })) }, scene);
-    const geo = new THREE.SphereGeometry(0.13, 8, 6);
+    const geo = new THREE.IcosahedronGeometry(0.13, 0); // (unlit: only the outline shows, so 20 faces will do)
     this.bulbs = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ toneMapped: false }), bulbs.length);
     const m = new THREE.Matrix4();
     bulbs.forEach((p, k) => { m.makeTranslation(p[0], p[1], p[2]); this.bulbs.setMatrixAt(k, m); this.bulbs.setColorAt(k, new THREE.Color(0x222222)); });

@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import { BuilderSet, MeshBuilder, makeFrame, frameToWorld, makePbrMaterial } from './meshBuilder.js';
 import { put } from './landmarks.js';
-import { textTexture } from './textures.js';
+import { paintText } from './textures.js';
+import { SignAtlas } from './signAtlas.js';
 import { textScale } from './detail.js';
 import { withAO } from './ao.js';
 import { Path } from './path.js';
@@ -443,16 +444,15 @@ export function buildMetro(scene, layout, colliders) {
     }
   }
   B.buildAll(mats, group);
-  const boardMats = new Map();
+  // Station boards: one shared atlas (lit, so not tone-mapped).
+  const atlas = new SignAtlas();
   for (const bd of boards) {
-    const key = bd.text.join('|') + bd.bg;
-    if (!boardMats.has(key)) boardMats.set(key, new THREE.MeshBasicMaterial({ map: textTexture(bd.text, { bg: bd.bg, fg: bd.fg || '#ffffff', w: 1024, h: Math.round(1024 * bd.h / bd.w), scale: textScale(bd.w) }), toneMapped: false }));
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(bd.w, bd.h), boardMats.get(key));
+    const key = bd.text.join('|') + bd.bg, sc = textScale(bd.w), W = 1024, H = Math.round((1024 * bd.h) / bd.w);
+    const slot = atlas.slot(key, W * sc, H * sc, (ctx, pw, ph) => paintText(ctx, bd.text, pw, ph, { bg: bd.bg, fg: bd.fg || '#ffffff', w: W, h: H }));
     const f = bd.f;
-    m.position.set(f.ox + bd.x * f.c + bd.z * f.s, bd.y, f.oz - bd.x * f.s + bd.z * f.c);
-    m.rotation.y = f.ang + bd.rot;
-    group.add(m);
+    atlas.quad(slot, bd.w, bd.h, f.ox + bd.x * f.c + bd.z * f.s, bd.y, f.oz - bd.x * f.s + bd.z * f.c, f.ang + bd.rot);
   }
+  atlas.build(group, (t) => new THREE.MeshBasicMaterial({ map: t, toneMapped: false }), { name: 'boards' });
 
   // ---------- Trains ----------
   // Each car rides on two bogies 14 m apart that follow the track: the car body is the chord
@@ -483,7 +483,6 @@ export function buildMetro(scene, layout, colliders) {
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     group.add(m);
   }
-  const HIDE = new THREE.Matrix4().makeScale(0, 0, 0);
   const dummy = new THREE.Object3D();
   dummy.rotation.order = 'YZX';
   const local = new THREE.Matrix4(), mat = new THREE.Matrix4();
@@ -617,14 +616,14 @@ export function buildMetro(scene, layout, colliders) {
             dummy.scale.set(1, 1, 1);
             dummy.updateMatrix();
             parts.bogie.setMatrixAt(bi++, dummy.matrix);
-          } else parts.bogie.setMatrixAt(bi++, HIDE);
+          }
         }
         // Platform-side (left) door leaves, sliding apart at stations.
         for (const dx of DOORS) for (const sd of [-1, 1]) {
           if (show) {
             local.makeTranslation(dx + sd * (LEAF / 2 + open * (LEAF - 0.06)), 0, -(HALF_W + 0.012));
             parts.leaf.setMatrixAt(li++, mat.multiplyMatrices(m.matrix, local));
-          } else parts.leaf.setMatrixAt(li++, HIDE);
+          }
         }
         // The flexible gangway to the car ahead, stretched between the two car ends.
         if (prev) {
@@ -636,7 +635,7 @@ export function buildMetro(scene, layout, colliders) {
             dummy.scale.set(gl + 0.25, 1, 1);
             dummy.updateMatrix();
             parts.gangway.setMatrixAt(gi++, dummy.matrix);
-          } else parts.gangway.setMatrixAt(gi++, HIDE);
+          }
         }
         prev = c;
       }
@@ -649,7 +648,9 @@ export function buildMetro(scene, layout, colliders) {
       const lead = t.cars[0];
       t.head = lead.front; t.headYaw = wrap(lead.yaw);
     }
-    for (const m of Object.values(parts)) m.instanceMatrix.needsUpdate = true;
+    // Only the trains near the camera are packed in (the rest aren't drawn at all).
+    parts.bogie.count = bi; parts.gangway.count = gi; parts.leaf.count = li;
+    for (const m of Object.values(parts)) { m.visible = m.count > 0; m.instanceMatrix.needsUpdate = true; }
   };
   update(0);
   return { update, group, trains, routes, trackAt };

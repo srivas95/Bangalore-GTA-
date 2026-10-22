@@ -319,16 +319,21 @@ export class StreetLife {
     }
     if (this.cows.length < this.cowTarget && rng() < dt) this.spawnCow(focus);
 
+    // Vehicles fast enough to knock someone over (speed is a hypot: work it out once a frame).
+    const fast = this._fast || (this._fast = []);
+    fast.length = 0;
+    for (const v of vehicles) if (v.speed >= 3) fast.push(v);
+
     for (let i = this.peds.length - 1; i >= 0; i--) {
       const p = this.peds[i];
       const dist = Math.hypot(p.x - focus.x, p.z - focus.z);
       if (p.kind === 'walker' && dist > 260) { this.freePed(p, i); continue; }
       if (p.temp && dist > 200) { this.freePed(p, i); continue; }
-      const vis = dist < 170;
+      const vis = dist < (this.visRange ?? 170);
       p.h.group.visible = vis;
       if (!vis && p.state === 'walk') { p.t += p.dir * p.speed * dt; continue; }
 
-      if (p.state !== 'down') this.checkVehicleHits(p, vehicles, world);
+      if (p.state !== 'down') this.checkVehicleHits(p, fast, world);
 
       switch (p.state) {
         case 'walk': {
@@ -450,9 +455,9 @@ export class StreetLife {
     }
   }
 
+  // (vehicles: only the ones moving faster than 3 m/s, from update.)
   checkVehicleHits(p, vehicles, world) {
     for (const v of vehicles) {
-      if (v.speed < 3) continue;
       const dx = p.x - v.x, dz = p.z - v.z;
       if (dx * dx + dz * dz > 64 || Math.abs(p.y - v.y) > 2) continue;
       for (const c of v.circles(this._c || (this._c = []))) {
