@@ -24,7 +24,12 @@ const ENG = {
   auto: { idle: 30.6, max: 96, gears: 4, vol: 0.75, lp: 2600 },
   car: { idle: 22.7, max: 118, gears: 5, vol: 0.55, lp: 900 },
   bus: { idle: 50.2, max: 140, gears: 4, vol: 0.85, lp: 1700 },
+  // No recordings of their own: an electric scooter is the scooter loop pitched up into a quiet
+  // whine, and a street bike is the Bullet's single wound up much higher.
+  ev: { idle: 120, max: 330, gears: 1, vol: 0.12, lp: 5000, src: 'scooter' },
+  sport: { idle: 16, max: 98, gears: 6, vol: 0.8, lp: 2000, src: 'bike' },
 };
+const engKey = (cls, i) => `eng_${ENG[cls]?.src || cls}_${i}`;
 
 // Horns: which recording, pitch, level and how long a blast lasts. Bengaluru honks in bursts.
 const HORNS = {
@@ -108,7 +113,7 @@ class EngineVoice {
     this.lp.connect(this.out);
     if (this.pan) this.out.connect(this.pan).connect(dest); else this.out.connect(dest);
     this.layers = [0, 1, 2].map((i) => {
-      const key = `eng_${cls}_${i}`, info = BANK[key];
+      const key = engKey(cls, i), info = BANK[key];
       const src = c.createBufferSource();
       src.buffer = au.buf[key];
       src.loop = true;
@@ -393,7 +398,7 @@ export class Audio {
     for (const [v, voice] of this.traffic) if (!keep.has(v)) { voice.stop(0.3); this.traffic.delete(v); }
     for (const { v, d } of cand.slice(0, max)) {
       const cls = v.spec.engine;
-      if (!ENG[cls] || !this.has(`eng_${cls}_0`, `eng_${cls}_1`, `eng_${cls}_2`)) continue;
+      if (!ENG[cls] || !this.has(engKey(cls, 0), engKey(cls, 1), engKey(cls, 2))) continue;
       let voice = this.traffic.get(v);
       if (!voice) { voice = new EngineVoice(this, cls, this.trafficBus); this.traffic.set(v, voice); }
       const sp = v.speed;
@@ -504,7 +509,7 @@ export class Audio {
     const cls = vehicle.spec.engine;
     // Recordings not in (still loading, or failed): the synthesised engine stands in, even after
     // the rest of the synthesised sound has been retired.
-    if (!ENG[cls] || !this.has(`eng_${cls}_0`, `eng_${cls}_1`, `eng_${cls}_2`)) { this.stopEngine(); this.synth.engine(vehicle, true); return; }
+    if (!ENG[cls] || !this.has(engKey(cls, 0), engKey(cls, 1), engKey(cls, 2))) { this.stopEngine(); this.synth.engine(vehicle, true); return; }
     this.synth.engine(null, true);
     if (vehicle.stalled || vehicle.engineDead || vehicle.wrecked) {
       if (this.pEng) { this.pEng.stop(0.4); this.pEng = null; }

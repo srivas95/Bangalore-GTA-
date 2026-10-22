@@ -30,17 +30,26 @@ const SITES = [
 // What Chikka sells: [label, type, model, price].
 export const FOR_SALE = [
   ['Honda Activa (scooter)', 'scooter', null, 3000],
+  ['Ather electric scooter', 'eScooter', null, 5500],
   ['Royal Enfield Bullet', 'bike', null, 8500],
+  ['KTM Duke', 'sportsBike', null, 14000],
   ['Bajaj auto rickshaw', 'auto', null, 6000],
+  ['Tata Nano', 'hatch', 'nano', 7000],
   ['Maruti Alto', 'hatch', 'alto', 11000],
   ['Maruti Swift', 'hatch', 'swift', 16000],
   ['Hyundai i10', 'hatch', 'i10', 14000],
   ['Maruti Swift Dzire', 'sedan', 'dzire', 19000],
   ['Toyota Etios', 'sedan', 'etios', 19500],
+  ['Hindustan Ambassador', 'sedan', 'ambassador', 15000],
   ['Honda City', 'sedan', 'city', 26000],
+  ['Tata Punch', 'suv', 'punch', 24000],
+  ['Kia Seltos', 'suv', 'seltos', 36000],
   ['Toyota Innova', 'suv', 'innova', 34000],
   ['Hyundai Creta', 'suv', 'creta', 38000],
   ['Mahindra Scorpio', 'suv', 'scorpio', 42000],
+  ['Mahindra Thar', 'suv', 'thar', 45000],
+  ['Mahindra XUV700', 'suv', 'xuv700', 52000],
+  ['Toyota Fortuner', 'suv', 'fortuner', 65000],
 ];
 const PAINTS = [0xf2f2f2, 0x1a1a1a, 0xb01c22, 0x1c3a7a, 0x8a8e92, 0x2f6a3a, 0xe0a020, 0x6a2a6a, 0x3a8ab0, 0xc87a30];
 

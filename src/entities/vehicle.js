@@ -84,14 +84,14 @@ export class Vehicle {
   }
 
   addRider(rng = Math.random, opts) {
-    const open = ['scooter', 'delivery', 'bike', 'auto', 'goodsAuto'].includes(this.type);
+    const open = this.spec.twoWheeler || this.type === 'auto' || this.type === 'goodsAuto';
     if (this.rider || !open) return;
     const two = this.spec.twoWheeler;
     const o = opts || {
       helmet: two ? (rng() < 0.85 ? true : undefined) : undefined,
       outfit: this.type === 'auto' ? 'shirt' : this.type === 'delivery' ? 'tshirt' : undefined,
       top: this.type === 'auto' ? 0x8a6a3a : this.type === 'delivery' ? [0xe8601a, 0xd0202a, 0x18a050][Math.floor(rng() * 3)] : undefined,
-      female: this.type === 'scooter' && rng() < 0.3 ? true : undefined,
+      female: (this.type === 'scooter' || this.type === 'eScooter') && rng() < 0.3 ? true : undefined,
     };
     const h = createHuman(o, rng);
     poseSit(h);

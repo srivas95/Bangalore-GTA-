@@ -397,7 +397,7 @@ export class Player {
     if (v.engineDead && ctrl.throttle > 0 && !this._deadNag) { this._deadNag = true; world.hud?.say(v.fireT > 0 ? 'It\'s on fire! Get out!' : 'The engine won\'t turn over. It\'s finished.', 2.5); }
     if (!v.engineDead) this._deadNag = false;
     world.audio?.hornHold(v.spec.horn, input.down('KeyH', 'KeyQ'), v.hornPitch);
-    if (v.spec.police && input.hit('KeyG')) v.siren = !v.siren; // your own Hoysala's siren
+    if ((v.spec.police || v.spec.siren) && input.hit('KeyG')) v.siren = !v.siren; // your own Hoysala's (or ambulance's) siren
     if (v.waterDepth > 0.5 && v.speed > 3 && Math.random() < dt * 3) world.audio?.splash();
     this.x = v.x; this.z = v.z; this.y = v.y;
   }
@@ -506,7 +506,7 @@ export class Player {
 
   seat(v) {
     const h = this.human;
-    if (['scooter', 'delivery', 'bike', 'auto', 'goodsAuto'].includes(v.type)) {
+    if (v.spec.twoWheeler || v.type === 'auto' || v.type === 'goodsAuto') {
       poseSit(h);
       v.seatHuman(h);
       h.group.visible = true;

@@ -168,7 +168,7 @@ async function init() {
       park(type, p.x, p.z, heading, o);
     });
   }
-  const types = ['scooter', 'scooter', 'bike', 'auto', 'hatch', 'sedan', 'taxi', 'suv', 'delivery'];
+  const types = ['scooter', 'scooter', 'eScooter', 'bike', 'sportsBike', 'auto', 'hatch', 'sedan', 'taxi', 'suv', 'suv', 'delivery'];
   for (const b of layout.blocks) {
     if (b.edge || b.zone === 'lake' || b.zone === 'park' || b.zone === 'industrial' || b.zone === 'landmark' || b.zone === 'rural') continue;
     const cbd = Math.hypot(b.cx - 300, b.cz) < 650;
@@ -595,7 +595,7 @@ async function init() {
         if (d < 2.2 && Math.abs(v.y - player.y) < 2 && (!near || d < near.d)) near = { v, d };
       }
       hud.prompt(near ? (near.v.driver === 'ai' || near.v.driver === 'police' ? `F  "Borrow" the ${near.v.spec.label}` : `F  Get in the ${near.v.spec.label}`) : '');
-    } else hud.prompt(player.vehicle && player.vehicle.speed <= 8 ? (player.vehicle.spec.police ? 'F  Get out  ·  G  Siren' : 'F  Get out') : '');
+    } else hud.prompt(player.vehicle && player.vehicle.speed <= 8 ? (player.vehicle.spec.police || player.vehicle.spec.siren ? 'F  Get out  ·  G  Siren' : 'F  Get out') : '');
 
     if (!window.__freeCam && !metroRide.active && !metroDrive.active) rig.update(dt, input, player, colliders);
     if (!metroRide.active && !metroDrive.active) metroRide.banner.classList.remove('show');
@@ -608,7 +608,7 @@ async function init() {
     if (gps.update(dt, player.x, player.z) === 'arrived') { hud.say('You have arrived.', 2.5); audio.click?.(); }
     if (gps.target) markers.push({ x: gps.target.x, z: gps.target.z, color: '#c050ff' });
     hud.update(dt, hudPlayer, rig.yaw, markers);
-    touch.update({ hijack: !!hijackable, driving: !!player.vehicle || metroDrive.active, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police, use: !!entrance || !!story.active || garages.nearStall || !!garages.menu || interiors.useNear || !!interiors.menu, offer: !!missions.offer, metro: metroRide.active && !metroDrive.active });
+    touch.update({ hijack: !!hijackable, driving: !!player.vehicle || metroDrive.active, gun: WEAPONS[player.weapon].kind === 'gun', police: !!(player.vehicle?.spec.police || player.vehicle?.spec.siren), use: !!entrance || !!story.active || garages.nearStall || !!garages.menu || interiors.useNear || !!interiors.menu, offer: !!missions.offer, metro: metroRide.active && !metroDrive.active });
     { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
     world.rigPitch = rig.pitch;
     hud.setClock(env.clockString(), env.rain > 0.6 ? '⛈ Monsoon' : env.rain > 0.1 ? '🌧 Rain' : env.night > 0.5 ? '🌙 Clear' : '☀ Clear');

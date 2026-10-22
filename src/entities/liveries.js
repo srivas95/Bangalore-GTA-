@@ -13,6 +13,8 @@ CELLS.forEach((n, k) => rect(n, (k % 4) * 512, Math.floor(k / 4) * 128, 512, 128
 rect('hoysalaR', 0, 256, 1024, 192); rect('hoysalaL', 1024, 256, 1024, 192);
 rect('pinkR', 0, 448, 1024, 192); rect('pinkL', 1024, 448, 1024, 192);
 rect('bonnet', 0, 640, 512, 256);
+// 108 ambulance: side band text, and the mirrored word for the bonnet (read in a mirror ahead).
+rect('amb108', 0, 1984, 1024, 64); rect('ambFront', 1024, 1984, 512, 64); rect('ather', 1536, 1984, 512, 64);
 
 export const BUS_LIVERIES = {
   ordinary: { body: 0x1d7fd4, frontLow: 0x1d7fd4, roof: 0x1d7fd4, ac: 0xe8e8e8, routes: [['226N', 'HAL MARKET'], ['258C', 'PEENYA 2ND STAGE'], ['171', 'KORAMANGALA']] },
@@ -272,6 +274,17 @@ export function decalAtlas() {
   drawHoysala(ctx, rects.pinkR, true, true);
   drawHoysala(ctx, rects.pinkL, false, true);
   drawBonnet(ctx, rects.bonnet);
+  {
+    const a = rects.amb108;
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(a.x, a.y, a.w, a.h);
+    text(ctx, '108  AMBULANCE  ·  ಆಂಬುಲೆನ್ಸ್', a.x + a.w / 2, a.y + 34, `bold 46px ${FONT}`, '#d4151f', a.w - 20);
+    const f = rects.ambFront;
+    ctx.save(); ctx.translate(f.x + f.w, f.y); ctx.scale(-1, 1);
+    text(ctx, 'AMBULANCE', f.w / 2, 34, `bold 52px ${FONT}`, '#d4151f', f.w - 20);
+    ctx.restore();
+    const t = rects.ather;
+    text(ctx, 'ATHER', t.x + t.w / 2, t.y + 34, `bold 48px ${FONT}`, '#3cc47c', t.w - 40);
+  }
   for (const k of LIVERY_KEYS) {
     drawBus(ctx, rects[`bus_${k}_R`], k, true, false);
     drawBus(ctx, rects[`bus_${k}_L`], k, false, true);

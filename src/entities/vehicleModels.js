@@ -13,6 +13,8 @@ import { CAR_MODELS, TYPE_MODELS, buildCarShell } from './carBodies.js';
 export const VEHICLE_TYPES = {
   scooter: { label: 'Scooter', length: 1.85, width: 0.72, wheelbase: 1.25, maxSpeed: 22, accel: 6.5, brake: 12, reverse: 1.5, steer: 0.6, grip: 10, mass: 130, twoWheeler: true, cam: 4.2, horn: 'scooter', engine: 'scooter', seatY: 0.78, stall: 0.35 },
   delivery: { label: 'Delivery Scooter', length: 1.85, width: 0.72, wheelbase: 1.25, maxSpeed: 23, accel: 6.8, brake: 12, reverse: 1.5, steer: 0.6, grip: 10, mass: 135, twoWheeler: true, cam: 4.4, horn: 'scooterHi', engine: 'scooter', seatY: 0.78, stall: 0.35 },
+  eScooter: { label: 'Ather Electric Scooter', length: 1.84, width: 0.74, wheelbase: 1.3, maxSpeed: 25, accel: 8.5, brake: 12.5, reverse: 1.5, steer: 0.6, grip: 10.5, mass: 118, twoWheeler: true, cam: 4.2, horn: 'scooterHi', engine: 'ev', seatY: 0.78, stall: 0.3 },
+  sportsBike: { label: 'KTM Duke', length: 2.0, width: 0.82, wheelbase: 1.36, maxSpeed: 42, accel: 10, brake: 15, reverse: 1.5, steer: 0.55, grip: 11, mass: 172, twoWheeler: true, cam: 4.6, horn: 'bike', engine: 'sport', seatY: 0.84, stall: 0.45 },
   bike: { label: 'Royal Bullet', length: 2.15, width: 0.8, wheelbase: 1.4, maxSpeed: 31, accel: 7.5, brake: 13, reverse: 1.5, steer: 0.55, grip: 10, mass: 195, twoWheeler: true, cam: 4.6, horn: 'bike', engine: 'bike', seatY: 0.8, stall: 0.45 },
   auto: { label: 'Auto Rickshaw', length: 2.65, width: 1.35, wheelbase: 1.9, maxSpeed: 15.5, accel: 3.8, brake: 9, reverse: 3, steer: 0.65, grip: 8, mass: 350, cam: 5.2, horn: 'auto', engine: 'auto', seatY: 0.92, stall: 0.45 },
   goodsAuto: { label: 'Goods Auto', length: 3.1, width: 1.45, wheelbase: 2.0, maxSpeed: 13, accel: 3, brake: 9, reverse: 3, steer: 0.6, grip: 8, mass: 520, cam: 5.8, horn: 'autoLow', engine: 'auto', seatY: 0.95, stall: 0.5 },
@@ -21,6 +23,7 @@ export const VEHICLE_TYPES = {
   taxi: { label: 'City Cab', length: 4.3, width: 1.72, wheelbase: 2.6, maxSpeed: 42, accel: 7.5, brake: 14, reverse: 6, steer: 0.52, grip: 9, mass: 1150, cam: 6.8, horn: 'carHi', engine: 'car', stall: 0.55 },
   suv: { label: 'SUV', length: 4.6, width: 1.86, wheelbase: 2.75, maxSpeed: 45, accel: 8, brake: 14, reverse: 6, steer: 0.5, grip: 8.5, mass: 1800, cam: 7.2, horn: 'suv', engine: 'car', stall: 0.8 },
   hoysala: { label: 'Hoysala (Ertiga)', length: 4.4, width: 1.73, wheelbase: 2.74, maxSpeed: 45, accel: 8.5, brake: 15, reverse: 6, steer: 0.55, grip: 9.5, mass: 1250, cam: 7, horn: 'police', engine: 'car', stall: 0.6, police: true },
+  ambulance: { label: '108 Ambulance', length: 5.2, width: 1.95, wheelbase: 3.05, maxSpeed: 34, accel: 5.2, brake: 11, reverse: 4, steer: 0.5, grip: 8.5, mass: 2600, cam: 8.5, horn: 'tempo', engine: 'car', stall: 0.8, siren: true },
   tempo: { label: 'Tempo Traveller', length: 5.6, width: 2.0, wheelbase: 3.35, maxSpeed: 26, accel: 4, brake: 10, reverse: 4, steer: 0.5, grip: 8, mass: 2800, cam: 9, horn: 'tempo', engine: 'car', stall: 0.8 },
   miniTruck: { label: 'Mini Truck', length: 3.8, width: 1.5, wheelbase: 2.1, maxSpeed: 20, accel: 4, brake: 10, reverse: 4, steer: 0.55, grip: 8, mass: 1300, cam: 7, horn: 'ace', engine: 'car', stall: 0.6 },
   lorry: { label: 'Lorry', length: 8.6, width: 2.5, wheelbase: 4.8, maxSpeed: 18, accel: 2, brake: 7, reverse: 3, steer: 0.5, grip: 7, mass: 9000, cam: 13, horn: 'lorry', engine: 'bus', stall: 1.1 },
@@ -157,7 +160,7 @@ function buildCar(type, r, opts) {
   const police = type === 'hoysala';
   const pink = police && opts.pink;
   const taxi = type === 'taxi';
-  let colour = opts.color ?? (taxi ? pick([0xf4f4f2, 0xf4f4f2, 0xf4f4f2, 0xd8d8d8], r) : pick(CAR_COLOURS, r));
+  let colour = opts.color ?? (taxi ? pick([0xf4f4f2, 0xf4f4f2, 0xf4f4f2, 0xd8d8d8], r) : pick(m.colours || CAR_COLOURS, r));
   if (police) colour = pink ? 0xe86aa6 : 0xf6f6f4;
   const black = { colour: C(0x0e0f10), pbr: P.plastic };
   const mats = { paint: { pbr: P.paint }, glass: { colour: C(0x141a20), pbr: P.glass }, black };
@@ -214,7 +217,12 @@ function buildCar(type, r, opts) {
     }
     if (m.rails) v.add(G.box, P.chrome, 0x2a2a2a, s * (hw(0) * m.taper * 0.92), roofY + 0.04, (prof.zRoofEnd + prof.zWsTop) / 2, 0.04, 0.05, (prof.zWsTop - prof.zRoofEnd) * 0.9);
   }
-  if (m.label.includes('Bolero')) v.add(G.cyl, P.rubber, 0x161616, 0, 0.8, zr - 0.1, 0.32, 0.2, 0.32, Math.PI / 2); // spare wheel on the tailgate
+  if (m.spare || m.label.includes('Bolero')) v.add(G.cyl, P.rubber, 0x161616, 0, 0.8, zr - 0.1, 0.32, 0.2, 0.32, Math.PI / 2); // spare wheel on the tailgate
+  if (key === 'ambassador') {
+    // The old warhorse: chrome bumpers and a rounded hump of a boot lid.
+    v.add(G.box, P.chrome, 0xd8d8d8, 0, 0.36, zf + 0.02, W * 0.92, 0.1, 0.1);
+    v.add(G.box, P.chrome, 0xd8d8d8, 0, 0.38, zr - 0.02, W * 0.92, 0.1, 0.1);
+  }
   plate(v, zf + 0.01, 0.42, taxi, 0.5, 1);
   plate(v, zr - 0.01, m.style === 'sedan' ? yTail - 0.25 : 0.55, taxi, 0.5, -1);
   if (taxi) for (const s of [-1, 1]) v.decal('cab', s * (hw(-0.4) + 0.012), (bottom(-0.4) + m.belt) / 2 + 0.05, -0.4, 1.1, 0.27, s > 0 ? 'L' : 'R');
@@ -293,6 +301,29 @@ function buildAuto(type, r, opts) {
 function buildTwoWheeler(type, r, opts) {
   const spec = VEHICLE_TYPES[type];
   const v = new VB();
+  if (type === 'sportsBike') {
+    // A naked street bike: angular tank and shrouds, a high stubby tail, an exhaust tucked under
+    // the belly, upside-down forks and a small sharp headlamp.
+    const colour = opts.color ?? pick([0xf26a10, 0xf26a10, 0x111111, 0xf2f2f2, 0x1c3a9a], r);
+    const trim = colour === 0xf26a10 ? 0x111111 : 0xf26a10;
+    v.add(tapered(0.34, 0.24, 0.5, 0.75, 0.8, -0.04), P.paint, colour, 0, 1.0, 0.18); // tank
+    for (const sx of [-1, 1]) v.add(G.box, P.paint, trim, sx * 0.17, 0.92, 0.36, 0.03, 0.2, 0.3, 0, sx * 0.25); // shrouds
+    v.add(G.rbox, P.cloth, 0x1a1a1a, 0, 0.92, -0.25, 0.26, 0.08, 0.42);
+    v.add(tapered(0.22, 0.12, 0.42, 0.6, 0.8, -0.06), P.paint, colour, 0, 0.98, -0.6, 1, 1, 1, -0.25); // tail
+    v.add(G.box, P.matte, 0x2a2a2a, 0, 0.55, 0.02, 0.24, 0.32, 0.45); // engine
+    v.add(G.box, P.paint, trim, 0, 0.62, 0.05, 0.3, 0.06, 0.6); // trellis frame
+    v.add(G.rbox, P.chrome, 0x3a3a3a, 0, 0.33, -0.15, 0.2, 0.14, 0.42); // belly exhaust
+    v.add(G.box, P.tail, 0xc81010, 0, 1.02, -0.83, 0.1, 0.04, 0.03);
+    const s = v.wheel(0, 0.31, 0.68, 0.31, 0.11, true, { hub: 0.22, hubColor: colour === 0xf26a10 ? 0xf26a10 : 0x222222 });
+    for (const sx of [-1, 1]) v.add(G.cyl, P.paint, 0xf26a10, sx * 0.075, 0.74, 0.6, 0.028, 0.82, 0.028, -0.4, 0, 0, s);
+    v.add(G.cyl, P.chrome, 0x222222, 0, 1.13, 0.47, 0.016, 0.72, 0.016, 0, Math.PI / 2, 0, s);
+    v.add(tapered(0.18, 0.16, 0.12, 0.7, 1, 0.02), P.paint, 0x1a1a1a, 0, 1.0, 0.68, 1, 1, 1, 0, 0, 0, s);
+    v.add(G.box, P.head, 0xfff8e0, 0, 1.0, 0.745, 0.11, 0.06, 0.02, 0, 0, 0, s);
+    v.wheel(0, 0.31, -0.68, 0.31, 0.15, false, { hub: 0.22, hubColor: colour === 0xf26a10 ? 0xf26a10 : 0x222222 });
+    v.add(G.cyl, P.paint, trim, 0, 0.45, -0.38, 0.03, 0.62, 0.03, Math.PI / 2 + 0.2); // swingarm
+    plate(v, -0.92, 0.82, false, 0.22, -1);
+    return v.finish(spec, { color: colour });
+  }
   if (type === 'bike') {
     const colour = opts.color ?? pick([0x111111, 0x5a1a1a, 0x1a2a4a, 0x3a4a2a, 0x8a8a8a], r);
     v.add(tapered(0.3, 0.22, 0.55, 0.8, 0.9, 0), P.paint, colour, 0, 0.95, 0.15); // fuel tank
@@ -312,8 +343,16 @@ function buildTwoWheeler(type, r, opts) {
     plate(v, -1.04, 0.66, false, 0.24, -1);
     return v.finish(spec, { color: colour });
   }
-  const colour = opts.color ?? pick([0xf2f2f2, 0x202224, 0xb01c22, 0x1c3a7a, 0x8a8e92, 0x3a6a3a, 0xe0a020, 0x6aa0c0], r);
+  const ev = type === 'eScooter';
+  const colour = opts.color ?? (ev ? pick([0xf2f3f2, 0x8a9096, 0x2a2d30, 0x3cc47c, 0xb01c22], r) : pick([0xf2f2f2, 0x202224, 0xb01c22, 0x1c3a7a, 0x8a8e92, 0x3a6a3a, 0xe0a020, 0x6aa0c0], r));
   v.add(G.box, P.matte, 0x222222, 0, 0.32, 0.1, 0.36, 0.06, 0.65); // floorboard
+  if (ev) {
+    // Electric: the battery under the floor, a slim LED tail and the brand on both side panels.
+    v.add(G.rbox, P.plastic, 0x2a2d30, 0, 0.24, 0.0, 0.32, 0.12, 0.8);
+    v.decal('ather', 0.215, 0.6, -0.42, 0.42, 0.06, 'L');
+    v.decal('ather', -0.215, 0.6, -0.42, 0.42, 0.06, 'R');
+    v.add(G.box, P.tail, 0xc81010, 0, 0.74, -0.84, 0.3, 0.025, 0.03);
+  }
   v.add(tapered(0.42, 0.42, 0.8, 0.9, 0.85, 0.02), P.paint, colour, 0, 0.52, -0.42);
   v.add(G.rbox, P.cloth, 0x1a1a1a, 0, 0.8, -0.3, 0.32, 0.1, 0.72);
   v.add(G.box, P.tail, 0xc81010, 0, 0.62, -0.84, 0.18, 0.06, 0.03);
@@ -329,6 +368,7 @@ function buildTwoWheeler(type, r, opts) {
   v.add(G.cyl, P.chrome, 0x999999, 0, 1.12, 0.62, 0.02, 0.62, 0.02, 0, Math.PI / 2, 0, s);
   v.add(G.rbox, P.paint, colour, 0, 1.12, 0.66, 0.3, 0.12, 0.16, 0, 0, 0, s);
   v.add(G.sphere, P.head, 0xfff8e0, 0, 1.08, 0.75, 0.07, 0.07, 0.04, 0, 0, 0, s);
+  if (ev) v.add(G.box, P.head, 0x6ad0ff, 0, 1.2, 0.6, 0.16, 0.01, 0.1, -0.5, 0, 0, s); // touchscreen dash
   v.add(G.rbox, P.paint, colour, 0, 0.38, 0.62, 0.16, 0.12, 0.42, 0, 0, 0, s);
   for (const x of [-0.22, 0.22]) v.add(G.box, P.glass, 0x333a40, x, 1.32, 0.6, 0.06, 0.04, 0.01, 0, 0, 0, s); // mirrors
   v.wheel(0, 0.24, -0.62, 0.24, 0.12, false, { hub: 0.5 });
@@ -384,9 +424,10 @@ function buildBus(type, r, opts) {
   const spec = VEHICLE_TYPES[type];
   const v = new VB();
   const L = spec.length, W = spec.width;
-  const school = type === 'schoolBus', tempo = type === 'tempo';
-  const livery = school ? 'school' : 'tempo';
-  const [main, stripe] = { school: [0xf2b800, 0x2a2a2a], tempo: [0xf2f2f2, 0x1c3a7a] }[livery];
+  const amb = type === 'ambulance';
+  const school = type === 'schoolBus', tempo = type === 'tempo' || amb;
+  const livery = school ? 'school' : amb ? 'ambulance' : 'tempo';
+  const [main, stripe] = { school: [0xf2b800, 0x2a2a2a], tempo: [0xf2f2f2, 0x1c3a7a], ambulance: [0xf6f6f4, 0xd4151f] }[livery];
   const H = tempo ? 2.2 : 2.9, base = tempo ? 0.35 : 0.4;
   v.add(new RoundedBoxGeometry(W, H, L, 2, tempo ? 0.25 : 0.2), P.paint, main, 0, base + H / 2, 0);
   if (tempo) v.add(tapered(W * 0.96, 0.6, 1.2, 0.9, 0.6, -0.2), P.paint, main, 0, base + 0.55, L / 2 + 0.3);
@@ -407,12 +448,20 @@ function buildBus(type, r, opts) {
     v.add(G.rbox, P.matte, 0x222222, s * (W / 2 + 0.2), base + H * 0.7, L / 2 - 0.2, 0.08, 0.4, 0.06); // mirrors
   }
   plate(v, L / 2 + 0.09, base + 0.1, !school || true, 0.55, 1);
+  if (amb) {
+    // 108: the red band carries the name, the bonnet the mirror-written word, a light bar on the roof.
+    v.decal('amb108', W / 2 + 0.02, base + H * 0.28, -0.2, L - 1.4, 0.3, 'L');
+    v.decal('amb108', -W / 2 - 0.02, base + H * 0.28, -0.2, L - 1.4, 0.3, 'R');
+    v.decal('ambFront', 0, base + H * 0.935, L / 2 + 0.02, 1.1, 0.13, 'F');
+    v.add(G.box, P.chrome, 0x222222, 0, base + H + 0.02, L / 2 - 0.9, W * 0.8, 0.08, 0.3);
+    v.add(G.box, P.plastic, 0xe8e8f0, 0, base + H + 0.1, L / 2 - 0.9, W * 0.12, 0.1, 0.24);
+  }
   if (school) { v.decal('school', W / 2 + 0.02, base + H * 0.42, 0, 2.6, 0.62, 'L'); v.decal('school', -W / 2 - 0.02, base + H * 0.42, 0, 2.6, 0.62, 'R'); v.decal('school', 0, base + H * 0.95, L / 2 + 0.03, 1.6, 0.38, 'F'); }
   const wr = tempo ? 0.38 : 0.5, ww = tempo ? 0.24 : 0.32;
   const wz = spec.wheelbase / 2 + (tempo ? 0.1 : 0.2), wz2 = -spec.wheelbase / 2 + (tempo ? 0.1 : 0.2);
   v.wheel(W / 2 - 0.3, wr, wz, wr, ww, true); v.wheel(-W / 2 + 0.3, wr, wz, wr, ww, true);
   v.wheel(W / 2 - 0.3, wr, wz2, wr, ww + 0.1, false); v.wheel(-W / 2 + 0.3, wr, wz2, wr, ww + 0.1, false);
-  return v.finish(spec, { livery });
+  return v.finish(spec, { livery, ...(amb && { lightBar: { y: base + H + 0.1, z: L / 2 - 0.9, w: W * 0.3 } }) });
 }
 
 // Lorries, water tankers and Tata Ace-style mini trucks.
@@ -466,8 +515,8 @@ function buildTruck(type, r, opts) {
 export function buildVehicleModel(type, r = Math.random, opts = {}) {
   switch (type) {
     case 'auto': case 'goodsAuto': return buildAuto(type, r, opts);
-    case 'scooter': case 'delivery': case 'bike': return buildTwoWheeler(type, r, opts);
-    case 'bus': case 'schoolBus': case 'tempo': return buildBus(type, r, opts);
+    case 'scooter': case 'delivery': case 'bike': case 'eScooter': case 'sportsBike': return buildTwoWheeler(type, r, opts);
+    case 'bus': case 'schoolBus': case 'tempo': case 'ambulance': return buildBus(type, r, opts);
     case 'lorry': case 'tanker': case 'miniTruck': return buildTruck(type, r, opts);
     default: return buildCar(type, r, opts);
   }

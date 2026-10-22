@@ -22,15 +22,22 @@ export const CAR_MODELS = {
   creta: { label: 'Hyundai Creta', L: 4.3, W: 1.79, H: 1.635, WB: 2.61, wr: 0.35, hood: 1.02, belt: 1.1, hoodLen: 1.0, ws: 0.7, rear: 0.28, taper: 0.84, style: 'suv', pillars: [0.48, 0.86], lights: 'swept', grille: 'cascade', blackPillars: true, cladding: true, rails: true },
   nexon: { label: 'Tata Nexon', L: 3.995, W: 1.804, H: 1.62, WB: 2.5, wr: 0.34, hood: 1.0, belt: 1.08, hoodLen: 0.95, ws: 0.66, rear: 0.36, taper: 0.82, style: 'suv', pillars: [0.5], lights: 'swept', grille: 'tata', blackPillars: true, cladding: true },
   scorpio: { label: 'Mahindra Scorpio', L: 4.456, W: 1.82, H: 1.995, WB: 2.68, wr: 0.37, hood: 1.15, belt: 1.25, hoodLen: 1.05, ws: 0.55, rear: 0.1, taper: 0.9, style: 'boxy', pillars: [0.4, 0.78], lights: 'tall', grille: 'mahindra', cladding: true, rails: true },
+  nano: { label: 'Tata Nano', L: 3.164, W: 1.495, H: 1.652, WB: 2.23, wr: 0.25, hood: 0.84, belt: 0.98, hoodLen: 0.5, ws: 0.62, rear: 0.12, taper: 0.86, style: 'hatch', pillars: [0.52], lights: 'tall', grille: 'slim' },
+  ambassador: { label: 'Hindustan Ambassador', L: 4.325, W: 1.662, H: 1.6, WB: 2.464, wr: 0.3, hood: 0.96, belt: 1.0, hoodLen: 1.25, ws: 0.52, rear: 0.45, boot: 0.88, taper: 0.88, style: 'sedan', pillars: [0.5], lights: 'round', grille: 'chromeBar', colours: [0xf4f4f0, 0xf4f4f0, 0x111111, 0xe8e0c8, 0x6a8a9a] },
+  punch: { label: 'Tata Punch', L: 3.827, W: 1.742, H: 1.615, WB: 2.445, wr: 0.34, hood: 1.0, belt: 1.08, hoodLen: 0.92, ws: 0.62, rear: 0.3, taper: 0.84, style: 'suv', pillars: [0.5], lights: 'swept', grille: 'tata', blackPillars: true, cladding: true },
+  seltos: { label: 'Kia Seltos', L: 4.365, W: 1.8, H: 1.645, WB: 2.61, wr: 0.35, hood: 1.02, belt: 1.1, hoodLen: 1.0, ws: 0.72, rear: 0.3, taper: 0.83, style: 'suv', pillars: [0.48, 0.86], lights: 'swept', grille: 'cascade', blackPillars: true, cladding: true, rails: true },
+  xuv700: { label: 'Mahindra XUV700', L: 4.695, W: 1.89, H: 1.755, WB: 2.75, wr: 0.37, hood: 1.08, belt: 1.15, hoodLen: 1.1, ws: 0.74, rear: 0.24, taper: 0.84, style: 'suv', pillars: [0.42, 0.8], lights: 'swept', grille: 'mahindra', blackPillars: true, cladding: true, rails: true },
+  fortuner: { label: 'Toyota Fortuner', L: 4.795, W: 1.855, H: 1.835, WB: 2.745, wr: 0.37, hood: 1.1, belt: 1.18, hoodLen: 1.15, ws: 0.72, rear: 0.22, taper: 0.85, style: 'suv', pillars: [0.42, 0.8], lights: 'swept', grille: 'toyotaBig', blackPillars: true, cladding: true, rails: true },
+  thar: { label: 'Mahindra Thar', L: 3.985, W: 1.82, H: 1.844, WB: 2.45, wr: 0.38, hood: 1.1, belt: 1.18, hoodLen: 1.15, ws: 0.34, rear: 0.05, taper: 0.95, style: 'boxy', pillars: [0.45], lights: 'round', grille: 'mahindra', cladding: true, spare: true, colours: [0x111111, 0xb01c22, 0x5a6a4a, 0xf2f2f2, 0xd06a1a] },
   bolero: { label: 'Mahindra Bolero', L: 3.995, W: 1.745, H: 1.88, WB: 2.68, wr: 0.36, hood: 1.12, belt: 1.22, hoodLen: 0.98, ws: 0.4, rear: 0.06, taper: 0.94, style: 'boxy', pillars: [0.42, 0.8], lights: 'round', grille: 'mahindra', cladding: true },
 };
 
 // Which real cars appear as each vehicle type, with weights.
 export const TYPE_MODELS = {
-  hatch: [['swift', 3], ['alto', 3], ['wagonr', 2.5], ['i10', 2]],
-  sedan: [['dzire', 2.5], ['city', 2], ['verna', 1.5], ['etios', 1]],
+  hatch: [['swift', 3], ['alto', 3], ['wagonr', 2.5], ['i10', 2], ['nano', 0.8]],
+  sedan: [['dzire', 2.5], ['city', 2], ['verna', 1.5], ['etios', 1], ['ambassador', 0.6]],
   taxi: [['etios', 3], ['dzire', 3], ['innova', 1.5], ['ertiga', 1]],
-  suv: [['creta', 3], ['nexon', 2], ['scorpio', 2], ['bolero', 1.5], ['innova', 1.5]],
+  suv: [['creta', 3], ['nexon', 2], ['scorpio', 2], ['bolero', 1.5], ['innova', 1.5], ['punch', 2], ['seltos', 2], ['xuv700', 1.5], ['fortuner', 1.5], ['thar', 1.2]],
   hoysala: [['ertiga', 1]],
 };
 

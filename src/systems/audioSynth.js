@@ -102,19 +102,19 @@ export class SynthAudio {
     this.eOn = true;
     const s = vehicle.spec.engine;
     const sp = Math.abs(vehicle.forwardSpeed) / vehicle.spec.maxSpeed;
-    const gears = s === 'car' ? 5 : s === 'bus' ? 4 : s === 'bike' ? 4 : 1;
+    const gears = s === 'car' ? 5 : s === 'bus' ? 4 : s === 'bike' ? 4 : s === 'sport' ? 6 : 1;
     const g = Math.min(gears - 1, Math.floor(sp * gears));
     const rpm = gears > 1 ? (sp * gears - g) * 0.7 + 0.3 : sp;
-    const base = { scooter: 90, bike: 42, auto: 55, car: 60, bus: 38 }[s];
+    const base = { scooter: 90, bike: 42, auto: 55, car: 60, bus: 38, ev: 220, sport: 70 }[s];
     const freq = base * (1 + rpm * 2.2);
     this.eOsc.frequency.setTargetAtTime(freq, t, 0.05);
     this.eOsc2.frequency.setTargetAtTime(freq * 0.5, t, 0.05);
     this.eFilter.frequency.setTargetAtTime(300 + rpm * 1400, t, 0.05);
-    const am = { auto: 0.9, bike: 0.95, scooter: 0.4, car: 0.15, bus: 0.2 }[s];
+    const am = { auto: 0.9, bike: 0.95, scooter: 0.4, car: 0.15, bus: 0.2, ev: 0.02, sport: 0.6 }[s];
     this.eLfo.frequency.setTargetAtTime(s === 'bike' ? 6 + rpm * 14 : freq / 6, t, 0.05);
     this.eLfoGain.gain.setTargetAtTime(am * 0.5, t, 0.05);
     this.eAM.gain.setTargetAtTime(1 - am * 0.5, t, 0.05);
-    this.eGain.gain.setTargetAtTime(s === 'bus' ? 0.16 : s === 'bike' ? 0.14 : 0.1, t, 0.1);
+    this.eGain.gain.setTargetAtTime(s === 'bus' ? 0.16 : s === 'bike' || s === 'sport' ? 0.14 : s === 'ev' ? 0.03 : 0.1, t, 0.1);
   }
 
   startSiren() {
