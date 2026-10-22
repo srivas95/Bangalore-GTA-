@@ -66,6 +66,7 @@ export class Environment {
     this.strobeB = new THREE.PointLight(0x2050ff, 0, 30, 1.5);
     scene.add(this.strobeR, this.strobeB);
 
+    this.buildNightDome();
     this.buildStars();
     this.buildRain();
     this.buildRoadFlood();
@@ -76,6 +77,34 @@ export class Environment {
     const sky = new Sky();
     sky.scale.setScalar(2000);
     return sky;
+  }
+
+  // The clear-sky model goes a muddy brown after dark: fade a navy dome over it, matched to the
+  // night fog at the horizon. Drawn at the far plane, so it only covers pixels showing sky.
+  buildNightDome() {
+    this.domeUniforms = { uHorizon: { value: new THREE.Color() }, uZenith: { value: new THREE.Color(0x02040c) }, uAlpha: { value: 0 } };
+    const m = new THREE.ShaderMaterial({
+      uniforms: this.domeUniforms, transparent: true, depthWrite: false, side: THREE.BackSide, fog: false,
+      vertexShader: `
+        varying vec3 vDir;
+        void main() {
+          vDir = normalize(position);
+          vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          gl_Position = p.xyww;
+        }`,
+      fragmentShader: `
+        uniform vec3 uHorizon; uniform vec3 uZenith; uniform float uAlpha;
+        varying vec3 vDir;
+        void main() {
+          gl_FragColor = vec4(mix(uHorizon, uZenith, pow(clamp(vDir.y, 0.0, 1.0), 0.55)), uAlpha);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`,
+    });
+    this.dome = new THREE.Mesh(new THREE.SphereGeometry(10, 16, 8), m);
+    this.dome.frustumCulled = false;
+    this.dome.renderOrder = -2; // before the stars, moon, rain and glows
+    this.scene.add(this.dome);
   }
 
   buildStars() {
@@ -243,6 +272,11 @@ export class Environment {
     const overcast = rain > 0.45;
     this.sky.visible = !overcast;
     this.scene.background = overcast ? this.scene.fog.color : null;
+    // Night dome over the sky (colours in the same linear space as the fog).
+    this.dome.position.copy(this.camera.position);
+    this.dome.visible = !overcast && night > 0.02;
+    this.domeUniforms.uAlpha.value = smooth(0.15, 0.9, night) * 0.92;
+    this.domeUniforms.uHorizon.value.copy(this.scene.fog.color);
     // Stars, moon.
     // (Kept just inside the far plane, scaled so the moon's size on screen stays the same.)
     const skyR = this.camera.far * 0.85;

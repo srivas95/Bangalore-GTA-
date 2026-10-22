@@ -2,7 +2,7 @@
 // 13-bone skeleton, so crowds stay cheap while limbs bend at knees and elbows.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { MeshBuilder, buildSkinned } from '../world/meshBuilder.js';
+import { MeshBuilder, buildSkinned, makePbrMaterial } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 
 const SKIN = [0x8d5524, 0xa8693c, 0xc68642, 0x7a4a2a, 0xb5784a, 0x9c6236, 0x6b4226, 0xd09a6a];
@@ -10,7 +10,13 @@ const SHIRTS = [0xffffff, 0x2e5e9e, 0x9e2e2e, 0x5a8a4a, 0xe8c070, 0x7a5aa0, 0x40
 const PANTS = [0x2a3040, 0x3a3a3a, 0x5a4a3a, 0x1f2a4a, 0x8a8070, 0x2a2a2a, 0x4a5a7a];
 const SAREES = [0xc0182a, 0xe8a020, 0x1a7a4a, 0x8a1a7a, 0x2a4ac0, 0xf06a9a, 0xe05a1a, 0x0a8a8a, 0x6a1a2a, 0xd0b020];
 
-export const humanMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82 });
+// Roughness and metalness per vertex (one material, one draw call per person): hair and eyes
+// catch the light, a silk saree has a sheen and gold bangles are metal.
+export const humanMaterial = makePbrMaterial({ envMapIntensity: 0.8 });
+const PBR = {
+  cloth: [0.88, 0, 0], skin: [0.6, 0, 0], hair: [0.52, 0, 0], eye: [0.12, 0, 0], silk: [0.36, 0.1, 0],
+  gold: [0.3, 1, 0], shoe: [0.5, 0, 0], helmet: [0.22, 0.05, 0],
+};
 
 const G = {
   rbox: new RoundedBoxGeometry(1, 1, 1, 1, 0.25),
@@ -69,8 +75,14 @@ export function createHuman(opts = {}, r = Math.random) {
   const shoes = opts.shoes ?? (outfit === 'police' ? 0x1a1208 : pick([0x2a2018, 0x111111, 0x6a4a2a, 0xe8e8e8], r));
   const hair = r() < 0.12 && !female ? GREY : female && r() < 0.12 ? 0x2e1a10 : 0x15100c;
 
-  const b = new MeshBuilder({ skin: true });
-  const at = (bone, geo, x, y, z, color, sx, sy, sz, rx = 0, rz = 0, ry = 0) => { b.bone = bone; put(b, geo, x, y, z, color, ry, sx, sy, sz, rx, rz); };
+  const b = new MeshBuilder({ skin: true, pbr: true });
+  const surface = new Map([[skin, PBR.skin], [hair, PBR.hair], [0xece4da, PBR.eye], [0x20140c, PBR.eye], [0xd4a017, PBR.gold], [shoes, PBR.shoe]]);
+  if (saree) surface.set(saree, PBR.silk);
+  let force = null; // a surface for the next part regardless of its colour
+  const at = (bone, geo, x, y, z, color, sx, sy, sz, rx = 0, rz = 0, ry = 0) => {
+    b.bone = bone; b.pbr = force || surface.get(color) || PBR.cloth;
+    put(b, geo, x, y, z, color, ry, sx, sy, sz, rx, rz);
+  };
 
   // Pelvis, abdomen, chest.
   at(B.hips, G.rbox, 0, 0.9, 0, saree ? saree : bottom, 0.33, 0.2, 0.2);
@@ -101,8 +113,11 @@ export function createHuman(opts = {}, r = Math.random) {
   // Hair: a shell a little bigger than the head, tilted back so it comes down to a hairline on
   // the forehead and to the nape behind (it never lets the scalp poke through).
   const shell = (geo, k, tilt, color = hair) => at(B.neck, geo, HEAD[0], HEAD[1], HEAD[2], color, HR[0] * k, HR[1] * k, HR[2] * k, tilt);
-  if (opts.helmet) at(B.neck, G.cap, 0, 1.655, 0, opts.helmet === true ? pick([0x111111, 0xc0182a, 0xf0f0f0, 0x2a4ac0, 0xe8c020], r) : opts.helmet, 0.145, 0.15, 0.155);
-  else if (outfit === 'police') { shell(G.capM, 1.1, -0.56); at(B.neck, G.cap, 0, 1.712, 0, 0x2a2a6a, 0.128, 0.06, 0.136, -0.1); at(B.neck, G.box, 0, 1.712, 0.12, 0x111111, 0.15, 0.012, 0.06, 0.2); }
+  if (opts.helmet) {
+    force = PBR.helmet;
+    at(B.neck, G.cap, 0, 1.655, 0, opts.helmet === true ? pick([0x111111, 0xc0182a, 0xf0f0f0, 0x2a4ac0, 0xe8c020], r) : opts.helmet, 0.145, 0.15, 0.155);
+    force = null;
+  } else if (outfit === 'police') { shell(G.capM, 1.1, -0.56); at(B.neck, G.cap, 0, 1.712, 0, 0x2a2a6a, 0.128, 0.06, 0.136, -0.1); at(B.neck, G.box, 0, 1.712, 0.12, 0x111111, 0.15, 0.012, 0.06, 0.2); }
   else if (female) {
     shell(G.capF, 1.1, -0.74);
     for (const s of [-1, 1]) at(B.neck, G.head, s * 0.088, 1.62, -0.035, hair, 0.03, 0.075, 0.06, 0, s * 0.15); // falling past the ears
