@@ -686,7 +686,18 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
             // (A much heavier hitter always shoves it: otherwise it acts as a wall, hit again every frame.)
             const loses = agent && !heavy && (dvB > 4 || (b.spec.twoWheeler && dvB > 2) || (a.mass > 2.5 * b.mass && -vn > 1.5));
             a.x += nx * pen * (loses ? ia / (ia + ib) : 1); a.z += nz * pen * (loses ? ia / (ia + ib) : 1);
-            if (vn < 0) a.applyImpulse(nx * j, nz * j, pax, paz);
+            if (vn < 0 && !loses && agent) {
+              // Still on its rails: we bounce off it once, properly (as off something we can't
+              // move this instant), and it takes the shove as a lurch forward or a swerve
+              // instead of standing there like a wall to be hit again next frame.
+              const j0 = (-1.15 * vn) / (ia + ta);
+              a.applyImpulse(nx * j0, nz * j0, pax, paz);
+              dvA = j0 * ia;
+              const bfx = Math.sin(b.heading), bfz = Math.cos(b.heading);
+              const along = (-nx * bfx - nz * bfz) * dvB, side = (-nx * bfz + nz * bfx) * dvB;
+              agent.speed = Math.max(0, agent.speed + along * 0.8);
+              agent.latVel = Math.max(-2.5, Math.min(2.5, (agent.latVel || 0) + side * 0.7));
+            } else if (vn < 0) a.applyImpulse(nx * j, nz * j, pax, paz);
             if (loses) {
               traffic.release(agent);
               b.x -= nx * pen * ib / (ia + ib); b.z -= nz * pen * ib / (ia + ib);

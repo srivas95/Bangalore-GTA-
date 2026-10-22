@@ -177,7 +177,9 @@ export class Vehicle {
     // Steering: quick, but less lock at speed (like any arcade-sim racer).
     const lock = s.steer / (1 + Math.abs(u) * (s.twoWheeler ? 0.22 : s.length > 7 ? 0.035 : 0.05));
     const target = (input ? input.steer : 0) * lock;
-    const rate = (Math.abs(target) < Math.abs(this.steer) ? 6 : 3.2) * s.steer;
+    // The wheel turns in more gently the faster you go (a keyboard is all-or-nothing, and an
+    // instant full lock at speed is what made cars twitchy), and unwinds a little quicker.
+    const rate = (Math.abs(target) < Math.abs(this.steer) ? 6 : 3.2) * s.steer / (1 + Math.abs(u) * (s.twoWheeler ? 0.02 : 0.045));
     this.steer += Math.max(-rate * dt, Math.min(rate * dt, target - this.steer));
     const d = this.steer;
 
@@ -185,10 +187,14 @@ export class Vehicle {
     let Fdrive = 0, Fbrake = 0;
     if (thr > 0) {
       if (u < -0.5) Fbrake = m * s.brake * thr;
-      else Fdrive = m * s.accel * thr * Math.pow(Math.max(0, 1 - Math.max(0, u) / s.maxSpeed), 0.6) * (1 + 0.3 * Math.max(0, 1 - Math.abs(u) / 6));
+      // Strong off the line, tailing off towards top speed (a city car needs ~8 s to 100 km/h).
+      else Fdrive = m * s.accel * thr * Math.pow(Math.max(0, 1 - Math.max(0, u) / s.maxSpeed), 0.9) * (1 + 0.25 * Math.max(0, 1 - Math.abs(u) / 6));
     } else if (thr < 0) {
       if (u > 0.5) Fbrake = m * s.brake * -thr;
       else Fdrive = u > -s.reverse ? m * s.accel * 0.6 * thr : 0;
+    } else if (input && Math.abs(u) > 0.3) {
+      // Off the throttle, in gear: engine braking (regen on electrics), not a glide on ice.
+      Fbrake = m * (s.engine === 'ev' ? 1.4 : s.twoWheeler || s.engine === 'auto' ? 1.1 : s.length > 7 ? 0.6 : 0.65) * Math.min(1, Math.abs(u) / 4);
     }
     if (!input) Fbrake += m * 7; // nobody at the wheel: parked, in gear
     if (this.stalled || dead) Fdrive = 0;
@@ -207,7 +213,7 @@ export class Vehicle {
     let Ffl = -mu * Nf * curve(Math.atan2(wLat, Math.abs(wLong) + 0.5)) * low * contact;
     // Rear axle.
     const vry = v - b * r;
-    const rearMu = mu * (hb && input ? (s.twoWheeler ? 0.85 : 0.42) : s.twoWheeler ? 1 : 1.15); // a planted rear = stable
+    const rearMu = mu * (hb && input ? (s.twoWheeler ? 0.85 : 0.5) : s.twoWheeler ? 1 : 1.15); // a planted rear = stable
     let Frl = -rearMu * Nr * curve(Math.atan2(vry, Math.abs(u) + 0.5)) * low * contact;
     // Brakes split 60/40 front/rear; drive goes through the front (most Indian cars are FWD).
     const sgn = Math.sign(u) || 1;
@@ -239,14 +245,15 @@ export class Vehicle {
       r *= Math.exp(-0.5 * dt);
     } else if (s.twoWheeler) {
       // Bikes lean rather than slide: they follow their front wheel, up to the grip limit.
+      // (Leaning in takes a moment: the yaw rate follows the bars with a short lag.)
       const rk = (u * Math.tan(d)) / L, rMax = (mu * g) / Math.max(2, Math.abs(u));
-      r = Math.max(-rMax, Math.min(rMax, rk));
+      r += (Math.max(-rMax, Math.min(rMax, rk)) - r) * Math.min(1, dt * (Math.abs(u) < 4 ? 20 : 9));
       v *= Math.exp(-8 * dt);
     } else {
       // Stability assist: rein in yaw beyond what the tyres can hold, so a car slides and
       // recovers instead of spinning, unless you're deliberately on the handbrake.
       const ai = this.driver && this.driver !== 'player';
-      const rMax = (mu * g * 1.15) / Math.max(2, Math.abs(u)) + (hb && input ? 2.5 : ai ? 0.05 : 0.35);
+      const rMax = (mu * g * 1.15) / Math.max(2, Math.abs(u)) + (hb && input ? 1.5 : ai ? 0.05 : 0.3);
       if (Math.abs(r) > rMax) r -= (Math.abs(r) - rMax) * Math.sign(r) * Math.min(1, dt * (ai ? 12 : 4));
     }
     if (low < 1 && contact) { // near standstill blend to pure rolling so cars don't drift at 2 km/h
@@ -282,10 +289,13 @@ export class Vehicle {
       const cvx = this.vx + this.angVel * pz, cvz = this.vz - this.angVel * px;
       const vn = cvx * hit.nx + cvz * hit.nz;
       if (vn < 0) {
-        const j = (-1.25 * vn) / (1 / this.mass + (px * hit.nz - pz * hit.nx) ** 2 / this.inertia);
+        const j = (-1.2 * vn) / (1 / this.mass + (px * hit.nz - pz * hit.nx) ** 2 / this.inertia);
         this.applyImpulse(hit.nx * j, hit.nz * j, px, pz);
-        // Scrape: friction along the wall.
-        this.vx *= 0.92; this.vz *= 0.92;
+        // Scrape: friction along the wall in proportion to how hard you hit it, so a glancing
+        // touch slides along and a square hit doesn't.
+        const tx = -hit.nz, tz = hit.nx, vt = cvx * tx + cvz * tz;
+        const jt = Math.min(Math.abs(vt) * this.mass * 0.5, j * 0.4) * Math.sign(vt);
+        this.applyImpulse(-tx * jt, -tz * jt, px, pz);
         if (-vn > impact) { impact = -vn; this.lastHit = { x: c.x - hit.nx * c.r, z: c.z - hit.nz * c.r }; }
       }
       this.circles(circles);
