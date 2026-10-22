@@ -57,19 +57,37 @@ ambush at a half-built site off Magadi Road. Raghu walks out of it, and Majestic
 When Act I ends, Raghu owns the Majestic collections. Money comes in passively, and
 rival crews start turning up in the markets.
 
-## Act II: Empire (planned)
+## Act II: Empire (playable now)
 
-- **Land.** Help Hanu Anna clear "encroachments" on the city's edge: Kengeri, Peenya,
-  the lake beds. You choose between persuading people, paying them off or burning them out,
-  and the choices change how neighbourhoods treat you.
-- **War with Seenu.** A street war across K.R. Market, Mysore Road and the Nayandahalli
-  junction, fought with chases, ambushes and a raid on his godowns.
-- **Lakshmi Akka's ledger.** Laundering through darshinis, a cinema and a fleet of taxis.
-  This is the first business-management layer.
-- **ACP Shalini Rao** appears. Her missions pressure Raghu: tails, raids and informers in
-  his crew.
-- **The act ends** with Hanu Anna, now an MLA, cutting Raghu loose. With a warrant out,
-  Raghu leaves the country from the airport road before dawn.
+Lakshmi Akka launders Raghu's money through her darshinis and a cinema, and introduces him
+to Hanu Anna, a corporator with friends in real estate. Raghu clears a lake bed in Kengeri
+(paying the families off or forcing them out, and Hanu remembers which), burns Seenu's
+lorries on Mysore Road, unmasks an informer in his own crew, and ends the war with Seenu at
+Nayandahalli junction. Then Hanu Anna, now an MLA, cuts him loose: a warrant, four stars,
+and a dash to the airport road before dawn.
+
+| # | Mission | Where | What happens |
+|---|---|---|---|
+| 6 | **Akka's Ledger** | Gandhi Bazaar, Jayanagar, V.V. Puram, Malleshwaram, K.G. Road | Collect the takings from three darshinis, take them to the cinema, shake off a plain-clothes squad. |
+| 7 | **The Lake Bed** | Kengeri | Walk into one of two markers: pay the families ₹2,000 to move, or clear them out by force (a fight and two stars). Hanu Anna reacts to the choice. |
+| 8 | **Seenu's Godowns** | Mysore Road | Wreck Seenu's lorries, fight off his men, lose three stars. |
+| 9 | **The Informer** | K.G. Road | Tail Mani's scooter without being spotted, then run him down when he bolts. |
+| 10 | **Nayandahalli Junction** | Nayandahalli | Survive waves of Seenu's crew, then finish Seenu. |
+| 11 | **Before Dawn** | Rajajinagar to Yelahanka | Four stars, a black Fortuner and fifteen minutes to reach the airport road. |
+
+Choices are saved (`flags` in the save), and later lines refer back to them.
+
+## Odd jobs (side missions)
+
+Blue markers, available alongside the story once the first missions are done:
+
+| Mission | Where | What happens |
+|---|---|---|
+| **108 Emergency** | Victoria Hospital | Drive the 108 ambulance (G for the siren) to three accidents and rush each patient to a hospital against the clock. |
+| **Match Day** | MG Road | Get two RCB fans from Indiranagar and Koramangala to Chinnaswamy before the first ball. |
+| **Hoarding Wars** | Brigade Road | Stand under four rival hoardings while posters go up over them, then lose the police. |
+| **Showroom Fresh** | Shivajinagar | Lift an orange KTM Duke from an Indiranagar showroom and deliver it unscratched. |
+| **Auto Raja** | K.R. Market | Race Shankar's auto through Town Hall and Lalbagh to the Bull Temple against the clock. |
 
 ## Act III: Exile (planned)
 
@@ -94,8 +112,9 @@ rival crews start turning up in the markets.
 ## Systems the story uses
 
 - **Story missions** (`src/systems/story.js`). Missions are scripts of steps: go to a
-  place, talk, fight a crew, lose the police, collect, steal and deliver a vehicle, or
-  survive. Each has a giver marker on the map and a reward.
+  place, talk, fight a crew, lose the police, collect, steal and deliver a vehicle, wreck
+  vehicles, tail or chase one through traffic, hold out against waves, race checkpoints, or
+  choose by walking into one of several markers. Each has a giver marker on the map and a reward.
 - **Saving.** Finished missions and money are saved to `localStorage` and restored when
   you load the game.
 - **Gangs** (`src/entities/gangs.js`). Missions spawn named crews with weapons, and crews

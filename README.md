@@ -123,7 +123,9 @@ and signing.
 ### Vehicles and driving
 
 - **Tyre physics.** Driving uses a bicycle model with slip angles, load transfer and handbrake
-  turns, plus a stability assist that keeps it fun. Two-wheelers lean.
+  turns, plus a stability assist that keeps it fun. Engine braking when you lift off, steering
+  that turns in more gently at speed, two-wheelers that lean into turns, scrapes that slide
+  along walls, and traffic that lurches or swerves when you shunt it.
 - **Slopes.** Vehicles sit on the ground under their axles, so they pitch up flyover ramps and dive
   into underpasses, tilt on kerbs and climb onto footpaths with a bump. Gravity slows you uphill;
   take a crest fast enough and you leave the ground and land on the suspension.
@@ -134,9 +136,11 @@ and signing.
   - Hyundai i10, Verna and Creta
   - Toyota Etios and Innova
   - Honda City, Maruti Ertiga, Tata Nexon, Mahindra Scorpio and Bolero
+  - Tata Nano and Punch, Hindustan Ambassador, Kia Seltos, Mahindra XUV700 and Thar, Toyota Fortuner
 - **Taxis** are Etios, Dzire, Innova and Ertiga. The **Hoysala** is a Maruti Ertiga in the current
   Bengaluru City Police livery. There's also a Pink Hoysala.
-- **More types:** scooters, a Royal Bullet, autos, goods autos, and **BMTC buses** in five real
+- **More types:** scooters, an Ather electric scooter, a Royal Bullet, a KTM Duke, autos, goods
+  autos, the **108 ambulance** (with a siren), and **BMTC buses** in five real
   liveries with LED route boards. Tempo travellers, mini trucks, lorries ("Horn OK Please"), water
   tankers and school buses round it out.
 - **Damage:**
@@ -149,7 +153,8 @@ and signing.
 - Puncture-and-service stalls all over town, and **Chikka Motors** in Gandhinagar.
 - Drive into the blue bay to **repair** the damage or **respray**. A new colour clears a wanted
   level of up to 3 stars, as long as no Hoysala saw you drive in.
-- Chikka Motors **sells vehicles**: an Activa, a Bullet, an auto and real car models up to a Scorpio.
+- Chikka Motors **sells vehicles**: an Activa, an Ather, a Bullet, a KTM, an auto and real car models
+  from a Nano to a Fortuner.
   What you buy is saved, waits outside Chikka Motors when you load, and can be brought to any garage.
 
 ### Traffic, people and police
@@ -228,15 +233,22 @@ and signing.
   Bhavan, CTR, Meghana Foods, Truffles, Toit, Café Coffee Day and more.
 - **Fuel stations.** HP, Indian Oil and Bharat Petroleum forecourts.
 - **Hotels and malls.** The JW Marriott, ITC Gardenia, Taj MG Road, Orion Mall and Mantri Square.
+- **Hoardings.** Rooftop billboards along the main roads: Royal Challengers Bengaluru ("Ee Sala
+  Cup Namde", and all over the streets round Chinnaswamy), Nandini, Mysore Sandal Soap, MTR,
+  Amul, Parle-G, Flipkart, Swiggy, Ather, Royal Enfield and more. Painted for the game, lit at
+  night.
 
 ### Story and gigs
 
 - **Story** ([docs/STORY.md](docs/STORY.md)). Raghu, a delivery rider from the coast, rises through
   the Majestic underworld. The full arc runs through rise, empire, exile in Dubai and a
   "reformed" return.
-  - **Act I is playable:** five missions, from a parcel run for the market rowdy Kotte Kumar to
-    the ambush on Magadi Road.
-  - Mission givers are pink markers on the map.
+  - **Acts I and II are playable:** eleven missions, from a parcel run for the market rowdy
+    Kotte Kumar to a land grab in Kengeri (pay the families off or force them out), the war
+    with Seenu and a four-star dash to the airport road before dawn.
+  - **Odd jobs:** the 108 ambulance, RCB fans to Chinnaswamy on match day, a hoarding war, a
+    KTM lifted from a showroom and an auto race to the Bull Temple.
+  - Story givers are pink markers on the map, odd jobs blue.
   - Progress and money are **saved** in the browser.
 - **Gigs.** Food deliveries and auto fares keep the money coming between missions.
 
@@ -260,6 +272,8 @@ src/
     landmarks.js       Procedural landmark models
     geom.js, path.js   Polygon fill/walls, rectangle overlap, arc-length polylines
     textures.js        Canvas-painted textures (facades, lit windows, asphalt, pavers, signs, water)
+    signAtlas.js       Shared atlas pages for signboards and hoardings, merged per chunk
+    billboards.js      The brand hoardings, painted on canvas
     meshBuilder.js     Merged/chunked geometry with local frames, per-vertex PBR material, rigid skinning
     detail.js          World detail levels (Full / Lite / Minimum)
     ao.js              Baked shading: dark wall bases, ground shading map next to buildings and trees
@@ -267,7 +281,7 @@ src/
     halos.js           Light halos: street lamps, signals, headlights, tail lights, police light bars
   entities/
     human.js           Skinned 13-bone people + animations
-    carBodies.js       Lofted car bodies for the real models (Swift, Dzire, Etios, Innova…)
+    carBodies.js       Lofted car bodies for the real models (Swift, Dzire, Nano, Ambassador, Thar, Fortuner…)
     vehicleModels.js   Vehicle types as single skinned meshes (wheels are bones), decals
     liveries.js        One canvas atlas for every livery: Hoysala, BMTC, LED boards
     vehicle.js         Tyre-model physics, damage, fire, flood drag and stalling
@@ -304,6 +318,6 @@ apps/
 
 ## Roadmap
 
-The full list is in [docs/GAME_OUTLINE.md](docs/GAME_OUTLINE.md#next-up-proposed). Highlights: Act II (land deals,
-a war with Seenu, ACP Shalini Rao), garages and repairs, a phone UI, police roadblocks and Cheetah bikes, the
-airport road and Whitefield, and a glTF art pass for hero models.
+The full list is in [docs/GAME_OUTLINE.md](docs/GAME_OUTLINE.md#next-up-proposed). Highlights: Act III (exile in
+Dubai, playing as Vinay back home), a phone UI, police roadblocks and Cheetah bikes, the airport itself and
+Whitefield, and a glTF art pass for hero models.

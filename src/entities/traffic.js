@@ -86,33 +86,56 @@ export class Traffic {
       if (this.occupied(p.x, p.z, 9)) continue;
       const v = this.acquire(type);
       if (!v) continue;
-      v.x = p.x; v.z = p.z; v.heading = p.h; v.y = 0; v.vx = v.vz = 0;
-      v.driver = 'ai';
-      v.stalled = false;
-      if (!v.rider) v.addRider(rng);
-      this.scene.add(v.group);
-      const two = v.spec.twoWheeler;
-      const erratic = two || AUTOS.has(type);
-      const a = {
-        v, edge: e, lane, path, s, speed: 0, turning: false,
-        cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
-        stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
-        jumper: rng() < (two ? 0.3 : type === 'auto' ? 0.25 : HEAVY.has(type) ? 0.05 : 0.1),
-        impatience: rng(),
-        // Lane-ignoring weavers, and the ones who'll happily ride against the traffic.
-        erratic, weaveT: rng() * 2, surge: 1, surgeT: rng() * 4,
-        wrongProne: erratic && rng() < (two ? 0.3 : 0.18), wrong: false, wrongNow: false,
-      };
-      if (erratic) {
-        const [lo, hi] = this.band(a);
-        a.lat = a.latTarget = lo + rng() * (hi - lo);
-      }
-      a.fx = Math.sin(p.h); a.fz = Math.cos(p.h);
-      this.agents.push(a);
-      this.addToGrid(a);
-      return a;
+      return this.addAgent(v, e, lane, path, s);
     }
     return null;
+  }
+
+  // A vehicle joining the traffic on the road nearest (x, z): mission targets. With keep, it
+  // isn't despawned for being far from the player.
+  spawnNear(type, x, z, { keep = null, opts = {} } = {}) {
+    let best = null;
+    for (const e of this.layout.edges) {
+      if (e.flyover || e.len < 40) continue;
+      const t = Math.max(0.1, Math.min(0.7, ((x - e.from.x) * e.dir.x + (z - e.from.z) * e.dir.z) / e.len));
+      const d = Math.hypot(e.from.x + e.dir.x * e.len * t - x, e.from.z + e.dir.z * e.len * t - z);
+      if (!best || d < best.d) best = { d, e, t };
+    }
+    if (!best) return null;
+    const { e, t } = best, lane = this.chooseLane(e, type), path = this.edgePath(e, lane);
+    const a = this.addAgent(new Vehicle(type, { rng, rider: true, ...opts }), e, lane, path, t * path.length);
+    a.keep = keep;
+    return a;
+  }
+
+  addAgent(v, e, lane, path, s) {
+    const type = v.type;
+    const p = sample(path, s);
+    v.x = p.x; v.z = p.z; v.heading = p.h; v.y = 0; v.vx = v.vz = 0;
+    v.driver = 'ai';
+    v.stalled = false;
+    if (!v.rider) v.addRider(rng);
+    this.scene.add(v.group);
+    const two = v.spec.twoWheeler;
+    const erratic = two || AUTOS.has(type);
+    const a = {
+      v, edge: e, lane, path, s, speed: 0, turning: false,
+      cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
+      stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
+      jumper: rng() < (two ? 0.3 : type === 'auto' ? 0.25 : HEAVY.has(type) ? 0.05 : 0.1),
+      impatience: rng(),
+      // Lane-ignoring weavers, and the ones who'll happily ride against the traffic.
+      erratic, weaveT: rng() * 2, surge: 1, surgeT: rng() * 4,
+      wrongProne: erratic && rng() < (two ? 0.3 : 0.18), wrong: false, wrongNow: false,
+    };
+    if (erratic) {
+      const [lo, hi] = this.band(a);
+      a.lat = a.latTarget = lo + rng() * (hi - lo);
+    }
+    a.fx = Math.sin(p.h); a.fz = Math.cos(p.h);
+    this.agents.push(a);
+    this.addToGrid(a);
+    return a;
   }
 
   chooseLane(e, type, fromTurn = false) {
@@ -337,7 +360,7 @@ export class Traffic {
       const a = this.agents[ai];
       const v = a.v;
       const distP = Math.hypot(v.x - focus.x, v.z - focus.z);
-      if (distP > this.radius + 70) { this.despawn(a); continue; }
+      if (distP > this.radius + 70 && !a.keep) { this.despawn(a); continue; }
       const two = v.spec.twoWheeler;
       const look = 6 + a.speed * 1.6 + v.spec.length / 2;
 
@@ -433,7 +456,7 @@ export class Traffic {
           if (!a.waitingSignal || rng() < 0.4) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
         }
         if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop))) { a.ghost = 2.5; a.stuck = 0; }
-        if (a.stuck > 45 && distP > 120) { this.despawn(a); continue; }
+        if (a.stuck > 45 && distP > 120 && !a.keep) { this.despawn(a); continue; }
       } else a.stuck = Math.max(0, a.stuck - dt);
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
 

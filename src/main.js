@@ -216,6 +216,7 @@ async function init() {
     footpathNear, park, metroRide, metroDrive,
   };
   world.free = free;
+  world.pois = city.pois;
   const story = new Story(scene, hud, audio, missions, world);
   world.saveGame = () => story.save();
   const garages = new Garages(scene, layout, colliders, hud, audio, missions, world, city.pois);
