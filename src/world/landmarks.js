@@ -152,6 +152,10 @@ function stadium(ctx, block) {
   }
   colliders.addCentered(cx, cz, R * 2, R * 2, 22, 'building');
   ctx.signs.push({ key: 'stadium', text: ['M. CHINNASWAMY STADIUM', 'ಚಿನ್ನಸ್ವಾಮಿ ಕ್ರೀಡಾಂಗಣ'], x: cx, y: 14, z: cz + R + 0.1, w: 24, h: 4, face: 's', bg: '#b8323a' });
+  // The home team's banners round the outside of the stands (world/billboards.js paints them).
+  [[0.55, 'rcbChant'], [-0.55, 'rcbChamps'], [2.2, 'rcbMatch'], [-2.2, 'rcbChant'], [Math.PI, 'rcbChamps']].forEach(([a, ad]) => {
+    ctx.signs.push({ ad, x: cx + Math.sin(a) * (R + 0.45), y: 7.5, z: cz + Math.cos(a) * (R + 0.45), w: 9, rotY: a });
+  });
   return { name: 'Chinnaswamy Stadium', x: cx, z: cz + R + 8 };
 }
 

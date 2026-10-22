@@ -8,12 +8,13 @@ import { LANDMARKS, put } from './landmarks.js';
 import { buildInfrastructure } from './infrastructure.js';
 import { fillPoly, polyWalls, rectCorners, rectsOverlap } from './geom.js';
 import { pointInPoly, polyArea, insetPolygon } from './roadnet.js';
-import { HOTEL_SITES } from './mapdata.js';
+import { HOTEL_SITES, geo } from './mapdata.js';
 import { metroRoutes } from './metro.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CURB_H, SHOP_SIGNS, FUEL_BRANDS } from '../config.js';
 import { DETAIL, textScale } from './detail.js';
 import { SignAtlas } from './signAtlas.js';
+import { AD_ASPECT, adPainter, pickBrand } from './billboards.js';
 import { withAO } from './ao.js';
 
 const rng = T.mulberry32(20240607);
@@ -104,6 +105,10 @@ export function buildCity(scene, layout, colliders, renderer) {
     const [x, z] = W(sg.x, sg.z);
     signs.push({ ...sg, x, z, rotY: FACE_ROT[sg.face] + (B.xf ? B.xf.ang : 0) });
   };
+  // Hoardings: [brand, position] placed while the buildings go up, painted into the sign atlas.
+  const ads = [];
+  const adRng = T.mulberry32(1909);
+  const stadium = geo(12.9788, 77.5996);
   const treeAt = (x, z, s, t, extra) => { const [wx, wz] = W(x, z); trees.push({ x: wx, z: wz, s, t, ...extra }); };
 
   // ---------- Ground: soil everywhere, with holes where roads dip into underpasses ----------
@@ -329,8 +334,36 @@ export function buildCity(scene, layout, colliders, renderer) {
         if (!DETAIL.lite) B.get('plaster').box(hx, top, hz, 3, 2.6, 3, tint, { tileW: T.FACADE_TILE.w, tileH: T.FACADE_TILE.h, topBuilder: roofB, topTile: 10 });
       }
     }
+    if (floors > 0 && floors <= 6 && style !== 'glass' && lot.road && lot.roadW >= 13) hoarding(lot, top, w, cx);
     col().add(lot.minX, lot.maxX, lot.minZ, lot.maxZ, top + 1, 'building');
     return top;
+  }
+
+  // A rooftop hoarding facing the main road, on a steel frame with a catwalk and lamps; one
+  // every so often (own random numbers, so the rest of the city doesn't change around them).
+  function hoarding(lot, top, w, cx) {
+    if (adRng() > 0.32 || w < 7) return;
+    const [hx, hz] = W(cx, lot.maxZ);
+    if (ads.some((o) => Math.hypot(o.x - hx, o.z - hz) < 150)) return;
+    const bw = Math.min(w - 0.8, 12.5), bh = bw * AD_ASPECT;
+    const z = lot.maxZ - 1.4, y0 = top + 1.8, steel = 0x4a4e52;
+    const m = B.get('metal');
+    for (const s of [-0.38, 0, 0.38]) {
+      const x = cx + s * bw;
+      m.box(x, top, z - 0.1, 0.22, 1.8 + bh + 0.2, 0.22, steel); // upright
+      m.box(x, top, z - 1.7, 0.18, 1.8 + bh * 0.6, 0.18, steel); // back leg
+      m.box(x, top + 1.65 + bh * 0.6, z - 0.9, 0.16, 0.16, 1.6, steel); // tie
+    }
+    m.box(cx, y0 - 0.4, z + 0.4, bw + 0.4, 0.08, 0.8, 0x3a3e42); // catwalk
+    m.box(cx, y0 - 0.12, z - 0.12, bw + 0.3, bh + 0.25, 0.14, 0x2a2d30); // the board
+    for (const s of [-0.33, 0, 0.33]) {
+      m.box(cx + s * bw, y0 + bh + 0.12, z + 0.3, 0.07, 0.07, 0.8, 0x2a2d30);
+      m.box(cx + s * bw, y0 + bh - 0.02, z + 0.68, 0.36, 0.12, 0.18, 0x8a8a8a);
+    }
+    const d = Math.hypot(hx - stadium[0], hz - stadium[1]);
+    const id = pickBrand(adRng, d < 1200 ? 5 : d < 3000 ? 1.6 : 1, ads.length ? ads[ads.length - 1].id : null);
+    const [ax, az] = W(cx, z + 0.12);
+    ads.push({ id, x: ax, y: y0 + bh / 2 - 0.02, z: az, w: bw, h: bh, rotY: FACE_ROT.s + B.xf.ang, hx, hz });
   }
 
   // Quad on a lot face, a0..a1 along it (lots face 's' in their frame; landmarks may use any face).
@@ -728,7 +761,11 @@ export function buildCity(scene, layout, colliders, renderer) {
   const tankLod = buildTanks(group, DETAIL.min ? [] : tanks);
   // Shop signs (and the hoardings) in shared atlases, lit up a little at night.
   const atlas = new SignAtlas();
-  buildTextSigns(atlas, signs);
+  // (Hoardings are painted at about the shop signs' resolution: they're read from across the road.)
+  const adPx = Math.min(768, 12 * DETAIL.textPx * 0.7);
+  buildTextSigns(atlas, signs, adPx);
+  for (const a of ads) atlas.quad(atlas.slot(`ad:${a.id}`, adPx, adPx * AD_ASPECT, adPainter(a.id)), a.w, a.h, a.x, a.y, a.z, a.rotY);
+  pois.hoardings = ads.map((a) => ({ id: a.id, x: a.hx, z: a.hz, y: a.y }));
   const signMats = atlas.build(group, (t) => new THREE.MeshStandardMaterial({ map: t, roughness: 0.7, emissiveMap: t, emissive: 0xffffff, emissiveIntensity: 0.05 }), { anisotropy: Math.min(8, aniso) });
   for (const m of signMats) nightMats.push([m, 0.05, 0.8]);
 
@@ -1004,8 +1041,9 @@ function buildTanks(group, tanks) {
   };
 }
 
-function buildTextSigns(atlas, signs) {
+function buildTextSigns(atlas, signs, adPx) {
   for (const sg of signs) {
+    if (sg.ad) { atlas.quad(atlas.slot(`ad:${sg.ad}`, adPx, adPx * AD_ASPECT, adPainter(sg.ad)), sg.w, sg.w * AD_ASPECT, sg.x, sg.y, sg.z, sg.rotY ?? FACE_ROT[sg.face]); continue; }
     const sc = textScale(sg.w), W = 1024, H = Math.max(64, Math.round((1024 * sg.h) / sg.w));
     const opts = { bg: sg.bg || '#2a2622', fg: sg.fg || '#f2e6c8', w: W, h: H, ...(sg.font && { font: sg.font }), fonts: sg.fonts };
     const slot = atlas.slot(sg.key, W * sc, H * sc, (ctx, pw, ph) => T.paintText(ctx, sg.text, pw, ph, opts));
