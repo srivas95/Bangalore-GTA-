@@ -254,6 +254,8 @@ and signing.
 
 See **[docs/GAME_OUTLINE.md](docs/GAME_OUTLINE.md)** for the game outline: pillars, map, core loop, systems,
 art direction and what's next.
+Why the game stays on three.js's WebGL renderer, and what a WebGPU port would involve, is in
+[docs/ENGINE.md](docs/ENGINE.md).
 
 ## Code tour
 
