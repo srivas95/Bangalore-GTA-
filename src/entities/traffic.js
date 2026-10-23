@@ -120,8 +120,8 @@ export class Traffic {
     const erratic = two || AUTOS.has(type);
     const a = {
       v, edge: e, lane, path, s, speed: 0, turning: false,
-      cruise: v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45) * (0.8 + rng() * 0.4),
-      stuck: 0, ghost: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
+      cruise: Math.min(two ? 16 : 99, v.spec.maxSpeed * (two ? 0.55 : HEAVY.has(type) ? 0.5 : 0.45)) * (0.8 + rng() * 0.4),
+      stuck: 0, bypassT: 0, honkCd: rng() * 3, lat: 0, latTarget: 0, latVel: 0, stunned: 0,
       jumper: rng() < (two ? 0.3 : type === 'auto' ? 0.25 : HEAVY.has(type) ? 0.05 : 0.1),
       impatience: rng(),
       // Lane-ignoring weavers, and the ones who'll happily ride against the traffic.
@@ -233,7 +233,9 @@ export class Traffic {
       }
       return;
     }
-    const e2 = this.chooseNext(a);
+    const e2 = a.plan || this.chooseNext(a);
+    a.plan = null;
+    a.fromUnd = a.edge.und; // the approach it's turning from (for yielding at the junction)
     const straight = e2.dir.x * a.edge.dir.x + e2.dir.z * a.edge.dir.z > 0.85;
     const lane2 = straight && e2.road.lanes === a.edge.road.lanes ? a.lane : this.chooseLane(e2, a.v.type, !straight);
     const { turn, next } = this.turnPath(a.path, a.edge.dir, e2, lane2);
@@ -251,7 +253,9 @@ export class Traffic {
   release(a) {
     const i = this.agents.indexOf(a);
     if (i >= 0) this.agents.splice(i, 1);
+    a.released = true;
     a.v.driver = null;
+    a.v.loose = performance.now(); // out of the traffic for good: towed away once you're clear of it
     const fx = Math.sin(a.v.heading), fz = Math.cos(a.v.heading);
     a.v.vx = fx * a.speed; a.v.vz = fz * a.speed;
     return a.v;
@@ -309,6 +313,8 @@ export class Traffic {
       C.lat[n] = lat; C.lim[n] = lim; C.g[n] = g; C.who[n] = who; n++;
     };
     const span = Math.ceil((look + 8) / CELL), ix = Math.floor(v.x / CELL), iz = Math.floor(v.z / CELL);
+    const B = C.behind || (C.behind = []);
+    B.length = 0;
     for (let i = -span; i <= span; i++) for (let j = -span; j <= span; j++) {
       const l = this.grid.get(((ix + i) * 73856093) ^ ((iz + j) * 19349663));
       if (!l) continue;
@@ -317,6 +323,10 @@ export class Traffic {
         const bv = b.v;
         if (Math.abs(bv.y - v.y) > 2.5) continue;
         const dx = bv.x - v.x, dz = bv.z - v.z, ahead = dx * fx + dz * fz;
+        // Coming up behind in the same direction, faster: remember it (don't cut in front of it).
+        if (ahead <= 0 && ahead > -25 && b.speed > a.speed + 1 && b.fx * fx + b.fz * fz > 0.7) {
+          B.push({ lat: dx * lx + dz * lz, lim: lim0 + bv.spec.width / 2 + 0.3, room: -ahead - v.spec.length / 2 - bv.spec.length / 2, close: b.speed - a.speed });
+        }
         if (ahead <= 0 || ahead > look + 50) continue;
         const dot = b.fx * fx + b.fz * fz;
         // Oncoming traffic only matters when someone is on the wrong side; then it closes the
@@ -338,6 +348,12 @@ export class Traffic {
     C.n = n;
   }
 
+  // Would moving `shift` sideways put us right in front of someone faster coming up behind?
+  cutsIn(shift) {
+    for (const b of this.cand.behind || []) if (Math.abs(b.lat - shift) <= b.lim && b.room < 2 + b.close * 1.5) return true;
+    return false;
+  }
+
   // Gap to the nearest gathered candidate for a vehicle shifted `shift` sideways (blocker in this.blocker).
   gapAt(shift) {
     const C = this.cand;
@@ -345,6 +361,130 @@ export class Traffic {
     for (let k = 0; k < C.n; k++) if (C.g[k] < gap && Math.abs(C.lat[k] - shift) <= C.lim[k]) { gap = C.g[k]; who = C.who[k]; }
     this.blocker = who;
     return gap;
+  }
+
+  // Is the junction at the end of a's edge busy with someone from another approach? Those
+  // already crossing it, or (at a tie) arriving at the same moment with the right of way.
+  boxBusy(a) {
+    const node = a.edge.to, ix = Math.floor(node.x / CELL), iz = Math.floor(node.z / CELL);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const l = this.grid.get(((ix + i) * 73856093) ^ ((iz + j) * 19349663));
+      if (!l) continue;
+      for (const b of l) {
+        if (b === a || b.released || (b.edge.flyover && b.lane === 0)) continue;
+        if (b.turning && b.edge.from === node && b.fromUnd !== a.edge.und && b.s < b.path.length - 1.5) return true;
+        // Both about to arrive from different roads: the one that gets there first goes.
+        if (!b.turning && b.edge.to === node && b.edge.und !== a.edge.und && b.speed > 0.8 && !b.waitingSignal) {
+          const tb = (b.path.length - b.s) / b.speed, ta = (a.path.length - a.s) / Math.max(1, a.speed);
+          if (tb < 2.5 && (tb < ta - 0.3 || (Math.abs(tb - ta) <= 0.3 && b.v.id < a.v.id))) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Steer round a blocker: the clearest line across the carriageway (both sides of an undivided
+  // road), judged against what's ahead (gather() has just run for this agent).
+  bypass(a) {
+    const r = a.edge.road, off = this.layout.laneOffset(r, a.lane), half = (r.median || 0) / 2;
+    const lo = !r.median && !a.edge.flyover && !a.turning ? -(r.lanes * LANE_W - 0.9) - off : half + 0.9 - off;
+    const hi = half + r.lanes * LANE_W - 0.9 - off;
+    let best = null, bestGap = this.gapAt(0) + 4;
+    for (let k = 0; k <= 10; k++) {
+      const cand = lo + ((hi - lo) * k) / 10, g = this.gapAt(cand - a.lat);
+      if (g > bestGap) { bestGap = g; best = cand; }
+    }
+    if (best === null) return false;
+    a.latTarget = best; a.bypassT = 5;
+    return true;
+  }
+
+  // Vehicles in the traffic that run into each other. At speed it's a crash: both leave the
+  // traffic as loose vehicles and take the hit. At a crawl they're eased apart instead of
+  // passing through each other.
+  collide(world) {
+    const box = (v, ax, az) => {
+      const fx = Math.sin(v.heading), fz = Math.cos(v.heading);
+      return (v.spec.length * 0.47) * Math.abs(fx * ax + fz * az) + (v.spec.width * 0.47) * Math.abs(fz * ax - fx * az);
+    };
+    const crashes = [];
+    for (const a of this.agents) {
+      if (a.released) continue;
+      const va = a.v, ix = Math.floor(va.x / CELL), iz = Math.floor(va.z / CELL);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const l = this.grid.get(((ix + i) * 73856093) ^ ((iz + j) * 19349663));
+        if (!l) continue;
+        for (const b of l) {
+          if (b === a || b.released || b.v.id < va.id) continue;
+          const vb = b.v, dx = va.x - vb.x, dz = va.z - vb.z;
+          const reach = (va.spec.length + vb.spec.length) * 0.5;
+          if (Math.abs(dx) > reach || Math.abs(dz) > reach || Math.abs(va.y - vb.y) > 2) continue;
+          // Separating-axis test on the two footprints; n points from b to a.
+          let pen = Infinity, nx = 0, nz = 0;
+          for (const h of [va.heading, vb.heading]) {
+            for (const [ax, az] of [[Math.sin(h), Math.cos(h)], [Math.cos(h), -Math.sin(h)]]) {
+              const d = dx * ax + dz * az, o = box(va, ax, az) + box(vb, ax, az) - Math.abs(d);
+              if (o <= 0) { pen = -1; break; }
+              if (o < pen) { pen = o; nx = d >= 0 ? ax : -ax; nz = d >= 0 ? az : -az; }
+            }
+            if (pen < 0) break;
+          }
+          if (pen <= 0) continue;
+          // (From how they're driving, not from frame-to-frame positions: nudges move them too.)
+          const vel = (g) => [g.fx * g.speed + g.fz * (g.latVel || 0), g.fz * g.speed - g.fx * (g.latVel || 0)];
+          const [ax0, az0] = vel(a), [bx0, bz0] = vel(b);
+          const closing = -((ax0 - bx0) * nx + (az0 - bz0) * nz);
+          if (closing > 3.5 && closing <= 8) {
+            // A fender-bender: a dent, a scrape of sparks, both stop to shout and honk, and
+            // then carry on (they stay in the traffic).
+            if (!a.bumpT && !b.bumpT) {
+              const cx = (va.x + vb.x) / 2, cz = (va.z + vb.z) / 2, dmg = (closing - 2) * 2.5;
+              va.takeDamage(dmg, cx, cz, world); vb.takeDamage(dmg, cx, cz, world);
+              world.particles?.burst('spark', cx, 0.6, cz, 5, 3, 0.5);
+              if (Math.hypot(cx - world.focus.x, cz - world.focus.z) < 120) { world.audio?.crunch?.(Math.min(1, closing / 14)); world.audio?.horn(va.spec.horn, va.x, va.z, world.camera, va.hornPitch); }
+              this.bumps = (this.bumps || 0) + 1;
+            }
+            for (const g of [a, b]) { g.stunned = Math.max(g.stunned, 1.5 + rng()); g.bumpT = 3; g.speed *= 0.3; }
+          }
+          if (closing > 8) {
+            crashes.push([a, b, nx, nz, pen, closing]);
+            continue;
+          }
+          // A nudge (after a bump too): whoever is driving into the other backs off (and slows to its pace), and a
+          // side-by-side overlap is pushed apart.
+          for (const [x, y, s] of [[a, b, 1], [b, a, -1]]) {
+            const fx = Math.sin(x.v.heading), fz = Math.cos(x.v.heading);
+            const ahead = (y.v.x - x.v.x) * fx + (y.v.z - x.v.z) * fz;
+            const side = (nz * -fx + nx * fz) * s; // push direction (towards +n for a) in x's lateral axis
+            if (Math.abs(side) > 0.7) x.lat += side * pen * 0.5;
+            else if (ahead > 0) { x.s = Math.max(0, x.s - pen); x.speed = Math.min(x.speed, y.speed * 0.8); }
+          }
+        }
+      }
+    }
+    for (const [a, b, nx, nz, pen, closing] of crashes) {
+      if (a.released || b.released) continue;
+      const va = a.v, vb = b.v;
+      for (const g of [a, b]) { this.release(g); if (!world.free.includes(g.v)) world.free.push(g.v); }
+      const ia = 1 / va.mass, ib = 1 / vb.mass;
+      va.x += nx * pen * ia / (ia + ib); va.z += nz * pen * ia / (ia + ib);
+      vb.x -= nx * pen * ib / (ia + ib); vb.z -= nz * pen * ib / (ia + ib);
+      const cx = (va.x + vb.x) / 2, cz = (va.z + vb.z) / 2, j = (1.3 * closing) / (ia + ib);
+      va.applyImpulse(nx * j, nz * j, cx - va.x, cz - va.z);
+      vb.applyImpulse(-nx * j, -nz * j, cx - vb.x, cz - vb.z);
+      world.onVehicleImpact?.(va, vb, closing, cx, cz);
+      // Riders come off their two-wheelers.
+      for (const v of [va, vb]) {
+        if (!v.rider || !v.spec.twoWheeler || !world.streetLife) continue;
+        const opts = { outfit: v.rider.outfit, helmet: true };
+        v.removeRider();
+        const p = world.streetLife.spawnFleeing(v.x, v.z, cx, cz, opts);
+        world.streetLife.knock(p, v.vx * 0.6, v.vz * 0.6, world.audio);
+      }
+      this.crashes = (this.crashes || 0) + 1;
+      const d = Math.hypot(cx - world.focus.x, cz - world.focus.z);
+      if (d < 150) world.audio?.horn(va.spec.horn, va.x, va.z, world.camera, va.hornPitch);
+    }
   }
 
   update(dt, world) {
@@ -382,8 +522,10 @@ export class Traffic {
             a.latTarget = Math.max(wl, Math.min(wh, a.latTarget + (rng() - 0.5) * 1.5));
             a.weaveT = 1.5 + rng() * 2;
           } else {
-            // Drift somewhere else across the carriageway; lane markings are a suggestion.
-            a.latTarget = Math.max(lo, Math.min(hi, a.lat + (rng() - 0.5) * (two ? 5 : 3.5)));
+            // Drift somewhere else across the carriageway; lane markings are a suggestion (but a
+            // mirror isn't: not into the path of someone faster coming up behind).
+            const cand = Math.max(lo, Math.min(hi, a.lat + (rng() - 0.5) * (two ? 5 : 3.5)));
+            if (!this.cutsIn(cand - a.lat)) a.latTarget = cand;
             a.weaveT = (two ? 0.8 : 1.5) + rng() * (two ? 2.5 : 3.5);
           }
         }
@@ -394,6 +536,7 @@ export class Traffic {
           const from = a.wrong ? wl : lo, steps = a.wrong ? 9 : 6;
           for (let k = 0; k <= steps; k++) {
             const cand = from + ((hi - from) * k) / steps;
+            if (this.cutsIn(cand - a.lat)) continue;
             const score = this.gapAt(cand - a.lat) - Math.abs(cand - a.lat) * 0.4;
             if (score > bestGap + 1.2) { bestGap = score; best = cand; }
           }
@@ -406,6 +549,7 @@ export class Traffic {
       }
 
       let target = (a.turning ? Math.min(a.cruise, 6.5) : a.cruise * surge) * rainSlow;
+      if (a.wrongNow) target = Math.min(target, 6); // riding against the traffic, they at least go slowly
       a.waitingSignal = false;
       // Signals.
       if (!a.turning && a.edge.to.signal && !(a.edge.flyover && a.lane === 0)) {
@@ -421,16 +565,29 @@ export class Traffic {
           }
         }
       }
+      // Coming up to the junction: slow for the turn ahead, and wait at the line while someone
+      // from another road is still crossing it.
+      if (!a.turning && !(a.edge.flyover && a.lane === 0)) {
+        const left = a.path.length - a.s;
+        if (!a.plan && left < 60) a.plan = this.chooseNext(a);
+        const turnAhead = a.plan && a.plan.dir.x * a.edge.dir.x + a.plan.dir.z * a.edge.dir.z < 0.85;
+        if (turnAhead) target = Math.min(target, Math.sqrt(36 + 2 * 3 * Math.max(0, left - 2)));
+        if (left < 9 + a.speed * 1.4 && this.boxBusy(a)) { target = Math.min(target, Math.max(0, (left - 2.5) * 1.2)); a.waitingSignal = true; }
+      }
       // Level crossing gates down: wait behind them.
       for (const lc of this.layout.levelCrossings) {
         if (!lc.closed || a.edge.und !== lc.edge) continue;
         const d = (lc.x - v.x) * Math.sin(v.heading) + (lc.z - v.z) * Math.cos(v.heading);
         if (d > 10.5 && d < look + 20) { target = Math.min(target, Math.max(0, (d - 11.5) * 1.2)); a.waitingSignal = true; } // already past the gate: clear the tracks
       }
-      if (a.ghost > 0) a.ghost -= dt;
-      else if (gap < Infinity) {
+      if (a.bypassT > 0 && (a.bypassT -= dt) <= 0 && !a.erratic) a.latTarget = 0; // back into lane
+      if (gap < Infinity) {
         const safe = (two ? 1.0 : a.erratic ? 1.4 : 2.0) + a.speed * (a.erratic ? 0.4 : 0.55);
         if (gap < safe) target = Math.min(target, Math.max(0, (gap - (two ? 0.4 : 1.0)) * 1.5));
+        // And never so fast you couldn't brake down to the speed of whatever's ahead in the gap
+        // you have (the rule above only tightens up in a queue).
+        const lead = blocker && blocker.fx !== undefined ? Math.max(0, blocker.speed * (blocker.fx * a.fx + blocker.fz * a.fz)) : 0;
+        target = Math.min(target, Math.sqrt(lead * lead + 1.1 * v.spec.brake * Math.max(0, gap - (two ? 0.6 : 1.2))));
         // Somebody's coming at you on your side of the road: lean on the horn.
         if (blocker?.wrongNow && gap < 25 && distP < 150 && (a.honkCd -= dt * 4) <= 0) {
           a.honkCd = 1 + rng() * 2;
@@ -439,6 +596,7 @@ export class Traffic {
       }
       if (blocker && blocker.waitingSignal) a.waitingSignal = true;
       if (a.stunned > 0) { a.stunned -= dt; target = 0; }
+      if (a.bumpT > 0) a.bumpT -= dt;
       // Flood water: everyone slows down and wades through (and eases off before reaching it).
       const fx0 = Math.sin(v.heading), fz0 = Math.cos(v.heading);
       const depth = world.waterDepth(v.x, v.z, v.y);
@@ -447,7 +605,8 @@ export class Traffic {
       v.stalled = false;
       if (depthAhead > 0.06) target = Math.min(target, Math.max(2.2, 7.5 - depthAhead * (two ? 7 : 5)));
 
-      const acc = target > a.speed ? v.spec.accel * 0.8 : v.spec.brake;
+      // (Something suddenly in the way: stand on the brakes.)
+      const acc = target > a.speed ? v.spec.accel * 0.8 : v.spec.brake * (a.speed - target > 6 ? 1.8 : 1);
       a.speed += Math.sign(target - a.speed) * Math.min(Math.abs(target - a.speed), acc * dt);
 
       // Stuck: honk, and eventually squeeze through anyway (but not at a red light or in water).
@@ -458,7 +617,13 @@ export class Traffic {
           a.honkCd = (a.waitingSignal ? 3 : 1.2) + rng() * 2.5;
           if (!a.waitingSignal || rng() < 0.4) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
         }
-        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop || blocker.human))) { a.ghost = 2.5; a.stuck = 0; }
+        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop || blocker.human))) {
+          // A jam nobody's watching just clears; otherwise go round whatever's in the way if
+          // there's room anywhere across the road, or sit and honk. (Nobody drives through.)
+          if (distP > 90 && !a.keep) { this.despawn(a); continue; }
+          this.bypass(a);
+          a.stuck = 0;
+        }
         if (a.stuck > 45 && distP > 120 && !a.keep) { this.despawn(a); continue; }
       } else a.stuck = Math.max(0, a.stuck - dt);
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
@@ -496,6 +661,7 @@ export class Traffic {
       v.flatGround = !a.edge.flyover && !a.edge.und.underpasses; // (ramps only on those edges)
       if (!far || ai % 4 === 0) v.syncVisual(dt, world);
     }
+    if (world.free) this.collide(world);
     // Top up the population around the player.
     const want = Math.round(this.target * (world.trafficScale ?? 1));
     let budget = this.agents.length < want * 0.5 ? 12 : 3;

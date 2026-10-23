@@ -480,7 +480,7 @@ async function init() {
   // Frame time comes from the browser's vsync timestamp for each frame, not from reading the
   // clock partway through it: on phones the time a frame's script starts wobbles by several
   // milliseconds, and stepping the world by that wobble is what made driving look jerky.
-  let elapsed = 0, lastT = null, hijackable = null;
+  let elapsed = 0, lastT = null, hijackable = null, cleanT = 2;
   const tick = (now) => {
     requestAnimationFrame(tick);
     if (typeof now !== 'number') now = performance.now();
@@ -559,6 +559,20 @@ async function init() {
     }
     { const fp = interiors.door || player.pos; world.focus.x = fp.x; world.focus.z = fp.z; }
 
+    // Wrecks and abandoned vehicles (out of the traffic for good) are cleared away once you're
+    // well clear of them; parked ones, yours and mission vehicles stay.
+    if ((cleanT -= dt) <= 0) {
+      cleanT = 2;
+      const keep = new Set([player.vehicle, ...(garages.live?.values() || []), ...Object.values(story.active?.vars || {})]);
+      for (let i = free.length - 1; i >= 0; i--) {
+        const v = free[i];
+        const d = Math.hypot(v.x - world.focus.x, v.z - world.focus.z), age = (performance.now() - v.loose) / 1000;
+        if (!v.loose || keep.has(v) || v.driver || (d < 420 && !(age > 70 && d > 80))) continue;
+        free.splice(i, 1);
+        scene.remove(v.group);
+        v.group.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.skeleton?.dispose(); } });
+      }
+    }
     for (const v of free) {
       if (v === player.vehicle) continue;
       if (v.speed > 0.05 || Math.abs(v.angVel) > 0.02) v.update(dt, null, world);
