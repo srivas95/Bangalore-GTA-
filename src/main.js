@@ -519,8 +519,20 @@ async function init() {
     for (const v of free) world.vehicles.push(v);
     for (const u of police.units) world.vehicles.push(u.v);
 
+    // A vehicle close enough to get into: it wins over a shop door you happen to be next to
+    // (autos and buses wait at the kerb right outside the shops).
+    world.reachVehicle = null;
+    if (!player.vehicle && !pending) {
+      let best = 2.2;
+      for (const v of world.vehicles) {
+        if (Math.abs(v.x - player.x) > 14 || Math.abs(v.z - player.z) > 14) continue;
+        const d = Math.hypot(v.x - player.x, v.z - player.z) - v.spec.length / 2;
+        if (d < best && Math.abs(v.y - player.y) < 2) { best = d; world.reachVehicle = v; }
+      }
+    }
+
     // Namma Metro: entrances on the street, and the ride itself.
-    const entrance = !player.vehicle && !pending && !metroRide.active && !metroDrive.active ? metroRide.nearEntrance(player.pos) : null;
+    const entrance = !player.vehicle && !pending && !metroRide.active && !metroDrive.active && !world.reachVehicle ? metroRide.nearEntrance(player.pos) : null;
     if (entrance && input.hit('KeyE')) { input.pressed.delete('KeyE'); metroRide.open(entrance, world); }
     // On the platform with a train in, or riding one: F takes over the cab.
     hijackable = !pending && metroRide.active ? metroDrive.candidate(metroRide) : null;
@@ -590,12 +602,8 @@ async function init() {
     else if (entrance) hud.prompt(`E  Namma Metro · ${entrance.st.en}`);
     else if (interiors.prompt && !player.vehicle) hud.prompt(interiors.prompt);
     else if (!player.vehicle && !pending) {
-      let near = null;
-      for (const v of world.vehicles) {
-        const d = Math.hypot(v.x - player.x, v.z - player.z) - v.spec.length / 2;
-        if (d < 2.2 && Math.abs(v.y - player.y) < 2 && (!near || d < near.d)) near = { v, d };
-      }
-      hud.prompt(near ? (near.v.driver === 'ai' || near.v.driver === 'police' ? `F  "Borrow" the ${near.v.spec.label}` : `F  Get in the ${near.v.spec.label}`) : '');
+      const v = world.reachVehicle;
+      hud.prompt(v ? (v.driver === 'ai' || v.driver === 'police' ? `F  "Borrow" the ${v.spec.label}` : `F  Get in the ${v.spec.label}`) : '');
     } else hud.prompt(player.vehicle && player.vehicle.speed <= 8 ? (player.vehicle.spec.police || player.vehicle.spec.siren ? 'F  Get out  ·  G  Siren' : 'F  Get out') : '');
 
     if (!window.__freeCam && !metroRide.active && !metroDrive.active) rig.update(dt, input, player, colliders);

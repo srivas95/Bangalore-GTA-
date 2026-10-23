@@ -612,6 +612,8 @@ export class Interiors {
       if (!d0) return false;
       const s = d0.s, d = Math.hypot(pl.x - s.x, pl.z - s.z);
       if (this.lastDoor === s && d > 1.8) this.lastDoor = null;
+      // An auto or bus waiting right here takes the key, unless you're standing in the doorway.
+      if (w.reachVehicle && d > 0.9) return false;
       if (d < 2.6) { this.prompt = `Walk in · ${s.name}`; this.useNear = true; }
       // Walk into the door (facing it), or press E beside it.
       const facing = Math.sin(pl.heading) * s.ix + Math.cos(pl.heading) * s.iz;

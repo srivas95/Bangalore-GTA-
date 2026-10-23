@@ -366,6 +366,9 @@ export class Traffic {
 
       this.gather(a, look, obstacles);
       let gap = this.gapAt(0), blocker = this.blocker;
+      // Someone on foot standing in the road ahead (you, flagging it down): stop for them
+      // rather than weave round.
+      const hailed = !!blocker?.human;
       let surge = 1;
       if (a.erratic) {
         const [lo, hi] = a.turning ? [-1.2, 1.2] : this.band(a);
@@ -385,7 +388,7 @@ export class Traffic {
           }
         }
         // Squeeze through any gap: sample across the whole road (both sides when riding wrong).
-        if (gap < 7 + a.speed * 1.2) {
+        if (gap < 7 + a.speed * 1.2 && !hailed) {
           let best = a.latTarget, bestGap = gap;
           const [wl] = this.wrongBand(a);
           const from = a.wrong ? wl : lo, steps = a.wrong ? 9 : 6;
@@ -455,7 +458,7 @@ export class Traffic {
           a.honkCd = (a.waitingSignal ? 3 : 1.2) + rng() * 2.5;
           if (!a.waitingSignal || rng() < 0.4) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
         }
-        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop))) { a.ghost = 2.5; a.stuck = 0; }
+        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop || blocker.human))) { a.ghost = 2.5; a.stuck = 0; }
         if (a.stuck > 45 && distP > 120 && !a.keep) { this.despawn(a); continue; }
       } else a.stuck = Math.max(0, a.stuck - dt);
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
