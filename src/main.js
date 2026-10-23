@@ -38,6 +38,7 @@ import { GPS } from './systems/gps.js';
 import { Halos } from './world/halos.js';
 import { Voices } from './systems/voices.js';
 import { Radio } from './systems/radio.js';
+import { SkidMarks } from './world/skids.js';
 
 const BOOT_KEY = 'namma-bengaluru-boot';
 
@@ -193,6 +194,7 @@ async function init() {
   const police = new Police(scene, layout, colliders, hud, audio);
   env.onThunder = (delay) => audio.thunder(delay, 0.6 + Math.random() * 0.4);
   const particles = new Particles(scene);
+  const skids = new SkidMarks(scene);
   const gangs = new Gangs(scene, layout, colliders);
   const pickups = new Pickups(scene);
   const metroRide = new MetroRide(metro, hud, audio);
@@ -207,7 +209,7 @@ async function init() {
     get hour() { return env.hour; },
     trafficScale: 1, pedScale: 1, initialFill: true,
     shake: (a) => rig.shake(a),
-    particles, gangs, pickups, voices, radio,
+    particles, gangs, pickups, voices, radio, skids,
     money: (n) => missions.addMoney(n),
     crime: (reason, x, z, stars) => police.crime(reason, x, z, stars, world),
     camRig: rig,
@@ -574,7 +576,7 @@ async function init() {
       }
     }
     for (const v of free) {
-      if (v === player.vehicle) continue;
+      if (v === player.vehicle) { v.group.visible = true; continue; }
       if (v.speed > 0.05 || Math.abs(v.angVel) > 0.02) v.update(dt, null, world);
       else if (v.health < 45 || v.fireT > 0 || v.wrecked) v.effects(dt, world); // keep smoking and burning
       v.group.visible = Math.abs(v.x - world.focus.x) < 300 && Math.abs(v.z - world.focus.z) < 300;
@@ -602,6 +604,7 @@ async function init() {
     city.rail.update(dt, world);
     city.update(dt, elapsed, camera);
     particles.update(dt, camera, renderer);
+    skids.update(dt);
     env.update(dt, world.focus, player, police);
     if (interiors.active) interiors.light(env); else interiors.unlight(env);
     missions.update(dt, input, player);
@@ -700,6 +703,11 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
           const tb = (pbz * nx - pbx * nz) ** 2 / b.inertia;
           // Momentum shared by mass: a bus that clips a scooter barely notices; the scooter flies.
           const j = vn < 0 ? (-1.25 * vn) / (ia + ib + ta + tb) : 0;
+          // Friction between the bodies, up to a share of the hit: a side-swipe drags and a hit
+          // on a rear quarter spins the car round instead of just sliding off it.
+          const tx = -nz, tz = nx, vt = (avx - bvx) * tx + (avz - bvz) * tz;
+          const kt = (paz * tx - pax * tz) ** 2 / a.inertia, ktb = (pbz * tx - pbx * tz) ** 2 / b.inertia;
+          const rub = (jn, k) => Math.max(-0.4 * jn, Math.min(0.4 * jn, -vt / k));
           let dvA = j * ia; // how hard this shoves us (drives shake and noise)
           if (ai) {
             // Traffic is on rails until something knocks it hard enough to lose control.
@@ -715,16 +723,19 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
               // instead of standing there like a wall to be hit again next frame.
               const j0 = (-1.15 * vn) / (ia + ta);
               a.applyImpulse(nx * j0, nz * j0, pax, paz);
+              const jt0 = rub(j0, ia + kt);
+              a.applyImpulse(tx * jt0, tz * jt0, pax, paz);
               dvA = j0 * ia;
               const bfx = Math.sin(b.heading), bfz = Math.cos(b.heading);
               const along = (-nx * bfx - nz * bfz) * dvB, side = (-nx * bfz + nz * bfx) * dvB;
               agent.speed = Math.max(0, agent.speed + along * 0.8);
               agent.latVel = Math.max(-2.5, Math.min(2.5, (agent.latVel || 0) + side * 0.7));
-            } else if (vn < 0) a.applyImpulse(nx * j, nz * j, pax, paz);
+            } else if (vn < 0) { const jt = rub(j, ia + ib + kt + ktb); a.applyImpulse(nx * j + tx * jt, nz * j + tz * jt, pax, paz); }
             if (loses) {
               traffic.release(agent);
               b.x -= nx * pen * ib / (ia + ib); b.z -= nz * pen * ib / (ia + ib);
-              b.applyImpulse(-nx * j, -nz * j, pbx, pbz);
+              const jt = vn < 0 ? rub(j, ia + ib + kt + ktb) : 0;
+              b.applyImpulse(-nx * j - tx * jt, -nz * j - tz * jt, pbx, pbz);
               if (b.rider && b.spec.twoWheeler) {
                 const opts = { outfit: b.rider.outfit, helmet: true };
                 b.removeRider();
@@ -747,8 +758,9 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
             a.x += nx * pen * ia / (ia + ib); a.z += nz * pen * ia / (ia + ib);
             b.x -= nx * pen * ib / (ia + ib); b.z -= nz * pen * ib / (ia + ib);
             if (vn < 0) {
-              a.applyImpulse(nx * j, nz * j, pax, paz);
-              b.applyImpulse(-nx * j, -nz * j, pbx, pbz);
+              const jt = rub(j, ia + ib + kt + ktb);
+              a.applyImpulse(nx * j + tx * jt, nz * j + tz * jt, pax, paz);
+              b.applyImpulse(-nx * j - tx * jt, -nz * j - tz * jt, pbx, pbz);
             }
             if (b.driver === 'player') dvA = j * ib;
             if (a.driver === 'player' && b.driver === 'police' && -vn > 5) world.crime('Ramming a Hoysala', a.x, a.z, 1);

@@ -8,6 +8,9 @@ let nextId = 1;
 // Damage points for a hit at a given closing speed (m/s): a 50 km/h wall costs ~45 of 100.
 export const damageFromSpeed = (s) => (s > 3 ? Math.pow(s - 3, 1.5) * 1.15 : 0);
 const TOUGHNESS = { bus: 0.3, schoolBus: 0.35, lorry: 0.3, tanker: 0.3, tempo: 0.6, miniTruck: 0.7, suv: 0.8, hoysala: 0.8 };
+// Three-wheelers: narrow track, high seat. Corner one hard and a wheel lifts; hold it and over it goes.
+const TIPPY = new Set(['auto', 'goodsAuto']);
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // Police light-bar lamps flash in sync across all Hoysalas.
 export const policeLampMats = {
@@ -42,6 +45,12 @@ export class Vehicle {
     this.heave = 0; this.heaveVel = 0;
     this.angVel = 0; // yaw rate, rad/s (left +)
     this.ax = 0; this.ay = 0; this.slip = 0;
+    this.skid = 0; // how hard the tyres are sliding, 0..1 (marks and squeal)
+    // What's under the tyres: grip factor and extra rolling drag (grass and dirt), re-checked a few times a second.
+    this.surface = 1; this.surfDrag = 0; this.surfT = 0;
+    // Three-wheelers: how far the inside wheel has lifted (0..1), time spent past the tipping
+    // point, and once over, which side it's lying on.
+    this.lift = 0; this.tipT = 0; this.tipped = null; this.tipRoll = 0; this.tipRollVel = 0;
     this.driver = null; // 'player' | 'ai' | 'police' | null
     this.radius = this.spec.width / 2;
     this.mass = this.spec.mass;
@@ -138,16 +147,71 @@ export class Vehicle {
   // handbrake lets the rear step out. input: {throttle -1..1, steer -1..1 (left +), handbrake}.
   update(dt, input, world) {
     const n = Math.max(1, Math.ceil(dt / (1 / 120)));
+    if (world?.layout) this.updateSurface(world.layout, dt);
     let impact = 0;
     for (let k = 0; k < n; k++) impact = Math.max(impact, this.step(dt / n, input, world));
+    if (TIPPY.has(this.type)) this.updateTip(dt, input, world);
+    world?.skids?.track(this);
     // AI police drive like maniacs; their cars are built (and forgiven) accordingly.
     if (impact > 3 && this.lastHit) this.takeDamage(damageFromSpeed(impact) * (this.driver === 'police' ? 0.3 : 1), this.lastHit.x, this.lastHit.z, world);
     this.syncVisual(dt, world);
     return impact;
   }
 
+  // Tarmac, paving and decks grip fully; a park lawn, a field or open ground grips less and drags.
+  updateSurface(layout, dt) {
+    if ((this.surfT -= dt) > 0) return;
+    this.surfT = 0.15;
+    let soft = false;
+    if (this.y < 0.6 && !layout.roadAt(this.x, this.z)) {
+      const b = layout.blockContaining(this.x, this.z);
+      soft = !b || b.zone === 'park' || b.zone === 'rural' || b.zone === 'lake';
+    }
+    this.surface = soft ? 0.68 : 1;
+    this.surfDrag = soft ? 0.9 : 0;
+    // A rough ride over it.
+    if (soft && !this.airborne) this.heaveVel += (Math.random() - 0.5) * Math.min(1.2, this.speed / 10) * 0.5;
+  }
+
+  // An auto taken round a corner too hard: the inside wheel lifts, and if you keep it there it
+  // goes over onto its side, scrapes to a stop, and is pushed back onto its wheels.
+  updateTip(dt, input, world) {
+    if (this.tipped) {
+      this.tipped.t += dt;
+      if (this.tipped.t > 3.2 && this.speed < 0.6 && !this.tipped.righting) {
+        this.tipped.righting = true;
+        if (this.driver === 'player') world?.hud?.say('Pushed it back onto its wheels.', 2);
+      }
+      if (this.tipped.righting && Math.abs(this.tipRoll) < 0.06) { this.tipped = null; this.tipT = 0; }
+      return;
+    }
+    if (!this.driver || this.driver === 'ai' || this.airborne) { this.lift = 0; this.tipT = 0; return; }
+    const aLat = this.forwardSpeed * this.angVel, gL = Math.abs(aLat) / 9.81;
+    this.lift = smoothstep(0.42, 0.68, gL);
+    this.liftSide = Math.sign(aLat) || 1;
+    // A flick just lifts a wheel; it's holding a hard turn at a good lick that rolls it.
+    this.tipT = gL > 0.7 && this.speed > 8 ? this.tipT + dt : Math.max(0, this.tipT - dt * 1.5);
+    if (this.tipT > 0.9) {
+      this.tipped = { side: this.liftSide, t: 0, righting: false };
+      this.takeDamage(7, this.x, this.z, world);
+      world?.audio?.crunch?.(0.5);
+      if (this.driver === 'player') world?.hud?.say('Over she goes! Corner gently in an auto.', 2.5);
+    }
+  }
+
   step(dt, input, world) {
     const s = this.spec;
+    if (this.tipped) {
+      // On its side: no tyres to speak of, it just scrapes to a stop.
+      const sp = Math.hypot(this.vx, this.vz), dec = 6 * dt, k = sp > dec ? (sp - dec) / sp : 0;
+      this.vx *= k; this.vz *= k;
+      this.angVel *= Math.exp(-3 * dt);
+      this.heading += this.angVel * dt;
+      this.x += this.vx * dt; this.z += this.vz * dt;
+      this.ax = this.ay = 0; this.slip = 0; this.skid = 0; this.throttleIn = 0; this.steer = 0;
+      this.impact = world ? this.collideStatic(world.colliders) : 0;
+      return this.impact;
+    }
     const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
     const lx = fz, lz = -fx;
     let u = this.vx * fx + this.vz * fz; // forward speed
@@ -167,9 +231,12 @@ export class Vehicle {
 
     const m = this.mass, L = s.wheelbase, a = L * 0.47, b = L - a, g = 9.81;
     const I = this.inertia;
-    const hcg = s.twoWheeler ? 0.6 : s.length > 7 ? 1.3 : 0.55;
+    const heavy = s.length > 7;
+    const hcg = s.twoWheeler ? 0.6 : heavy ? 1.3 : 0.55;
     const wet = world ? world.wetness || 0 : 0;
-    const mu = (s.grip / 9) * (1 - wet * 0.22) * (depth > 0.1 ? 0.75 : 1) * (s.twoWheeler ? 1.05 : 1);
+    // Road tyres: about 0.9 g for a car, a touch more on a bike; a bus or lorry is held to what
+    // won't roll it over. Less in the wet, in floodwater and off the tarmac.
+    const mu = (s.grip / 9) * (heavy ? 0.72 : 0.9) * (1 - wet * 0.22) * (depth > 0.1 ? 0.75 : 1) * (s.twoWheeler ? 1.05 : 1) * this.surface;
     // Load transfer from last step's longitudinal acceleration.
     const dN = Math.max(-0.35, Math.min(0.35, (this.ax * hcg) / (g * L))) * m * g;
     const Nf = Math.max(0.1 * m * g, (m * g * b) / L - dN), Nr = Math.max(0.1 * m * g, (m * g * a) / L + dN);
@@ -228,7 +295,8 @@ export class Vehicle {
     const Fy = Fxf * sd + Ffl * cd + Frl;
     const Mz = a * (Fxf * sd + Ffl * cd) - b * Frl;
     // Resistance: rolling, aero, and wading through water.
-    const drag = 0.012 * m * u + 0.0004 * m * u * Math.abs(u) + (depth > 0.04 ? m * Math.min(6, depth * 3.5) * u * 0.25 : 0);
+    const drag = 0.012 * m * u + 0.0004 * m * u * Math.abs(u) + (depth > 0.04 ? m * Math.min(6, depth * 3.5) * u * 0.25 : 0) +
+      this.surfDrag * m * Math.sign(u) * Math.min(1, Math.abs(u) / 2);
     // Gravity along the slope: ramps slow you climbing and speed you up going down. (Held
     // still by the handbrake-in-gear rule below when nobody's on the throttle.)
     const Fslope = contact ? -m * g * this.grade / Math.sqrt(1 + this.grade * this.grade) : 0;
@@ -246,8 +314,10 @@ export class Vehicle {
     } else if (s.twoWheeler) {
       // Bikes lean rather than slide: they follow their front wheel, up to the grip limit.
       // (Leaning in takes a moment: the yaw rate follows the bars with a short lag.)
-      const rk = (u * Math.tan(d)) / L, rMax = (mu * g) / Math.max(2, Math.abs(u));
+      // (Lean is what turns a bike, and past ~45 degrees there's no more to give.)
+      const rk = (u * Math.tan(d)) / L, rMax = (Math.min(mu, 0.92) * g) / Math.max(2, Math.abs(u));
       r += (Math.max(-rMax, Math.min(rMax, rk)) - r) * Math.min(1, dt * (Math.abs(u) < 4 ? 20 : 9));
+      r = Math.max(-rMax, Math.min(rMax, r));
       v *= Math.exp(-8 * dt);
     } else {
       // Stability assist: rein in yaw beyond what the tyres can hold, so a car slides and
@@ -265,6 +335,13 @@ export class Vehicle {
     if (!thr && Math.abs(u) < 0.25 && sp < 0.3) { u = 0; v = 0; r *= 0.5; }
     this.ax = ax; this.ay = ay;
     this.slip = Math.abs(Math.atan2(vry, Math.abs(u) + 0.5));
+    // Sliding (marks on the road, a squeal): a rear stepping out, wheels locked at the limit of
+    // grip under hard braking, or spinning away from a standstill.
+    const slide = smoothstep(0.14, 0.4, this.slip) * smoothstep(4, 12, sp);
+    const locked = Fbrake > 0 && kf < 0.97 && sp > 5 ? 0.8 : 0;
+    const spin = Fdrive > 0 && kr < 0.97 && sp < 9 ? 0.6 : 0;
+    this.skid = contact ? Math.max(slide, locked, spin) : 0;
+    this.braking = locked > 0;
     this.vx = fx * u + lx * v;
     this.vz = fz * u + lz * v;
     this.angVel = r;
@@ -427,6 +504,24 @@ export class Vehicle {
     }
   }
 
+  // Roll a three-wheeler about its outside wheels: a few degrees with a wheel in the air, right
+  // over onto its side once it's tipped.
+  tipVisual(h) {
+    const T = this.tipped;
+    const target = T ? (T.righting ? 0 : T.side * 1.42) : (this.liftSide || 1) * this.lift * 0.2;
+    this.tipRollVel += ((target - this.tipRoll) * (T ? 60 : 120) - this.tipRollVel * (T ? 9 : 14)) * h;
+    this.tipRoll += this.tipRollVel * h;
+    if (Math.abs(this.tipRoll) > 1.5) { this.tipRoll = Math.sign(this.tipRoll) * 1.5; this.tipRollVel *= -0.3; }
+    const th = this.tipRoll;
+    if (Math.abs(th) < 1e-3) return;
+    // Pivot on the outside edge: the centre rises and swings towards it.
+    const p = -Math.sign(th) * this.spec.width / 2, ox = p - p * Math.cos(th), oy = -p * Math.sin(th);
+    this.group.rotation.z += th;
+    this.group.position.x += Math.cos(this.heading) * ox;
+    this.group.position.z -= Math.sin(this.heading) * ox;
+    this.group.position.y += oy;
+  }
+
   // The ground under the wheels: front and rear axle (and, for four wheels driven by physics,
   // the left and right tracks). Sets the grade (rise per metre forward) used by the physics and
   // returns the ride height and the slope's pitch and roll.
@@ -516,7 +611,8 @@ export class Vehicle {
     this.group.rotation.y = this.heading;
     const vF = this.forwardSpeed;
     if (this.spec.twoWheeler) {
-      const target = -THREE.MathUtils.clamp((this.yawRate || 0) * vF * 0.08, -0.6, 0.6);
+      // Lean to balance the cornering force: atan(lateral g).
+      const target = -THREE.MathUtils.clamp(Math.atan(((this.yawRate || 0) * vF) / 9.81), -0.8, 0.8);
       this.lean += (target - this.lean) * Math.min(1, dt * 6);
       // Parked two-wheelers rest on their side stand.
       this.group.rotation.z = this.driver ? this.lean : -0.12;
@@ -537,6 +633,7 @@ export class Vehicle {
       this.pitch += this.pitchVel * h;
       this.group.rotation.z = this.gRoll + this.roll;
       this.group.rotation.x = this.gPitch + this.pitch;
+      if (TIPPY.has(this.type)) this.tipVisual(h);
     }
     if (dt > 0) this.effects(dt, world);
     for (const w of this.model.wheels) {

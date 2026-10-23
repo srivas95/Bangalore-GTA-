@@ -68,11 +68,11 @@ and signing.
 
 ### The map: real Bengaluru
 
-- It's built from **real geography** at 1/5 scale around Majestic: about 6.3 km × 7.8 km of game world,
-  from Kengeri in the south-west to **Whitefield** in the east and **Kempegowda International Airport**
-  in the north.
-- The city proper gets a dense street grid. Yelahanka, Whitefield and K.R. Puram are built up too,
-  and the countryside in between has fields, farmhouses and village roads.
+- It's built from **real geography** at 1/4 scale around Majestic: about 8.4 km × 11.2 km of game world,
+  from Kengeri in the south-west to **Whitefield** in the east, and from **Kempegowda International
+  Airport** in the north down to **Electronic City** in the south.
+- The city proper gets a dense street grid. Yelahanka, Whitefield, K.R. Puram and Electronic City
+  are built up too, and the countryside in between has fields, farmhouses and village roads.
 - **About 36 arterials** follow their real alignments: Tumkur Road, Mysore Road, Bellary Road,
   Hosur Road, Old Madras Road, the whole Outer Ring Road loop, MG Road, Chord Road, the **airport
   road (NH 44)**, the Hennur–Bagalur road, ITPL Main Road, Whitefield Main Road and more.
@@ -85,15 +85,31 @@ and signing.
 - **Landmarks** sit at their real locations: Vidhana Soudha, the High Court, Chinnaswamy Stadium,
   St. Mark's Cathedral, ISKCON, WTC at Brigade Gateway, IBC Platinum City, the Forum, Central Silk
   Board, the Lalbagh Glass House, the State Central Library, the **Kempegowda Bus Station**
-  at Majestic, **ITPL** in Whitefield, and the **airport** with both terminals, the control tower,
-  parked jets and departures taking off every minute and a half.
-- **Flyovers.** The Silk Board and Hebbal flyovers carry the inner lanes over the junction. The
-  Hebbal one follows Bellary Road round the bend.
+  at Majestic, **Bangalore Palace**, **Tipu Sultan's Summer Palace**, the **Bull Temple** in
+  Basavanagudi, the Kempfort Shiva temple, the **Nehru Planetarium**, the **HAL Aerospace Museum**
+  with its fighters and helicopters, **ITPL** in Whitefield, the **Infosys campus** in Electronic
+  City, and the **airport** with both terminals, the control tower and the Statue of Prosperity.
+- **Flights.** Jets in eight liveries (IndiGo, Air India, Akasa, Air India Express, SpiceJet, and
+  Emirates, Singapore Airlines and Lufthansa wide-bodies) land at KIA down a 3-degree glide path
+  over NH 44, roll out, taxi to a stand, push back, hold short until the runway is clear and take
+  off again. Away from the airport, others pass high over the city. Navigation lights and strobes
+  blink at night.
+- **Flyovers, as they are now.**
+  - The **Hebbal flyover** carries Bellary Road over the Outer Ring Road and runs on as the six-lane
+    elevated road to the airport, past Yelahanka to Kogilu Cross, with the service road beneath.
+  - Its two newest loops are drivable: from the K.R. Puram side down towards Mekhri Circle
+    (opened August 2025), and from the Tumakuru Road side up onto the airport-bound deck
+    (December 2025).
+  - NH 44 also flies over the **Chikkajala**, **Vidyanagar Cross** and **Trumpet** junctions, and
+    the **Silk Board** flyover carries Hosur Road over the ORR.
+  - Up top, traffic skips the signals. Decks have a crash barrier, parapets, piers that stay clear
+    of the junctions below, and direction gantries.
 - **Underpasses.** Underpasses run wherever a road crosses the railway, plus the K.R. Circle and
   Okalipuram underpasses. They flood in the monsoon.
 - **Railway.** Indian Railways lines run from KSR Bengaluru City to Yeshwanthpur, and via
-  Cantonment and K.R. Puram to Whitefield. Five stations; trains follow the curves. At level
-  crossings the booms come down when a train is near and traffic queues behind them.
+  Cantonment and K.R. Puram to Whitefield. Five stations; trains follow the curves. The track keeps
+  clear of the roads that run alongside it and only meets them at underpasses and level crossings,
+  where the booms come down when a train is near and traffic queues behind them.
 - **Signals.** About 35 signalised junctions where arterials meet. Approaches are grouped by
   direction, with an all-red pedestrian phase. Traffic constables stand at the named junctions.
 
@@ -122,10 +138,21 @@ and signing.
 
 ### Vehicles and driving
 
-- **Tyre physics.** Driving uses a bicycle model with slip angles, load transfer and handbrake
-  turns, plus a stability assist that keeps it fun. Engine braking when you lift off, steering
-  that turns in more gently at speed, two-wheelers that lean into turns, scrapes that slide
-  along walls, and traffic that lurches or swerves when you shunt it.
+- **Tyre physics.**
+  - Driving uses a bicycle model with slip angles, load transfer and handbrake turns, plus a
+    stability assist that keeps it fun.
+  - Grip is tuned to real road tyres. A car corners at about 0.9 g and stops from 60 km/h in about
+    14 m. A bus holds about 0.55 g and needs 22 m. Bikes lean to match the cornering force, up to
+    about 45 degrees.
+  - Off the tarmac, on grass, fields or open ground, there's less grip, more drag and a bumpy ride.
+  - **Autos lift a wheel** if you corner hard. Hold a hard turn at speed and the auto tips onto
+    its side, scrapes to a stop and gets pushed back onto its wheels.
+  - **Skid marks** are laid wherever tyres slide (handbrake turns, locked brakes, wheelspin) and
+    fade over a couple of minutes.
+  - Engine braking when you lift off, and steering that turns in more gently at speed.
+  - Scrapes slide along walls, and vehicle-to-vehicle hits have friction: a side-swipe drags, and
+    a nudge on a rear quarter spins the other car round.
+  - Traffic lurches or swerves when you shunt it.
 - **Slopes.** Vehicles sit on the ground under their axles, so they pitch up flyover ramps and dive
   into underpasses, tilt on kerbs and climb onto footpaths with a bump. Gravity slows you uphill;
   take a crest fast enough and you leave the ground and land on the suspension.
@@ -163,6 +190,9 @@ and signing.
   - About 170 vehicles are streamed around you, rising 1.3× at rush hour. Lorries come out at night.
   - Cars and buses keep their lanes.
   - Autos and two-wheelers weave, squeeze through gaps and sometimes ride against the traffic.
+  - Traffic doesn't drive through itself. A slow touch is a fender-bender: dents, a horn, a pause.
+    Hit hard enough and both vehicles leave the traffic as wrecks, and riders are thrown off.
+  - Autos and buses wait for you when you walk up to them, so you can get in.
 - **People.** Footpath walkers, crowds at signals that cross on the walk phase (or jaywalk),
   chai stalls and cows.
 - **Weapons**, grounded in the region:
@@ -268,10 +298,10 @@ src/
     roadnet.js         Polylines → planar road graph → polygon city blocks (pure JS, testable in Node)
     layout.js          Junction corners and cut-backs, traffic edges, blocks, underpasses, flyovers, queries
     city.js            Kerbed footpaths, lots in rotated frames, buildings, parks, lakes, trees, lamps
-    infrastructure.js  Carriageways, junction pads, zebras, medians, underpasses + flood water, flyovers
+    infrastructure.js  Carriageways, junction pads, zebras, medians, underpasses + flood water, flyover decks and loops
     railway.js         Indian Railways lines, level crossings, stations, trains on curves
     metro.js           Namma Metro routes, viaducts, stations (elevated and underground), trains
-    landmarks.js       Procedural landmark models
+    landmarks.js       Procedural landmark models, and the airport's flights
     geom.js, path.js   Polygon fill/walls, rectangle overlap, arc-length polylines
     textures.js        Canvas-painted textures (facades, lit windows, asphalt, pavers, signs, water)
     signAtlas.js       Shared atlas pages for signboards and hoardings, merged per chunk
@@ -281,12 +311,13 @@ src/
     ao.js              Baked shading: dark wall bases, ground shading map next to buildings and trees
     blobs.js           Soft contact shadows under vehicles and people
     halos.js           Light halos: street lamps, signals, headlights, tail lights, police light bars
+    skids.js           Tyre marks: one fading ring-buffer mesh
   entities/
     human.js           Skinned 13-bone people + animations
     carBodies.js       Lofted car bodies for the real models (Swift, Dzire, Nano, Ambassador, Thar, Fortuner…)
     vehicleModels.js   Vehicle types as single skinned meshes (wheels are bones), decals
     liveries.js        One canvas atlas for every livery: Hoysala, BMTC, LED boards
-    vehicle.js         Tyre-model physics, damage, fire, flood drag and stalling
+    vehicle.js         Tyre-model physics, surfaces, auto tipping, damage, fire, flood drag and stalling
     traffic.js         Streaming AI traffic on the road graph
     pedestrians.js     Footpath walkers, signal crowds, chai stalls, cows, reactions
     gangs.js           Rowdies and mission crews

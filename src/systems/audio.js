@@ -488,7 +488,7 @@ export class Audio {
     const t = this.ctx.currentTime;
     let level = 0;
     if (v && v.driver === 'player' && !v.spec.twoWheeler && (v.y ?? 0) > -5) {
-      level = smooth(0.14, 0.4, v.slip || 0) * smooth(4, 12, v.speed) * (v.waterDepth > 0.1 ? 0 : 1) * (1 - 0.6 * this.rainLevel);
+      level = (v.skid ?? smooth(0.14, 0.4, v.slip || 0) * smooth(4, 12, v.speed)) * (v.surface < 1 ? 0.2 : 1) * (v.waterDepth > 0.1 ? 0 : 1) * (1 - 0.6 * this.rainLevel);
     }
     if (!this.skid && level > 0.01) {
       const info = BANK.skid;
