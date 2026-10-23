@@ -58,8 +58,14 @@ const talk = (script) => ({
   objective: null,
 });
 
-const go = (place, text, { radius = 3.5, timer, vehicleVar, slow = true, failText, inVehicle = false } = {}) => ({
-  enter(c) { this.p = c.place(place); this.timer = timer; c.marker(this.p); },
+// pace (m/s): a timer from the leg's length instead of a fixed one, for an average a little
+// quicker than traffic allows (roads wind: ×1.4 on the straight line).
+const go = (place, text, { radius = 3.5, timer, pace, vehicleVar, slow = true, failText, inVehicle = false } = {}) => ({
+  enter(c) {
+    this.p = c.place(place);
+    this.timer = pace ? Math.round((Math.hypot(this.p.x - c.player.pos.x, this.p.z - c.player.pos.z) * 1.4) / pace + 15) : timer;
+    c.marker(this.p);
+  },
   update(dt, c) {
     if (this.timer != null) { this.timer -= dt; if (this.timer <= 0) return { fail: failText || 'Too slow.' }; }
     const pl = c.player, pos = pl.pos;
@@ -288,7 +294,7 @@ const MISSIONS = [
         ['Raghu', 'What\'s in it?'],
         ['Babu', 'Mobile covers. Very fragile mobile covers. Two and a half minutes, or the customer gets angry.'],
       ]),
-      go('den', 'Get the parcel to the lodge in Chickpete.', { timer: 100, failText: 'The parcel was late. Kotte Kumar doesn\'t like late.' }),
+      go('den', 'Get the parcel to the lodge in Chickpete.', { pace: 5, failText: 'The parcel was late. Kotte Kumar doesn\'t like late.' }),
       talk([
         ['Kotte Kumar', 'So you\'re the delivery boy. Babu says you\'re fast.'],
         ['Kotte Kumar', 'Fast is good. Quiet is better. You know who I am?'],
@@ -549,7 +555,7 @@ MISSIONS.push(
       act((c) => { c.world.setHour?.(4.4); const p = c.place('hanu'); const q = c.world.footpathNear(p.x + 6, p.z + 4); c.vars.car = c.world.park('suv', q.x, q.z, 0, { model: 'fortuner', color: 0x111111 }); }),
       getIn('car', 'Get in the black Fortuner.'),
       wanted(4, 'Warrant: ACP Shalini Rao'),
-      go('yelahanka', 'Get to the airport road at Yelahanka before dawn.', { vehicleVar: 'car', timer: 900, radius: 14, slow: false, failText: 'Dawn came. So did Shalini Rao.' }),
+      go('yelahanka', 'Get to the airport road at Yelahanka before dawn.', { vehicleVar: 'car', pace: 13, radius: 14, slow: false, failText: 'Dawn came. So did Shalini Rao.' }),
       act((c) => c.world.police.reset?.()),
       talk([
         ['ACP Shalini Rao', '(on the radio) Let him go. ...He\'ll come back. They always come back.'],
@@ -566,11 +572,10 @@ const SIDE = [
   {
     id: 'amb108', title: '108 Emergency', act: ODD, giver: 'victoria', reward: 2200, needs: 'delivery',
     steps: () => {
-      // (Timers allow ~11 m/s door to door: quick, in Bengaluru traffic.)
-      const run = (spot, where, hosp, hospName, t1, t2) => [
-        go(spot, `Get to the accident at ${where}. (G: siren)`, { vehicleVar: 'amb', timer: t1, radius: 6, failText: 'The ambulance never came.' }),
+      const run = (spot, where, hosp, hospName) => [
+        go(spot, `Get to the accident at ${where}. (G: siren)`, { vehicleVar: 'amb', pace: 10, radius: 6, failText: 'The ambulance never came.' }),
         act((c) => { const p = c.place(spot); const s = c.world.park('scooter', p.x + 2, p.z + 1, Math.random() * 6.28); s.takeDamage(65, s.x, s.z, c.world); c.hud.say('You load the injured rider into the back. "Bega, bega!"', 3); }),
-        go(hosp, `Rush the patient to ${hospName}.`, { vehicleVar: 'amb', timer: t2, radius: 7, failText: 'The patient didn\'t make it.' }),
+        go(hosp, `Rush the patient to ${hospName}.`, { vehicleVar: 'amb', pace: 10, radius: 7, failText: 'The patient didn\'t make it.' }),
         act((c) => { c.audio.cash?.(); c.hud.say('Nurses take the stretcher. "Next one, quick!"', 2.5); }),
       ];
       return [
@@ -581,9 +586,9 @@ const SIDE = [
         act((c) => { const p = c.place('victoria'); const q = c.world.footpathNear(p.x + 5, p.z + 3); c.vars.amb = c.world.park('ambulance', q.x, q.z, 0); }),
         getIn('amb', 'Get in the 108 ambulance.'),
         act((c) => { c.vars.amb.siren = true; }),
-        ...run('hudson', 'Hudson Circle', 'victoria', 'Victoria Hospital', 150, 150),
-        ...run('richmond', 'Richmond Circle', 'bowring', 'Bowring Hospital', 230, 200),
-        ...run('trinity', 'Trinity Circle', 'stjohns', 'St. John\'s Hospital', 180, 420),
+        ...run('hudson', 'Hudson Circle', 'victoria', 'Victoria Hospital'),
+        ...run('richmond', 'Richmond Circle', 'bowring', 'Bowring Hospital'),
+        ...run('trinity', 'Trinity Circle', 'stjohns', 'St. John\'s Hospital'),
         talk([['Dispatcher', 'Three for three. Who are you, man? ...Never mind. Don\'t tell me.']]),
       ];
     },
@@ -596,12 +601,12 @@ const SIDE = [
         ['Ticket tout', 'Indiranagar, then Koramangala. Get them in before the toss and there\'s money in it.'],
       ]),
       act((c) => c.world.setHour?.(17.5)),
-      go('fan1', 'Pick up the first fan on 100 Feet Road, Indiranagar.', { inVehicle: true, radius: 5, timer: 360, failText: 'He took an auto. Two hundred rupees extra, he\'s furious.' }),
+      go('fan1', 'Pick up the first fan on 100 Feet Road, Indiranagar.', { inVehicle: true, radius: 5, pace: 8, failText: 'He took an auto. Two hundred rupees extra, he\'s furious.' }),
       act((c) => c.hud.say('Fan: "Ee sala cup namde! Drive, drive!"', 3)),
-      go('stadium', 'Get him to the gates of Chinnaswamy Stadium.', { inVehicle: true, radius: 8, timer: 400, failText: 'The toss is done. He\'s not talking to you.' }),
-      go('fan2', 'Now the second fan, in Koramangala.', { inVehicle: true, radius: 5, timer: 450 }),
+      go('stadium', 'Get him to the gates of Chinnaswamy Stadium.', { inVehicle: true, radius: 8, pace: 9, failText: 'The toss is done. He\'s not talking to you.' }),
+      go('fan2', 'Now the second fan, in Koramangala.', { inVehicle: true, radius: 5, pace: 9 }),
       act((c) => c.hud.say('Fan: "Kohli is batting first?! Bega hogi!"', 3)),
-      go('stadium', 'Back to Chinnaswamy before the first ball.', { inVehicle: true, radius: 8, timer: 450, failText: 'First ball\'s gone. So is your tip.' }),
+      go('stadium', 'Back to Chinnaswamy before the first ball.', { inVehicle: true, radius: 8, pace: 9, failText: 'First ball\'s gone. So is your tip.' }),
       talk([['Ticket tout', 'Both inside! Here, and here\'s a cap. RCB! RCB! RCB!']]),
     ],
   },

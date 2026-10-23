@@ -158,7 +158,8 @@ export class Layout {
   // Landmarks go in the block at their real location, or the nearest one big enough to hold them.
   assignSpecials() {
     const NEED = { vidhanaSoudha: [104, 84], highCourt: [80, 40], stadium: [60, 60], iskcon: [74, 60], wtc: [66, 46], ibcPlatinumCity: [100, 100],
-      forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60], airport: [600, 380], itpl: [90, 90] };
+      forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60], airport: [600, 380], itpl: [90, 90],
+      tipuPalace: [48, 40], bullTemple: [26, 40], shivaTemple: [30, 34], planetarium: [32, 34], infosys: [120, 96], halMuseum: [120, 100] };
     const fits = (b, s) => { const [nw, nd] = NEED[s.landmark] || [30, 30]; return !b.special && b.zone !== 'park' && b.zone !== 'lake' && b.inner.maxX - b.inner.minX >= nw && b.inner.maxZ - b.inner.minZ >= nd; };
     const put = (b, s) => { const { at, ...rest } = s; Object.assign(b, rest, { special: true }); };
     // First the ones whose own block can hold them, then the rest go to the nearest that can.

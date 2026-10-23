@@ -421,7 +421,7 @@ export function buildPlane(b, liv) {
 }
 
 function airport(ctx, block) {
-  const { B, colliders, signs, group } = ctx;
+  const { B, colliders, signs, group, pois } = ctx;
   const i = block.inner;
   ctx.lawn(block, 0x8a9a50);
   const stone = B.get('stone'), asphalt = B.get('junction'), plaza = B.get('plaza'), glass = B.get('glass'), roof = B.get('roof');
@@ -461,6 +461,9 @@ function airport(ctx, block) {
   put(glass, G.cyl8, cx, 55, cz, 0x406080, 0, 7, 6, 7);
   put(stone, G.cyl8, cx, 58.5, cz, 0xf2f2f2, 0, 7.6, 1, 7.6);
   colliders.addCentered(cx, cz, 8, 8, 60, 'building');
+  kempegowdaStatue(stone, i.minX + 800, termZ - 10);
+  colliders.addCentered(i.minX + 800, termZ - 10, 16, 16, 44, 'building');
+  pois.landmarks.push({ name: 'Statue of Prosperity (Kempegowda)', x: i.minX + 800, z: termZ + 4 });
   // Parked jets at the stands in front of the terminals.
   const stands = [];
   for (let k = 0; k < 9; k++) stands.push({ x: i.minX + 170 + k * 52, z: termZ - 62 });
@@ -548,7 +551,270 @@ function itpl(ctx, block) {
   return { name: 'ITPL', x: cx, z: block.inner.maxZ + 3 };
 }
 
+// ---------------------------------------------------------------------------------------------
+// More of Bengaluru: palaces, temples, a campus and a museum.
+
+// Battlements along the top edge of a w x d footprint centred on (cx, cz), standing on y.
+function crenellate(b, cx, y, cz, w, d, color, step = 2.2) {
+  for (let x = -w / 2 + step / 2; x < w / 2; x += step) for (const z of [-d / 2, d / 2]) b.box(cx + x, y, cz + z, step * 0.5, 1.1, 0.7, color);
+  for (let z = -d / 2 + step / 2; z < d / 2; z += step) for (const x of [-w / 2, w / 2]) b.box(cx + x, y, cz + z, 0.7, 1.1, step * 0.5, color);
+}
+
+// Bangalore Palace, in the Palace Grounds: Tudor Revival in grey granite, with battlements,
+// turrets under pointed caps and a tall tower over the entrance. Faces south.
+function palace(ctx, block) {
+  const { B, colliders, signs } = ctx;
+  const { cx, cz } = centre(block);
+  const her = B.get('heritage'), stone = B.get('stone'), roof = B.get('roof');
+  const grey = 0xbdb3a2, dark = 0x7e766a;
+  const T = { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 8, topColor: dark };
+  const turret = (x, z, h, r = 2.2) => {
+    put(stone, G.cyl8, x, 0.15 + h / 2, z, grey, 0, r, h, r);
+    put(stone, G.cyl8, x, 0.75 + h, z, dark, 0, r + 0.3, 1.2, r + 0.3);
+    put(stone, G.cone, x, 1.35 + h + 2.2, z, 0x4a4640, 0, r * 0.95, 4.4, r * 0.95);
+  };
+  her.box(cx, 0.15, cz, 44, 13, 18, grey, T);
+  crenellate(stone, cx, 13.15, cz, 44, 18, dark);
+  for (const s of [-1, 1]) {
+    her.box(cx + s * 28, 0.15, cz + 2, 14, 10, 22, grey, T);
+    crenellate(stone, cx + s * 28, 10.15, cz + 2, 14, 22, dark);
+    turret(cx + s * 35, cz - 9, 14);
+    turret(cx + s * 35, cz + 13, 14);
+    turret(cx + s * 21, cz + 9, 17);
+  }
+  // The entrance tower, its two slim turrets, the porch and a flag.
+  her.box(cx, 0.15, cz + 9, 10, 22, 8, grey, T);
+  crenellate(stone, cx, 22.15, cz + 9, 10, 8, dark, 1.8);
+  turret(cx - 5, cz + 13, 25, 1.3);
+  turret(cx + 5, cz + 13, 25, 1.3);
+  stone.box(cx, 0.15, cz + 13.05, 4, 5, 0.2, 0x2a2420);
+  put(stone, G.cyl8, cx, 26.15, cz + 9, 0x888888, 0, 0.12, 8, 0.12);
+  stone.box(cx + 1.2, 28.6, cz + 9, 2.2, 1.4, 0.05, 0xd8402a);
+  colliders.addCentered(cx, cz + 2, 76, 26, 24, 'building');
+  stone.box(cx, 0.15, cz + 19.85, 8.6, 1.1, 0.3, 0x3a2a1a);
+  signs.push({ key: 'palace', text: ['BANGALORE PALACE', 'ಬೆಂಗಳೂರು ಅರಮನೆ'], x: cx, y: 2.1, z: cz + 20.05, w: 8, h: 1.8, face: 's', bg: '#3a2a1a', fg: '#f2e6c8' });
+  return { name: 'Bangalore Palace', x: cx, z: cz + 26 };
+}
+
+// Tipu Sultan's Summer Palace, by the K.R. Market fort: two storeys of teak pillars and
+// arches round an ochre hall, on a stone plinth, under a low hipped roof.
+function tipuPalace(ctx, block) {
+  const { B, colliders, signs, lawn } = ctx;
+  const { cx, cz } = centre(block);
+  lawn(block, 0x6a8a3a);
+  const stone = B.get('stone');
+  const teak = 0x6a3a1a, ochre = 0xc88a4a, arch = 0x8a4a22;
+  stone.box(cx, 0.15, cz, 40, 1.4, 22, 0xc8b8a0);
+  stone.box(cx, 1.55, cz, 32, 4.8, 14, ochre);
+  stone.box(cx, 6.35, cz, 38, 0.5, 20, teak);
+  stone.box(cx, 6.85, cz, 34, 4.2, 16, ochre);
+  stone.box(cx, 11.05, cz, 40, 0.6, 22, teak);
+  put(stone, G.cone4, cx, 12.95, cz, 0x5a3a28, Math.PI / 4, 24, 3.2, 14);
+  for (const [y0, h, hz] of [[1.55, 4.8, 9.6], [6.85, 4.2, 9]]) {
+    for (let x = -18; x <= 18; x += 3) for (const z of [-hz, hz]) put(stone, G.cyl8, cx + x, y0 + h / 2, cz + z, teak, 0, 0.28, h, 0.28);
+    for (const z of [-hz, hz]) stone.box(cx, y0 + h - 0.9, cz + z, 37, 0.9, 0.3, arch); // the band of cusped arches
+  }
+  stone.box(cx, 6.85, cz + 9, 36, 1, 0.15, teak); // balcony rail
+  colliders.addCentered(cx, cz, 40, 22, 14, 'building');
+  stone.box(cx, 0.15, cz + 15.85, 9.4, 0.8, 0.25, 0x5a2a1a);
+  signs.push({ key: 'tipu', text: ["TIPU SULTAN'S SUMMER PALACE", 'ಟಿಪ್ಪು ಸುಲ್ತಾನರ ಬೇಸಿಗೆ ಅರಮನೆ'], x: cx, y: 1.75, z: cz + 16.02, w: 9, h: 1.6, face: 's', bg: '#5a2a1a', fg: '#f2e6c8' });
+  return { name: "Tipu Sultan's Summer Palace", x: cx, z: cz + 20 };
+}
+
+// A seated Nandi facing +z (turned by ry) at (x, y, z); s = 1 is about 4.4 m long.
+function nandiBull(b, x, y, z, s, ry = 0, color = 0x262626) {
+  const c = Math.cos(ry), sn = Math.sin(ry);
+  const P = (g, lx, ly, lz, sx, sy, sz) => put(b, g, x + (lx * c + lz * sn) * s, y + ly * s, z + (-lx * sn + lz * c) * s, color, ry, sx * s, sy * s, sz * s);
+  P(G.sphere, 0, 1.2, -0.3, 1.25, 0.95, 2.1); // body
+  P(G.sphere, 0, 2.05, 0.9, 0.7, 0.6, 0.6); // hump
+  P(G.sphere, 0, 2.25, 2.3, 0.55, 0.7, 0.72); // head
+  P(G.sphere, 0, 1.75, 2.78, 0.4, 0.35, 0.38); // muzzle
+  for (const sd of [-1, 1]) {
+    P(G.cone, sd * 0.42, 3.05, 2.1, 0.12, 0.6, 0.12); // horns
+    P(G.sphere, sd * 0.72, 2.55, 2.15, 0.25, 0.12, 0.18); // ears
+    P(G.box, sd * 0.78, 0.35, 1.3, 0.45, 0.6, 1.4); // folded forelegs
+    P(G.box, sd * 0.88, 0.42, -1.7, 0.5, 0.75, 1.2); // haunches
+  }
+  P(G.sphere, 0, 1.0, 1.75, 0.6, 0.45, 0.25); // the garland's dewlap
+}
+
+// Dodda Basavana Gudi, the Bull Temple of Basavanagudi: a painted gopuram over the gate and,
+// in a pillared mantapa behind it, the great monolithic Nandi.
+function bullTemple(ctx, block) {
+  const { B, colliders, signs, plaza } = ctx;
+  const { cx, cz } = centre(block);
+  plaza(block, 0xcfc4ae);
+  const stone = B.get('stone');
+  const cream = 0xe8dcc0, ochre = 0xd8a860, red = 0xb04a2a;
+  const gz = cz + 13;
+  stone.box(cx, 0.15, gz, 13, 6, 6.5, cream);
+  stone.box(cx, 0.15, gz + 3.26, 3, 4.2, 0.1, 0x241c14);
+  let y = 6.15;
+  [cream, ochre, 0xc8d8b0, cream, 0xd8b8a0, ochre].forEach((col, k) => {
+    const w = 12 - k * 1.6, d = 5.8 - k * 0.6, h = 2.2;
+    stone.box(cx, y, gz, w, h, d, col);
+    for (let x = -w / 2 + 1; x <= w / 2 - 1; x += 1.6) stone.box(cx + x, y + 0.5, gz + d / 2, 0.7, 1.1, 0.15, red); // shrine niches
+    y += h;
+  });
+  put(stone, G.cyl, cx, y + 0.8, gz, ochre, 0, 1.1, 3.6, 1.1, 0, Math.PI / 2); // the barrel-vaulted crown
+  for (const dx of [-1.2, 0, 1.2]) put(stone, G.cone, cx + dx, y + 2.3, gz, 0xd4a017, 0, 0.25, 0.8, 0.25); // kalashas
+  // The mantapa, open between its pillars, and the bull inside.
+  const mz = cz - 4;
+  stone.box(cx, 0.15, mz, 16, 1, 16, 0xbdb3a2);
+  for (let x = -6; x <= 6; x += 4) for (let z = -6; z <= 6; z += 4) if (Math.abs(x) === 6 || Math.abs(z) === 6) put(stone, G.box, cx + x, 4.15, mz + z, 0xd8ccb0, 0, 0.7, 6, 0.7);
+  stone.box(cx, 7.15, mz, 15, 0.8, 15, cream);
+  for (let k = 0; k < 3; k++) stone.box(cx, 7.95 + k * 1.2, mz, 9 - k * 2.6, 1.2, 9 - k * 2.6, k % 2 ? ochre : cream);
+  put(stone, G.cone, cx, 12.4, mz, 0xd4a017, 0, 0.4, 1.2, 0.4);
+  nandiBull(stone, cx, 1.15, mz - 0.5, 1.35, 0);
+  colliders.addCentered(cx, gz, 13, 6.5, 20, 'building');
+  colliders.addCentered(cx, mz, 16, 16, 8, 'building');
+  signs.push({ key: 'bullTemple', text: ['DODDA BASAVANA GUDI', 'ದೊಡ್ಡ ಬಸವನ ಗುಡಿ · BULL TEMPLE'], x: cx, y: 5.25, z: gz + 3.33, w: 9, h: 1.2, face: 's', bg: '#8a2a1a', fg: '#fff2c8' });
+  return { name: 'Bull Temple (Dodda Basavana Gudi)', x: cx, z: gz + 8 };
+}
+
+// The Shiva at Kemp Fort on Old Airport Road: a 65-foot seated Shiva on a rocky Kailash, with
+// his trident beside him and a pond at his feet.
+function shivaTemple(ctx, block) {
+  const { B, colliders, signs, plaza } = ctx;
+  const { cx, cz } = centre(block);
+  plaza(block, 0xc8c0b0);
+  const stone = B.get('stone');
+  const skin = 0x9fb4c8, hair = 0x30323c, rock = 0x8a7e6e;
+  for (const [dx, dy, dz, r] of [[0, 2, 0, 9], [-6, 1.5, -2, 6], [6, 1.6, -1, 6.5], [0, 5, -3, 6]]) put(stone, G.sphere, cx + dx, dy, cz + dz, rock, 0, r, r * 0.6, r * 0.8);
+  stone.box(cx, 0.15, cz + 9, 14, 0.3, 6, 0x3a6a8a);
+  const y0 = 7.5;
+  put(stone, G.sphere, cx, y0, cz + 1, skin, 0, 5.2, 1.6, 3.2); // crossed legs
+  put(stone, G.sphere, cx, y0 + 4.6, cz, skin, 0, 2.6, 3.8, 1.9); // torso
+  put(stone, G.sphere, cx, y0 + 7.2, cz, skin, 0, 3.2, 1.6, 1.8); // shoulders
+  for (const sd of [-1, 1]) {
+    put(stone, G.cyl, cx + sd * 3.3, y0 + 5.2, cz + 0.6, skin, 0, 0.8, 4.4, 0.8, 0, sd * 0.25);
+    put(stone, G.sphere, cx + sd * 3.0, y0 + 1.6, cz + 2.6, skin, 0, 0.9, 0.7, 1.2); // hands on the knees
+  }
+  put(stone, G.sphere, cx, y0 + 10, cz, skin, 0, 1.4, 1.75, 1.5); // head
+  put(stone, G.cyl8, cx, y0 + 12.3, cz - 0.2, hair, 0, 0.9, 2.2, 0.9); // the jata, piled up
+  put(stone, G.sphere, cx, y0 + 13.6, cz - 0.2, hair, 0, 1.0, 0.8, 1.0);
+  stone.box(cx, y0 + 10.2, cz + 1.44, 0.15, 0.35, 0.06, 0xc02020); // third eye
+  put(stone, G.cyl8, cx, y0 + 8.6, cz, 0x2a3a2a, 0, 1.6, 0.35, 1.5); // the cobra round his neck
+  put(stone, G.cyl8, cx + 6.5, y0 + 4, cz + 0.5, 0xc8c8c8, 0, 0.18, 16, 0.18); // trident
+  for (const dx of [-0.9, 0, 0.9]) put(stone, G.cone, cx + 6.5 + dx, y0 + 12.6, cz + 0.5, 0xd8d8d8, 0, 0.25, 1.6, 0.25);
+  stone.box(cx + 6.5, y0 + 11.4, cz + 0.5, 2.2, 0.25, 0.3, 0xd8d8d8);
+  colliders.addCentered(cx, cz - 1, 22, 16, 22, 'building');
+  signs.push({ key: 'shiva', text: ['SHIVOHAM SHIVA TEMPLE', 'ಶಿವೋಹಂ ಶಿವ ದೇವಾಲಯ'], x: cx, y: 1.6, z: cz + 12.3, w: 8, h: 1.5, face: 's', bg: '#2a3a6a', fg: '#ffffff' });
+  stone.box(cx, 0.15, cz + 12.15, 8.4, 0.7, 0.25, 0x2a3a6a);
+  return { name: 'Kemp Fort Shiva Temple', x: cx, z: cz + 15 };
+}
+
+// Jawaharlal Nehru Planetarium: a white dome on a drum, on Sankey Road.
+function planetarium(ctx, block) {
+  const { B, colliders, signs, lawn } = ctx;
+  const { cx, cz } = centre(block);
+  lawn(block, 0x6a8a3a);
+  const stone = B.get('stone');
+  stone.box(cx, 0.15, cz, 26, 5, 26, 0xece8e0);
+  put(stone, G.cyl, cx, 7.15, cz, 0xf4f2ee, 0, 10, 4, 10);
+  put(stone, G.dome, cx, 9.15, cz, 0xf8f8f8, 0, 10.4, 9, 10.4);
+  stone.box(cx, 0.15, cz + 13.05, 6, 3.6, 0.2, 0x2a3a4a);
+  colliders.addCentered(cx, cz, 26, 26, 18, 'building');
+  signs.push({ key: 'planetarium', text: ['JAWAHARLAL NEHRU PLANETARIUM', 'ಜವಾಹರಲಾಲ್ ನೆಹರು ತಾರಾಲಯ'], x: cx, y: 4.3, z: cz + 13.1, w: 12, h: 1.3, face: 's', bg: '#0f1a3a', fg: '#ffffff' });
+  return { name: 'Nehru Planetarium', x: cx, z: cz + 18 };
+}
+
+// Infosys, Electronic City: the glass pyramid and the white-domed Multiplex across the lawns,
+// glass office blocks round them.
+function infosys(ctx, block) {
+  const { B, colliders, signs, lawn } = ctx;
+  const { cx, cz, w, d } = centre(block);
+  lawn(block, 0x5a8a3a);
+  const glass = B.get('glass'), stone = B.get('stone'), roof = B.get('roof');
+  const z0 = cz - d * 0.1;
+  const px = cx - w * 0.25;
+  stone.box(px, 0.15, z0, 40, 1.2, 40, 0xd8d4cc);
+  put(glass, G.cone4, px, 1.35 + 15, z0, 0x4a6a8a, Math.PI / 4, 26, 30, 26);
+  colliders.addCentered(px, z0, 38, 38, 28, 'building');
+  const mx = cx + w * 0.25;
+  put(stone, G.cyl, mx, 3.15, z0, 0xe8e8e8, 0, 16, 6, 16);
+  put(stone, G.dome, mx, 6.15, z0, 0xf6f6f6, 0, 16.5, 12, 16.5);
+  colliders.addCentered(mx, z0, 32, 32, 18, 'building');
+  for (const [fx, h] of [[-0.3, 22], [0.3, 18]]) {
+    const x = cx + fx * w, z = cz + d * 0.34;
+    glass.box(x, 0.15, z, Math.min(30, w * 0.3), h, 14, 0xb8c8d8, { tileW: GLASS_TILE.w, tileH: GLASS_TILE.h, topBuilder: roof });
+    colliders.addCentered(x, z, Math.min(30, w * 0.3), 14, h + 1, 'building');
+  }
+  const gz = block.inner.maxZ - 1.2;
+  stone.box(cx, 0.15, gz, 15, 0.6, 0.5, 0x2a2a2a);
+  signs.push({ key: 'infosys', text: ['Infosys'], x: cx, y: 2.3, z: gz + 0.27, w: 14, h: 3, face: 's', bg: '#ffffff', fg: '#007cc3', fonts: ['bold 150px "Oswald", Arial, sans-serif'] });
+  return { name: 'Infosys, Electronic City', x: cx, z: block.inner.maxZ + 3 };
+}
+
+// A delta-winged fighter along local +x (in the spirit of the Tejas), wheels at y = 0.
+function buildFighter(b, body = 0x8a9098) {
+  const cy = 1.9;
+  put(b, G.cyl, 0, cy, 0, body, 0, 0.75, 10, 0.75, 0, Math.PI / 2);
+  put(b, G.cone, 6.4, cy, 0, body, 0, 0.75, 2.8, 0.75, 0, -Math.PI / 2);
+  put(b, G.sphere, 3.4, cy + 0.6, 0, 0x2a3a4a, 0, 1.2, 0.45, 0.5); // canopy
+  put(b, G.cone4, -1.2, cy - 0.2, 0, body, Math.PI / 4, 5, 0.12, 5); // the delta wing (flattened)
+  put(b, G.box, -3.6, cy + 1.6, 0, body, 0, 2.2, 2.6, 0.15, 0, -0.5); // fin
+  b.box(3.5, 0, 0, 0.25, cy - 0.6, 0.25, 0x333333);
+  for (const sd of [-1, 1]) b.box(-1.5, 0, sd * 1.4, 0.3, cy - 0.5, 0.3, 0x333333);
+}
+
+// A helicopter (a Dhruv) along local +x.
+function buildHelicopter(b, body = 0xd8d8d0) {
+  put(b, G.sphere, 0, 2.2, 0, body, 0, 3.0, 1.5, 1.4);
+  put(b, G.sphere, 1.8, 2.3, 0, 0x2a3a4a, 0, 1.3, 1.0, 1.2);
+  put(b, G.cyl8, -4.5, 2.6, 0, body, 0, 0.35, 6, 0.35, 0, Math.PI / 2);
+  put(b, G.box, -7.6, 3.2, 0, body, 0, 1, 1.6, 0.12, 0, -0.4);
+  put(b, G.cyl8, 0, 3.9, 0, 0x333333, 0, 0.2, 0.6, 0.2);
+  for (const a of [0, Math.PI / 2]) put(b, G.box, 0, 4.2, 0, 0x222222, a + 0.3, 13, 0.08, 0.4);
+  for (const sd of [-1, 1]) b.box(0, 0, sd * 1.1, 5, 0.12, 0.12, 0x333333);
+}
+
+// HAL Heritage Centre and Aerospace Museum: a hangar and aircraft out on the lawns.
+function halMuseum(ctx, block) {
+  const { B, colliders, signs, lawn } = ctx;
+  const { cx, cz, w, d } = centre(block);
+  lawn(block, 0x6a8a40);
+  const stone = B.get('stone'), metal = B.get('metal');
+  const hz = cz - d * 0.25;
+  put(metal, G.cyl, cx, 0.15, hz, 0xa8b0b8, 0, 14, 50, 14, 0, Math.PI / 2);
+  colliders.addCentered(cx, hz, 50, 28, 14, 'building');
+  const show = [[-0.3, 0.12, 0.6, 'fighter', 0x8a9098], [0, 0.2, -0.4, 'fighter', 0x6a7a5a], [0.3, 0.12, 2.2, 'heli', 0xd8d8d0], [0.15, 0.36, 1.1, 'jet', null]];
+  for (const [fx, fz, ang, kind, col] of show) {
+    const x = cx + fx * w, z = cz + fz * d;
+    B.xf = makeFrame(x, z, ang);
+    if (kind === 'fighter') buildFighter(B.get('stone'), col);
+    else if (kind === 'heli') buildHelicopter(B.get('stone'), col);
+    else buildPlane(B.get('stone'), { body: 0xf4f4f4, tail: 0x1a4a8a, belly: 0x1a4a8a });
+    B.xf = null;
+    colliders.addCentered(x, z, kind === 'jet' ? 30 : 12, kind === 'jet' ? 30 : 12, 5, 'low');
+  }
+  const gz = block.inner.maxZ - 1.2;
+  stone.box(cx, 0.15, gz, 16, 0.6, 0.5, 0x2a2a2a);
+  signs.push({ key: 'hal', text: ['HAL HERITAGE CENTRE & AEROSPACE MUSEUM', 'ಎಚ್‌ಎಎಲ್ ಪರಂಪರೆ ಕೇಂದ್ರ'], x: cx, y: 2.1, z: gz + 0.27, w: 15, h: 2.4, face: 's', bg: '#0f2a5a', fg: '#ffffff' });
+  return { name: 'HAL Aerospace Museum', x: cx, z: block.inner.maxZ + 3 };
+}
+
+// The Statue of Prosperity at the airport: Nadaprabhu Kempegowda in bronze, 108 feet tall,
+// sword raised, on a granite pedestal.
+function kempegowdaStatue(b, x, z) {
+  const bronze = 0x8a6a3a, ped = 0xd8d0c0;
+  b.box(x, 0.15, z, 16, 3, 16, ped);
+  b.box(x, 3.15, z, 11, 7, 11, ped);
+  const y0 = 10.15, k = 33 / 6; // the figure, in "heads"
+  for (const sd of [-1, 1]) put(b, G.cyl8, x + sd * 1.3, y0 + k * 0.8, z, bronze, 0, 1.2, k * 1.6, 1.2);
+  put(b, G.cone, x, y0 + k * 2.4, z, bronze, 0, 4.4, k * 3.2, 3.6); // the long robe
+  put(b, G.cyl8, x, y0 + k * 4.05, z, bronze, 0, 2.9, k * 1.4, 2.1); // chest
+  put(b, G.sphere, x, y0 + k * 4.7, z, bronze, 0, 3.6, 1.3, 2.2); // shoulders
+  put(b, G.sphere, x, y0 + k * 5.25, z, bronze, 0, 1.4, 1.65, 1.5); // head
+  put(b, G.cyl, x, y0 + k * 5.85, z, bronze, 0, 1.6, 1.1, 1.65); // the pagdi
+  put(b, G.cyl8, x + 3.2, y0 + k * 4.4, z + 0.5, bronze, 0, 0.8, k * 1.3, 0.8, 0, -0.35); // sword arm, raised
+  put(b, G.box, x + 4.2, y0 + k * 5.6, z + 0.7, 0x9a8a6a, 0, 0.45, k * 1.7, 0.18); // the sword
+  put(b, G.cyl8, x - 3.0, y0 + k * 3.6, z + 0.3, bronze, 0, 0.8, k * 1.5, 0.8, 0, 0.18);
+  put(b, G.cyl, x - 3.6, y0 + k * 3.2, z + 1.2, bronze, 0, 2.2, 0.4, 2.2, Math.PI / 2); // the shield
+}
+
 export const LANDMARKS = {
   vidhanaSoudha, highCourt, library, bandstand, stadium, cathedral, skyTower, statue,
   ibcPlatinumCity, busStand, airport, itpl, iskcon, wtc, glassHouse, forumMall, silkBoardOffice,
+  palace, tipuPalace, bullTemple, shivaTemple, planetarium, infosys, halMuseum,
 };

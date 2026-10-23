@@ -439,7 +439,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     const a0 = lot.minX, a1 = lot.maxX, D = lot.maxZ - lot.minZ;
     if (a1 - a0 < 14 || D < 12 || rng() > 0.12) return false;
     const [cx0, cz0] = W((a0 + a1) / 2, (lot.minZ + lot.maxZ) / 2);
-    if (stations.some((s) => Math.hypot(s.x - cx0, s.z - cz0) < 800)) return false;
+    if (stations.some((s) => Math.hypot(s.x - cx0, s.z - cz0) < 1000)) return false;
     stations.push({ x: cx0, z: cz0 });
     const brand = FUEL_BRANDS[[0, 1, 0, 2][fuelIdx++ % 4]];
     // a along the frontage, d inward from the road edge.
@@ -722,7 +722,7 @@ export function buildCity(scene, layout, colliders, renderer) {
 
   function avenueTrees(block) {
     if (block.zone === 'lake' || block.zone === 'rural') return;
-    const cbd = Math.abs(block.cx - 300) < 500 && Math.abs(block.cz) < 450;
+    const cbd = Math.abs(block.cx - 375) < 625 && Math.abs(block.cz) < 560;
     const base = block.zone === 'commercial' || block.zone === 'market' || block.zone === 'industrial' ? 30 : cbd ? 16 : 22;
     kerbRuns(block, 1.0, (k) => {
       const spacing = k.w > 14 ? base : base * 1.5; // side streets are sparser

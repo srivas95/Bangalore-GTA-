@@ -1,22 +1,27 @@
-// Real Bengaluru geography, compressed 5x around Kempegowda (Majestic) bus station.
+// Real Bengaluru geography, compressed 4x around Kempegowda (Majestic) bus station.
 // geo(lat, lon) -> [x, z] in metres: +x east, +z south. Roads, metro stations, lakes, parks,
 // districts and landmarks below are placed from their real coordinates (approximate).
 
-export const SCALE = 5;
+export const SCALE = 4;
+// Sizes below that are given in game metres were laid out at 5x; K stretches them to match.
+const K = 5 / SCALE;
 const LAT0 = 12.9767, LON0 = 77.5713;
 const MX = 108600 / SCALE, MZ = 110600 / SCALE; // metres per degree
 export const geo = (lat, lon) => [(lon - LON0) * MX, (LAT0 - lat) * MZ];
 const G = (pts) => pts.map(([a, b]) => geo(a, b));
 
-export const WORLD = { minX: -2000, maxX: 4300, minZ: -5150, maxZ: 2640 };
+// From Kengeri in the west to Whitefield, and from the airport down to Electronic City.
+export const WORLD = { minX: -2800, maxX: 5600, minZ: -6950, maxZ: 4200 };
 
 // Built-up areas get the dense street grid; the rest is countryside with village roads.
 const rectPoly = (x0, z0, x1, z1) => [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+const rectK = (x0, z0, x1, z1) => rectPoly(x0 * K, z0 * K, x1 * K, z1 * K);
 export const URBAN = [
-  rectPoly(-2000, -1720, 2000, 2640), // the city proper
-  rectPoly(2000, -800, 4300, 1000), // KR Puram, Mahadevapura, Marathahalli, Whitefield
-  rectPoly(-20, -3260, 1080, -2230), // Yelahanka
-  rectPoly(-20, -2230, 1200, -1720), // Kodigehalli, Jakkur, Sahakara Nagar
+  rectK(-2000, -1720, 2000, 2640), // the city proper
+  rectK(2000, -800, 4300, 1000), // KR Puram, Mahadevapura, Marathahalli, Whitefield
+  rectK(-20, -3260, 1080, -2230), // Yelahanka
+  rectK(-20, -2230, 1200, -1720), // Kodigehalli, Jakkur, Sahakara Nagar
+  rectPoly(...geo(12.882, 77.618), ...geo(12.834, 77.695)), // Electronic City and Hosa Road
 ];
 
 // Arterials. lanes: per direction. median: width (m). metro: carries a viaduct.
@@ -48,7 +53,7 @@ export const ARTERIALS = [
   { name: 'Airport Road (NH 44)', lanes: 3, median: 6, pts: G([[13.057, 77.5952], [13.0605, 77.5935], [13.08, 77.5945], [13.1007, 77.5963], [13.125, 77.601], [13.149, 77.611], [13.1665, 77.627], [13.183, 77.644], [13.195, 77.657], [13.205, 77.67], [13.2005, 77.6825], [13.1832, 77.6825], [13.1832, 77.7]]) },
   { name: 'Hennur Bagalur Road', lanes: 1, median: 0, pts: G([[13.039, 77.62], [13.045, 77.638], [13.064, 77.645], [13.09, 77.652], [13.115, 77.66], [13.138, 77.668], [13.16, 77.685], [13.1832, 77.7]]) },
   { name: 'Doddaballapur Road', lanes: 1, median: 0, pts: G([[13.1007, 77.5963], [13.104, 77.575], [13.11, 77.55], [13.118, 77.52], [13.125, 77.49]]) },
-  { name: 'Hosur Road', lanes: 3, median: 4, pts: G([[12.964, 77.595], [12.9575, 77.6015], [12.943, 77.611], [12.93, 77.6195], [12.9177, 77.6238], [12.905, 77.633], [12.891, 77.6445], [12.879, 77.6555]]) },
+  { name: 'Hosur Road', lanes: 3, median: 4, pts: G([[12.964, 77.595], [12.9575, 77.6015], [12.943, 77.611], [12.93, 77.6195], [12.9177, 77.6238], [12.905, 77.633], [12.891, 77.6445], [12.879, 77.6555], [12.8635, 77.665], [12.849, 77.671], [12.836, 77.679]]) },
   { name: 'Lalbagh Road', lanes: 2, median: 0, pts: G([[12.9611, 77.5748], [12.958, 77.584], [12.9505, 77.5898]]) },
   { name: 'Bannerghatta Road', lanes: 2, median: 3, pts: G([[12.9505, 77.5898], [12.938, 77.6005], [12.9177, 77.5996], [12.896, 77.5985], [12.86, 77.597]]) },
   { name: 'Old Airport Road', lanes: 3, median: 4, pts: G([[12.961, 77.6387], [12.9585, 77.655], [12.957, 77.6625], [12.9568, 77.68], [12.9565, 77.7012]]) },
@@ -143,11 +148,12 @@ export const RAIL_STATIONS = [
 ];
 
 // Open spaces: polygons (game coords) the street grid stays out of.
-const box = (lat, lon, w, h) => { const [x, z] = geo(lat, lon); return [[x - w / 2, z - h / 2], [x + w / 2, z - h / 2], [x + w / 2, z + h / 2], [x - w / 2, z + h / 2]]; };
+const box = (lat, lon, w, h) => { const [x, z] = geo(lat, lon); w *= K; h *= K; return [[x - w / 2, z - h / 2], [x + w / 2, z - h / 2], [x + w / 2, z + h / 2], [x - w / 2, z + h / 2]]; };
+const polyK = (pts) => pts.map(([x, z]) => [x * K, z * K]);
 export const PARKS = [
-  { name: 'Cubbon Park', poly: [[372, -50], [590, -50], [626, 80], [560, 150], [380, 150]], landmarks: ['library', 'bandstand', 'statue'] },
-  { name: 'Lalbagh Botanical Garden', poly: [[205, 470], [400, 470], [430, 640], [330, 700], [205, 680]], landmarks: ['glassHouse'] },
-  { name: 'Bangalore Palace Grounds', poly: box(12.9985, 77.5925, 240, 180) },
+  { name: 'Cubbon Park', poly: polyK([[372, -50], [590, -50], [626, 80], [560, 150], [380, 150]]), landmarks: ['library', 'bandstand', 'statue'] },
+  { name: 'Lalbagh Botanical Garden', poly: polyK([[205, 470], [400, 470], [430, 640], [330, 700], [205, 680]]), landmarks: ['glassHouse'] },
+  { name: 'Bangalore Palace Grounds', poly: box(12.9985, 77.5925, 240, 180), landmarks: ['palace'] },
   { name: 'Bangalore University', poly: box(12.946, 77.505, 300, 200) },
 ];
 export const LAKES = [
@@ -175,6 +181,8 @@ export const DISTRICTS = [
   D('Koramangala', 12.934, 77.617, 'mixed', { pubs: true }), D('BTM Layout', 12.913, 77.61, 'residential'), D('Madiwala', 12.922, 77.618, 'market'),
   D('Silk Board', 12.9177, 77.626, 'commercial'), D('HSR Layout', 12.911, 77.645, 'residential'), D('Bellandur', 12.926, 77.66, 'towers'),
   D('Bommanahalli', 12.896, 77.63, 'industrial'), D('Electronic City Road', 12.88, 77.65, 'industrial'),
+  D('Hosa Road', 12.876, 77.64, 'mixed'), D('Electronic City', 12.846, 77.665, 'towers'), D('Electronic City Phase 2', 12.84, 77.685, 'industrial'),
+  D('Singasandra', 12.873, 77.625, 'residential'),
   D('Seshadripuram', 12.99, 77.575, 'mixed'), D('Malleshwaram', 13.003, 77.567, 'residential'), D('Sadashivanagar', 13.007, 77.58, 'residential'),
   D('R.T. Nagar', 13.021, 77.595, 'residential'), D('Hebbal', 13.037, 77.6, 'mixed'), D('Nagawara', 13.035, 77.625, 'residential'),
   D('Rajajinagar', 12.991, 77.553, 'residential'), D('Mahalakshmi Layout', 13.012, 77.546, 'residential'), D('Basaveshwaranagar', 12.988, 77.538, 'residential'),
@@ -195,7 +203,7 @@ export const DISTRICTS = [
 export const RURAL_DISTRICTS = [
   ['Bettahalasur', 13.15, 77.61], ['Devanahalli', 13.19, 77.67], ['Bagalur', 13.135, 77.665], ['Jala Hobli', 13.17, 77.6],
   ['Rajanukunte', 13.13, 77.55], ['Budigere Cross', 13.08, 77.7], ['Hoskote Road', 13.02, 77.73], ['Kannamangala', 12.95, 77.77],
-  ['Sarjapur Outskirts', 12.89, 77.72], ['Kadusonnappanahalli', 13.11, 77.7], ['Chikkajala', 13.165, 77.63], ['Hesaraghatta Road', 13.08, 77.53],
+  ['Sarjapur Outskirts', 12.89, 77.72], ['Begur', 12.87, 77.61], ['Huskur', 12.835, 77.72], ['Sadahalli', 13.17, 77.65], ['Kannamangala Palya', 13.215, 77.66], ['Kadusonnappanahalli', 13.11, 77.7], ['Chikkajala', 13.165, 77.63], ['Hesaraghatta Road', 13.08, 77.53],
 ].map(([name, lat, lon]) => { const [x, z] = geo(lat, lon); return { name, x, z, zone: 'rural' }; });
 
 // Kempegowda International Airport: the street grid stays out of it.
@@ -217,6 +225,12 @@ export const SPECIAL_BLOCKS = [
   B(12.9775, 77.5735, { zone: 'landmark', landmark: 'busStand', district: 'Majestic' }),
   B(13.199, 77.708, { zone: 'landmark', landmark: 'airport', district: 'Kempegowda International Airport' }),
   B(12.9866, 77.7366, { zone: 'towers', landmark: 'itpl', district: 'ITPL' }),
+  B(12.9593, 77.5737, { zone: 'landmark', landmark: 'tipuPalace', district: 'Chamarajpet' }),
+  B(12.9426, 77.5683, { zone: 'landmark', landmark: 'bullTemple', district: 'Basavanagudi' }),
+  B(12.9592, 77.648, { zone: 'landmark', landmark: 'shivaTemple', district: 'Kemp Fort' }),
+  B(12.9846, 77.5896, { zone: 'landmark', landmark: 'planetarium', district: 'High Grounds' }),
+  B(12.8507, 77.6658, { zone: 'landmark', landmark: 'infosys', district: 'Electronic City' }),
+  B(12.9579, 77.682, { zone: 'landmark', landmark: 'halMuseum', district: 'HAL Old Airport Road' }),
 ];
 
 // Where you respawn.

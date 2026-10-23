@@ -171,7 +171,7 @@ async function init() {
   const types = ['scooter', 'scooter', 'eScooter', 'bike', 'sportsBike', 'auto', 'hatch', 'sedan', 'taxi', 'suv', 'suv', 'delivery'];
   for (const b of layout.blocks) {
     if (b.edge || b.zone === 'lake' || b.zone === 'park' || b.zone === 'industrial' || b.zone === 'landmark' || b.zone === 'rural') continue;
-    const cbd = Math.hypot(b.cx - 300, b.cz) < 650;
+    const cbd = Math.hypot(b.cx - 375, b.cz) < 810;
     if (Math.random() > (cbd ? 0.3 : 0.06)) continue;
     const k = Math.floor(Math.random() * b.poly.length);
     if (!b.edgeWidths[k]) continue;
@@ -185,7 +185,7 @@ async function init() {
   const rig = new CameraRig(camera);
   rig.yaw = 0;
   const audio = new Audio();
-  const hud = new HUD(layout, city.pois, { metro: metro.routes, rails: city.rail.lines, mapScale: DETAIL.lite ? 0.26 : 0.32 });
+  const hud = new HUD(layout, city.pois, { metro: metro.routes, rails: city.rail.lines, mapScale: DETAIL.lite ? 0.22 : 0.28 });
   const voices = new Voices(audio, hud);
   const radio = new Radio(audio, voices, hud);
   streetLife.voices = voices;

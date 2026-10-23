@@ -60,6 +60,8 @@ export function withAO(mat) {
 // Paint the top-down shading map. shapes: { boxes: colliders.all, trees: [{x, z, s}], strips: [{pts, width, alpha}] }.
 // mpp = metres per pixel.
 export function bakeAO(world, { boxes = [], trees = [], strips = [] }, mpp = 2.5) {
+  // (Kept within 4096 px a side: the most many phone GPUs take.)
+  mpp = Math.max(mpp, (world.maxX - world.minX) / 4096, (world.maxZ - world.minZ) / 4096);
   const W = Math.ceil((world.maxX - world.minX) / mpp), H = Math.ceil((world.maxZ - world.minZ) / mpp);
   const a = document.createElement('canvas');
   a.width = W; a.height = H;
