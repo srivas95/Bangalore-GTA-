@@ -111,7 +111,10 @@ export class Traffic {
   addAgent(v, e, lane, path, s) {
     const type = v.type;
     const p = sample(path, s);
-    v.x = p.x; v.z = p.z; v.heading = p.h; v.y = 0; v.vx = v.vz = 0;
+    v.x = p.x; v.z = p.z; v.heading = p.h; v.vx = v.vz = 0;
+    // Joining up on a deck: start on it, not on the road beneath.
+    const hit = e.flyover && lane < e.flyover.lanes ? this.layout.flyoverAt(p.x, p.z) : null;
+    v.y = hit ? this.layout.deckHeight(hit.f, hit.s) : 0;
     v.driver = 'ai';
     v.stalled = false;
     if (!v.rider) v.addRider(rng);
@@ -143,8 +146,10 @@ export class Traffic {
     if (n === 1) return 0;
     // Buses and lorries hug the kerb (outer lane); others pick freely.
     let lane = HEAVY.has(type) ? n - 1 : Math.floor(rng() * n);
-    // Vehicles turning onto a flyover approach stay off the flyover lane.
-    if (e.flyover && fromTurn && lane === 0) lane = 1;
+    // Vehicles turning onto a flyover approach stay off the lanes that climb it; where a slip road
+    // leaves from the kerb lane, keep out of that.
+    if (e.flyover && fromTurn && lane < e.flyover.lanes) lane = Math.min(n - 1, e.flyover.lanes);
+    if (e.kerbShut && lane === n - 1) lane = n - 2;
     return lane;
   }
 
@@ -152,11 +157,13 @@ export class Traffic {
   band(a) {
     const r = a.edge.road, half = (r.median || 0) / 2, off = this.layout.laneOffset(r, a.lane);
     let lo = half + 0.7, hi = half + r.lanes * LANE_W - 0.75;
-    // Flyover approaches: the inner lane climbs the deck, so stay on whichever side you're on.
-    if (a.edge.flyover) {
-      if (a.lane === 0) hi = half + LANE_W - 0.6;
-      else lo = half + LANE_W + 0.6;
+    // Flyover approaches: the inner lanes climb the deck, so stay on whichever side you're on.
+    const fl = a.edge.flyover?.lanes;
+    if (fl) {
+      if (a.lane < fl) hi = half + fl * LANE_W - 0.6;
+      else lo = half + fl * LANE_W + 0.6;
     }
+    if (a.edge.kerbShut) hi = Math.min(hi, half + (r.lanes - 1) * LANE_W - 0.75);
     return [lo - off, Math.max(lo, hi) - off];
   }
 
@@ -189,7 +196,9 @@ export class Traffic {
     return makePath([p0, p1]);
   }
 
-  turnPath(from, d1, e2, lane2) {
+  // With `onLine`, the path keeps to the two lanes' lines and turns where they meet (along a deck
+  // through a bend, where a curve cutting the corner would leave the deck).
+  turnPath(from, d1, e2, lane2, onLine = false) {
     const start = from.points[from.points.length - 1];
     const next = this.edgePath(e2, lane2);
     const end = next.points[0];
@@ -202,6 +211,7 @@ export class Traffic {
       const gap = Math.hypot(rx, rz);
       if (t > 0 && t < gap * 1.5) { cx = start.x + d1.x * t; cz = start.z + d1.z * t; }
     }
+    if (onLine) return { turn: makePath([start, { x: cx, z: cz }, end]), next };
     const pts = [];
     for (let k = 0; k <= 8; k++) {
       const t = k / 8, u = 1 - t;
@@ -216,8 +226,8 @@ export class Traffic {
     if (!opts.length) opts = node.out;
     let straight = null, bd = 0.85;
     for (const e of opts) { const d = e.dir.x * a.edge.dir.x + e.dir.z * a.edge.dir.z; if (d > bd) { bd = d; straight = e; } }
-    // On the flyover lane you can only go straight over the junction.
-    if (a.edge.flyover && a.lane === 0 && straight && straight.flyover) return straight;
+    // Up on a flyover you can only carry on along it.
+    if (onDeck(a) && a.edge.flyNext) return a.edge.flyNext;
     if (straight && rng() < 0.45) return straight;
     return opts[Math.floor(rng() * opts.length)];
   }
@@ -237,8 +247,9 @@ export class Traffic {
     a.plan = null;
     a.fromUnd = a.edge.und; // the approach it's turning from (for yielding at the junction)
     const straight = e2.dir.x * a.edge.dir.x + e2.dir.z * a.edge.dir.z > 0.85;
-    const lane2 = straight && e2.road.lanes === a.edge.road.lanes ? a.lane : this.chooseLane(e2, a.v.type, !straight);
-    const { turn, next } = this.turnPath(a.path, a.edge.dir, e2, lane2);
+    let lane2 = (straight && e2.road.lanes === a.edge.road.lanes) || (e2 === a.edge.flyNext && onDeck(a)) ? a.lane : this.chooseLane(e2, a.v.type, !straight);
+    if (e2.kerbShut && lane2 === e2.road.lanes - 1 && lane2 > 0) lane2--;
+    const { turn, next } = this.turnPath(a.path, a.edge.dir, e2, lane2, e2 === a.edge.flyNext && lane2 < e2.flyover.lanes);
     a.edge = e2;
     a.lane = lane2;
     a.path = turn;
@@ -371,7 +382,7 @@ export class Traffic {
       const l = this.grid.get(((ix + i) * 73856093) ^ ((iz + j) * 19349663));
       if (!l) continue;
       for (const b of l) {
-        if (b === a || b.released || (b.edge.flyover && b.lane === 0)) continue;
+        if (b === a || b.released || onDeck(b)) continue;
         if (b.turning && b.edge.from === node && b.fromUnd !== a.edge.und && b.s < b.path.length - 1.5) return true;
         // Both about to arrive from different roads: the one that gets there first goes.
         if (!b.turning && b.edge.to === node && b.edge.und !== a.edge.und && b.speed > 0.8 && !b.waitingSignal) {
@@ -387,8 +398,9 @@ export class Traffic {
   // road), judged against what's ahead (gather() has just run for this agent).
   bypass(a) {
     const r = a.edge.road, off = this.layout.laneOffset(r, a.lane), half = (r.median || 0) / 2;
-    const lo = !r.median && !a.edge.flyover && !a.turning ? -(r.lanes * LANE_W - 0.9) - off : half + 0.9 - off;
-    const hi = half + r.lanes * LANE_W - 0.9 - off;
+    let lo = !r.median && !a.edge.flyover && !a.turning ? -(r.lanes * LANE_W - 0.9) - off : half + 0.9 - off;
+    let hi = half + r.lanes * LANE_W - 0.9 - off;
+    if (!a.turning && (a.edge.flyover || a.edge.kerbShut)) { const [bl, bh] = this.band(a); lo = Math.max(lo, bl); hi = Math.min(hi, bh); }
     let best = null, bestGap = this.gapAt(0) + 4;
     for (let k = 0; k <= 10; k++) {
       const cand = lo + ((hi - lo) * k) / 10, g = this.gapAt(cand - a.lat);
@@ -552,7 +564,7 @@ export class Traffic {
       if (a.wrongNow) target = Math.min(target, 6); // riding against the traffic, they at least go slowly
       a.waitingSignal = false;
       // Signals.
-      if (!a.turning && a.edge.to.signal && !(a.edge.flyover && a.lane === 0)) {
+      if (!a.turning && a.edge.to.signal && !onDeck(a)) {
         const st = sig.state(a.edge.to, a.edge.und.id);
         if (st !== 'green') {
           const creep = two ? 2.4 : a.erratic ? 1.2 : 0;
@@ -567,7 +579,7 @@ export class Traffic {
       }
       // Coming up to the junction: slow for the turn ahead, and wait at the line while someone
       // from another road is still crossing it.
-      if (!a.turning && !(a.edge.flyover && a.lane === 0)) {
+      if (!a.turning && !onDeck(a)) {
         const left = a.path.length - a.s;
         if (!a.plan && left < 60) a.plan = this.chooseNext(a);
         const turnAhead = a.plan && a.plan.dir.x * a.edge.dir.x + a.plan.dir.z * a.edge.dir.z < 0.85;
@@ -640,6 +652,11 @@ export class Traffic {
       const wantVel = Math.max(-cap, Math.min(cap, (a.latTarget - a.lat) * 2));
       a.latVel += (wantVel - a.latVel) * Math.min(1, dt * 4);
       a.lat += a.latVel * dt;
+      if (!a.turning && (a.edge.flyover || a.edge.kerbShut)) {
+        // Never drift between a deck and the road beneath it (nor into a slip road's kerb lane).
+        const [lo, hi] = this.band(a);
+        if (a.lat < lo - 0.3 || a.lat > hi + 0.3) { a.lat = Math.max(lo - 0.3, Math.min(hi + 0.3, a.lat)); a.latVel = 0; }
+      }
       a.wrongNow = !a.turning && this.layout.laneOffset(a.edge.road, a.lane) + a.lat < 0;
       // Point the vehicle where it's actually going, so weaving reads as steering.
       const nh = p.h + Math.atan2(a.latVel, Math.max(2.5, a.speed)) * (a.speed > 0.3 ? 1 : 0);
@@ -667,6 +684,11 @@ export class Traffic {
     let budget = this.agents.length < want * 0.5 ? 12 : 3;
     while (this.agents.length < want && budget-- > 0) this.spawn(world, world.initialFill);
   }
+}
+
+// On a flyover's deck lanes (which skip the junctions' signals and only go on along it).
+function onDeck(a) {
+  return !!a.edge.flyover && a.lane < a.edge.flyover.lanes;
 }
 
 function makePath(points) {

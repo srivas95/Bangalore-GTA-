@@ -40,7 +40,7 @@ export const ARTERIALS = [
   { name: 'Magadi Road', lanes: 2, median: 3, pts: G([[12.968, 77.4842], [12.9696, 77.515], [12.9706, 77.5372], [12.9742, 77.5453], [12.9757, 77.5552], [12.976, 77.5658], [12.9768, 77.5716]]) },
   { name: 'Seshadri Road', lanes: 2, median: 0, pts: G([[12.9768, 77.5716], [12.9768, 77.5748], [12.977, 77.58], [12.9775, 77.588]]) },
   { name: 'Palace Road', lanes: 2, median: 3, pts: G([[12.9775, 77.588], [12.985, 77.5872], [12.996, 77.5842], [13.0145, 77.5838]]) },
-  { name: 'Bellary Road', lanes: 3, median: 4, pts: G([[13.0145, 77.5838], [13.025, 77.59], [13.0358, 77.597], [13.047, 77.5962], [13.057, 77.5952]]) },
+  { name: 'Bellary Road', lanes: 3, median: 6, pts: G([[13.0145, 77.5838], [13.025, 77.59], [13.0358, 77.597], [13.047, 77.5962], [13.057, 77.5952]]) },
   { name: 'Yeshwanthpur Road', lanes: 2, median: 3, pts: G([[13.0145, 77.5838], [13.017, 77.5716], [13.0218, 77.553]]) },
   { name: 'Ambedkar Veedhi', lanes: 2, median: 0, pts: G([[12.9775, 77.588], [12.9789, 77.5925], [12.9796, 77.5958]]) },
   { name: 'Queens Road', lanes: 1, median: 0, pts: G([[12.9796, 77.5958], [12.985, 77.5992]]) },
@@ -263,9 +263,34 @@ export const ROAD_UNDERPASSES = [
   { name: 'Okalipuram Underpass', road: 'Magadi Road', near: geo(12.9758, 77.5605) },
 ];
 // Flyovers carry the inner lanes of `road` over the junction near `at`.
+// Flyovers: the inner `lanes` lanes each way run up top. A junction flyover (`at`) reaches out
+// until each side has room for its ramp; an elevated road runs between the junctions nearest
+// `from` and `to`. `ramp` is the longest a ramp may be.
 export const FLYOVER_SITES = [
-  { name: 'Silk Board Flyover', road: 'Hosur Road', at: geo(12.9177, 77.6238), half: 120, height: 6.5 },
-  { name: 'Hebbal Flyover', road: 'Bellary Road', at: geo(13.0358, 77.597), half: 110, height: 6.5 },
+  { name: 'Silk Board Flyover', roads: ['Hosur Road'], at: geo(12.9177, 77.6238), lanes: 1, height: 6.5, ramp: 80 },
+  // The Hebbal flyover carries Bellary Road over the Outer Ring Road and runs on as the six-lane
+  // elevated road to the airport, past Yelahanka to Kogilu Cross, with service roads beneath.
+  // Its loops: the one from the K.R. Puram side down towards Mekhri Circle (opened August 2025)
+  // and the ramp from the Tumakuru Road side up onto the airport-bound deck (December 2025).
+  {
+    name: 'Hebbal Flyover', roads: ['Bellary Road', 'Airport Road (NH 44)'], from: geo(13.0197, 77.5868), to: geo(13.106, 77.5973),
+    lanes: 2, height: 7, ramp: 110,
+    loops: [
+      { name: 'K.R. Puram Loop', hub: geo(13.0358, 77.597), road: 'Outer Ring Road', dir: [1, 0], onto: 'back', out: 84, merge: 40 },
+      { name: 'Tumakuru Road Loop', hub: geo(13.0358, 77.597), road: 'Outer Ring Road', dir: [-1, 0], onto: 'fwd', out: 84, merge: 34 },
+    ],
+    gantries: [
+      { at: 0.02, dir: 1, text: ['HEBBAL FLYOVER · AIRPORT', 'ಹೆಬ್ಬಾಳ ಮೇಲ್ಸೇತುವೆ · ವಿಮಾನ ನಿಲ್ದಾಣ'] },
+      { at: 0.3, dir: 1, text: ['KEMPEGOWDA INTL AIRPORT', 'ಕೆಂಪೇಗೌಡ ಅಂತರರಾಷ್ಟ್ರೀಯ ವಿಮಾನ ನಿಲ್ದಾಣ'] },
+      { at: 0.72, dir: 1, text: ['YELAHANKA · KOGILU CROSS', 'ಯಲಹಂಕ · ಕೋಗಿಲು ಕ್ರಾಸ್'] },
+      { at: 0.97, dir: -1, text: ['HEBBAL · MEKHRI CIRCLE · CITY', 'ಹೆಬ್ಬಾಳ · ಮೇಖ್ರಿ ವೃತ್ತ · ನಗರ'] },
+      { at: 0.4, dir: -1, text: ['HEBBAL FLYOVER', 'ಹೆಬ್ಬಾಳ ಮೇಲ್ಸೇತುವೆ'] },
+    ],
+  },
+  // Further out, NH 44 flies over its busiest crossings on the way to the terminals.
+  { name: 'Chikkajala Flyover', roads: ['Airport Road (NH 44)'], at: geo(13.1584, 77.6197), lanes: 2, height: 6.5, ramp: 100 },
+  { name: 'Vidyanagar Cross Flyover', roads: ['Airport Road (NH 44)'], at: geo(13.1823, 77.6433), lanes: 2, height: 6.5, ramp: 100 },
+  { name: 'Trumpet Flyover', roads: ['Airport Road (NH 44)'], at: geo(13.2015, 77.6654), lanes: 2, height: 6.5, ramp: 90 },
 ];
 
 export const SPAWN = geo(12.9772, 77.5728); // Majestic bus stand

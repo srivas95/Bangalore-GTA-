@@ -176,6 +176,8 @@ export function buildCity(scene, layout, colliders, renderer) {
       metroSegs.push({ pts: [[st.x - (dx / l) * 38, st.z - (dz / l) * 38], [st.x + (dx / l) * 38, st.z + (dz / l) * 38]], r: 13 });
     }
   }
+  // And the ground under the slip roads that curl over the blocks.
+  for (const r of layout.ramps) metroSegs.push({ pts: r.pts.map((p) => [p.x, p.z]), r: r.hw + 3 });
   const nearRail = (x, z, d) => railPts.some((pts) => distToPolyline(x, z, pts) < d) || metroSegs.some((m) => distToPolyline(x, z, m.pts) < m.r + d - 9);
 
   // Park landmarks go to the largest blocks of each park.

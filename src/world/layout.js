@@ -4,6 +4,7 @@ import { buildRoadNet, insetPolygon, simplifyLoop, polyArea, pointInPoly, LANE_W
 import * as MD from './mapdata.js';
 import { CURB_H, UNDERPASS } from '../config.js';
 
+const FLY_CELL = 40;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const RASTER = 4;
 
@@ -270,20 +271,179 @@ export class Layout {
       if (best) addUnderpass(best.e, best.t, 'road', ru.name);
     }
     this.flyovers = [];
-    for (const fs of MD.FLYOVER_SITES) {
-      let node = null, bd = 80;
-      for (const n of this.nodes) { const d = Math.hypot(n.x - fs.at[0], n.z - fs.at[1]); if (d < bd && n.adj.length >= 3) { bd = d; node = n; } }
-      if (!node) continue;
-      const along = node.adj.filter((h) => h.e.r.name === fs.road);
-      if (along.length < 2) continue;
-      // Two straight arms, one along each approach, so the deck follows a road that bends here.
-      const arms = along.slice(0, 2).map((h) => ({ ux: h.u.x, uz: h.u.z, half: Math.min(fs.half, h.e.len - 18) }));
-      if (arms.some((a) => a.half < 60)) continue;
-      const road = along[0].e.r;
-      const f = { name: fs.name, node, road, arms, cx: node.x, cz: node.z, half: Math.max(...arms.map((a) => a.half)), height: fs.height, flat: 0.45, hw: (road.median || 0) / 2 + LANE_W };
-      this.flyovers.push(f);
-      for (const h of along) for (const d of h.e.dirs) d.flyover = f;
+    this.flyCells = new Map();
+    this.ramps = [];
+    for (const fs of MD.FLYOVER_SITES) this.addFlyover(fs);
+  }
+
+  // A flyover is a chain of road edges along `fs.roads` whose inner `fs.lanes` lanes each way run
+  // on a deck: up a ramp inside the chain's first edge, level over every junction in between, and
+  // down inside the last edge, so no ramp ever spans a junction. A junction flyover (`at`) reaches
+  // out each way until an edge has room for its ramp; an elevated road runs from the junction
+  // nearest `from` to the one nearest `to`.
+  addFlyover(fs) {
+    const roads = new Set(fs.roads);
+    const cutOf = (n, e) => n.cut.get(e.id) || 0;
+    const room = (n, h) => h.e.len - cutOf(n, h.e) - cutOf(h.to, h.e) - 7; // ramp length an edge can take
+    const onward = (n, u, prev) => {
+      let best = null, bd = 0.5;
+      for (const h of n.adj) { if (h.e === prev || !roads.has(h.e.r.name)) continue; const d = h.u.x * u.x + h.u.z * u.z; if (d > bd) { bd = d; best = h; } }
+      return best;
+    };
+    const nodeNear = (p, junction) => {
+      let best = null, bd = 90;
+      for (const n of this.nodes) {
+        const d = Math.hypot(n.x - p[0], n.z - p[1]);
+        if (d < bd && (!junction || n.adj.length >= 3) && n.adj.some((h) => roads.has(h.e.r.name))) { bd = d; best = n; }
+      }
+      return best;
+    };
+    let nodes;
+    if (fs.at) {
+      const c = nodeNear(fs.at, true);
+      if (!c) return null;
+      const along = c.adj.filter((h) => roads.has(h.e.r.name));
+      let pair = null, pd = -0.3;
+      for (const a of along) for (const b of along) { const d = -(a.u.x * b.u.x + a.u.z * b.u.z); if (a !== b && d > pd) { pd = d; pair = [a, b]; } }
+      if (!pair) return null;
+      const walk = (h) => {
+        const out = [];
+        let n = c;
+        for (let k = 0; k < 12 && h; k++) {
+          out.push(h.to);
+          if (room(n, h) >= 60) return out;
+          const prev = h.e; n = h.to; h = onward(n, h.u, prev);
+        }
+        return null;
+      };
+      const back = walk(pair[0]), fwd = walk(pair[1]);
+      if (!back || !fwd) return null;
+      nodes = [...back.reverse(), c, ...fwd];
+    } else {
+      const S = nodeNear(fs.from), E = nodeNear(fs.to);
+      if (!S || !E) return null;
+      nodes = [S];
+      let n = S, prev = null, u = { x: E.x - S.x, z: E.z - S.z };
+      const l = Math.hypot(u.x, u.z); u = { x: u.x / l, z: u.z / l };
+      for (let k = 0; k < 80 && n !== E; k++) {
+        const h = onward(n, u, prev);
+        if (!h) return null;
+        nodes.push(h.to); prev = h.e; n = h.to; u = h.u;
+      }
+      if (n !== E) return null;
     }
+    const k = nodes.length - 1;
+    const edges = [];
+    for (let i = 0; i < k; i++) edges.push(nodes[i].adj.find((h) => h.to === nodes[i + 1]).e);
+    const first = nodes[0].adj.find((h) => h.e === edges[0]), last = nodes[k - 1].adj.find((h) => h.e === edges[k - 1]);
+    const rampA = Math.min(fs.ramp || 100, room(nodes[0], first)), rampB = Math.min(fs.ramp || 100, room(nodes[k - 1], last));
+    if (rampA < 50 || rampB < 50) return null;
+    // The deck is level from just outside the first and last junctions it passes over.
+    const inA = cutOf(nodes[1], edges[0]) + 3, inB = cutOf(nodes[k - 1], edges[k - 1]) + 3;
+    const towards = (n, m, d) => { const l = Math.hypot(m.x - n.x, m.z - n.z); return { x: n.x + ((m.x - n.x) / l) * d, z: n.z + ((m.z - n.z) / l) * d }; };
+    const pts = [towards(nodes[1], nodes[0], inA + rampA), ...nodes.slice(1, k).map((n) => ({ x: n.x, z: n.z })), towards(nodes[k - 1], nodes[k], inB + rampB)];
+    const cum = [0], seg = [];
+    for (let i = 1; i < pts.length; i++) { seg.push(Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z)); cum.push(cum[i - 1] + seg[i - 1]); }
+    const median = Math.max(...edges.map((e) => e.r.median || 0));
+    const f = {
+      name: fs.name, lanes: fs.lanes || 1, height: fs.height, rampA, rampB, pts, cum, seg, len: cum[cum.length - 1],
+      nodes, edges, median, hw: median / 2 + (fs.lanes || 1) * LANE_W, gaps: [], gantries: fs.gantries || [],
+    };
+    // Which stretch of each edge the deck covers (the medians stop there), and the way on for traffic up top.
+    edges.forEach((e, i) => {
+      const a = e.a === nodes[i];
+      let t0 = -1, t1 = e.len + 1;
+      if (i === 0) { const d = e.len - inA - rampA; if (a) t0 = d; else t1 = e.len - d; }
+      if (i === k - 1) { const d = inB + rampB; if (a) t1 = d; else t0 = e.len - d; }
+      (e.flyCuts || (e.flyCuts = [])).push([t0, t1]);
+      const fwd = e.dirs.find((d) => d.from === nodes[i]);
+      fwd.flyover = fwd.rev.flyover = f;
+      if (i > 0) { const pf = edges[i - 1].dirs.find((d) => d.to === nodes[i]); pf.flyNext = fwd; fwd.rev.flyNext = pf.rev; }
+    });
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i], q = pts[i + 1], r = f.hw + 2;
+      for (let cx = Math.floor((Math.min(p.x, q.x) - r) / FLY_CELL); cx <= Math.floor((Math.max(p.x, q.x) + r) / FLY_CELL); cx++) {
+        for (let cz = Math.floor((Math.min(p.z, q.z) - r) / FLY_CELL); cz <= Math.floor((Math.max(p.z, q.z) + r) / FLY_CELL); cz++) {
+          const key = cx * 73856093 ^ cz * 19349663;
+          let l = this.flyCells.get(key);
+          if (!l) this.flyCells.set(key, (l = []));
+          l.push(f, i);
+        }
+      }
+    }
+    this.flyovers.push(f);
+    for (const lp of fs.loops || []) this.addLoop(f, lp);
+    return f;
+  }
+
+  // A slip road curling up from a crossing road onto the deck (Hebbal's newest loops). It leaves
+  // that road's kerb lane `lp.out` metres from the junction and runs alongside the deck for its
+  // last `lp.merge` metres, where the deck's parapet opens. Traffic keeps out of that kerb lane.
+  addLoop(f, lp) {
+    let hub = null, bd = 120;
+    for (const n of f.nodes) { const d = Math.hypot(n.x - lp.hub[0], n.z - lp.hub[1]); if (d < bd) { bd = d; hub = n; } }
+    if (!hub) return;
+    const i = f.nodes.indexOf(hub);
+    const side = hub.adj.filter((h) => h.e.r.name === lp.road).sort((p, q) => (q.u.x * lp.dir[0] + q.u.z * lp.dir[1]) - (p.u.x * lp.dir[0] + p.u.z * lp.dir[1]))[0];
+    const toward = lp.onto === 'back' ? f.nodes[i - 1] : f.nodes[i + 1];
+    const arm = toward && hub.adj.find((h) => h.to === toward);
+    if (!side || !arm) return;
+    const lft = (t) => ({ x: t.z, z: -t.x }); // the kerb side of a carriageway heading along t
+    const t0 = { x: -side.u.x, z: -side.u.z }, t1 = arm.u;
+    const w0 = this.laneOffset(side.e.r, side.e.r.lanes - 1), hw = 4, w1 = f.hw + hw;
+    const P0 = { x: hub.x + side.u.x * lp.out + lft(t0).x * w0, z: hub.z + side.u.z * lp.out + lft(t0).z * w0 };
+    const R = lp.out - w1;
+    const P1 = { x: hub.x + t1.x * (R + w0) + lft(t1).x * w1, z: hub.z + t1.z * (R + w0) + lft(t1).z * w1 };
+    const kk = 0.5523 * R;
+    const C0 = { x: P0.x + t0.x * kk, z: P0.z + t0.z * kk }, C1 = { x: P1.x - t1.x * kk, z: P1.z - t1.z * kk };
+    const pts = [];
+    for (let j = 0; j <= 36; j++) {
+      const t = j / 36, u = 1 - t;
+      pts.push({ x: u * u * u * P0.x + 3 * u * u * t * C0.x + 3 * u * t * t * C1.x + t * t * t * P1.x, z: u * u * u * P0.z + 3 * u * u * t * C0.z + 3 * u * t * t * C1.z + t * t * t * P1.z });
+    }
+    const curve = pts.length;
+    for (let j = 1; j <= 6; j++) pts.push({ x: P1.x + t1.x * (lp.merge * j) / 6, z: P1.z + t1.z * (lp.merge * j) / 6 });
+    // Main-deck distance along at a point beside it.
+    const sOn = (p) => { let best = 0, b2 = Infinity; for (let j = 0; j < f.pts.length - 1; j++) { const a = f.pts[j], q = f.pts[j + 1], L = f.seg[j]; const t = Math.max(0, Math.min(1, ((p.x - a.x) * (q.x - a.x) + (p.z - a.z) * (q.z - a.z)) / (L * L))); const d = Math.hypot(p.x - a.x - (q.x - a.x) * t, p.z - a.z - (q.z - a.z) * t); if (d < b2) { b2 = d; best = f.cum[j] + t * L; } } return best; };
+    const s1 = sOn(P1), s2 = sOn(pts[pts.length - 1]);
+    const cum = [0];
+    for (let j = 1; j < pts.length; j++) cum.push(cum[j - 1] + Math.hypot(pts[j].x - pts[j - 1].x, pts[j].z - pts[j - 1].z));
+    const top = this.deckHeight(f, s1);
+    pts.forEach((p, j) => { p.y = j < curve ? top * smooth(0, cum[curve - 1], cum[j]) : this.deckHeight(f, sOn(p)); });
+    // Which side of the deck it joins, in the deck's own across-axis (see infrastructure.js).
+    const j0 = Math.max(0, f.cum.findIndex((c) => c > s1) - 1), a = f.pts[j0], b = f.pts[j0 + 1];
+    const ux = (b.x - a.x) / f.seg[j0], uz = (b.z - a.z) / f.seg[j0];
+    const sideOn = Math.sign(lft(t1).x * uz - lft(t1).z * ux) || 1;
+    f.gaps.push({ s0: Math.min(s1, s2), s1: Math.max(s1, s2), side: sideOn });
+    const xs = pts.map((p) => p.x), zs = pts.map((p) => p.z);
+    const ramp = { name: lp.name, f, pts, cum, hw, curve, sMerge: cum[curve - 1], sEnd: cum[cum.length - 1], minX: Math.min(...xs) - hw, maxX: Math.max(...xs) + hw, minZ: Math.min(...zs) - hw, maxZ: Math.max(...zs) + hw };
+    this.ramps.push(ramp);
+    side.e.dirs.find((d) => d.to === hub).kerbShut = true;
+  }
+
+  // A slip road's two edges at distance s along it, as offsets across it (+ away from the deck it
+  // joins): full width up the curve, then tapering into the deck alongside.
+  rampEdges(r, s) {
+    const t = Math.max(0, Math.min(1, (s - r.sMerge) / (r.sEnd - r.sMerge)));
+    return [-r.hw, r.hw - 2 * r.hw * t];
+  }
+
+  // Height of a slip road's surface at (x, z), or -Infinity off it.
+  rampAt(x, z) {
+    let best = -Infinity, bd = Infinity;
+    for (const r of this.ramps) {
+      if (x < r.minX || x > r.maxX || z < r.minZ || z > r.maxZ) continue;
+      for (let j = 0; j < r.pts.length - 1; j++) {
+        const p = r.pts[j], q = r.pts[j + 1], sx = q.x - p.x, sz = q.z - p.z, l2 = sx * sx + sz * sz;
+        const t = Math.max(0, Math.min(1, ((x - p.x) * sx + (z - p.z) * sz) / l2));
+        const dx = x - p.x - sx * t, dz = z - p.z - sz * t, d = Math.hypot(dx, dz);
+        if (d >= r.hw || d >= bd) continue;
+        const lat = (dx * sz - dz * sx) / Math.sqrt(l2), [x0, x1] = this.rampEdges(r, r.cum[j] + t * Math.sqrt(l2));
+        if (lat < x0 || lat > x1) continue;
+        bd = d; best = p.y + (q.y - p.y) * t;
+      }
+    }
+    return best;
   }
 
   // A railway alignment eased sideways off any road running alongside it (the real lines hug the
@@ -332,9 +492,9 @@ export class Layout {
     return -u.depth * (1 - smooth(u.flat, 1, t));
   }
 
-  deckHeight(f, along, arm = f.arms[0]) {
-    const t = Math.abs(along) / arm.half;
-    return f.height * (1 - smooth(f.flat, 1, t));
+  // Deck height at distance s along a flyover.
+  deckHeight(f, s) {
+    return f.height * smooth(0, f.rampA, s) * smooth(0, f.rampB, f.len - s);
   }
 
   local(o, x, z) {
@@ -351,17 +511,19 @@ export class Layout {
     return null;
   }
 
-  // {f, arm, along} if (x, z) is under/over a flyover deck.
+  // {f, s, d} if (x, z) is under/over a flyover deck: s along it, d from its centre line.
   flyoverAt(x, z) {
-    for (const f of this.flyovers) {
-      if (Math.abs(x - f.cx) > f.half + 12 || Math.abs(z - f.cz) > f.half + 12) continue;
-      const dx = x - f.cx, dz = z - f.cz;
-      for (const arm of f.arms) {
-        const along = dx * arm.ux + dz * arm.uz, lat = -dx * arm.uz + dz * arm.ux;
-        if (along > -f.hw && along < arm.half && Math.abs(lat) < f.hw) return { f, arm, along: Math.max(0, along) };
-      }
+    const l = this.flyCells.get(Math.floor(x / FLY_CELL) * 73856093 ^ Math.floor(z / FLY_CELL) * 19349663);
+    if (!l) return null;
+    let best = null, bd = Infinity;
+    for (let k = 0; k < l.length; k += 2) {
+      const f = l[k], i = l[k + 1], p = f.pts[i], q = f.pts[i + 1], L = f.seg[i];
+      const sx = q.x - p.x, sz = q.z - p.z;
+      const t = Math.max(0, Math.min(1, ((x - p.x) * sx + (z - p.z) * sz) / (L * L)));
+      const d = Math.hypot(x - p.x - sx * t, z - p.z - sz * t);
+      if (d < f.hw && d < bd) { bd = d; best = { f, s: f.cum[i] + t * L, d }; }
     }
-    return null;
+    return best;
   }
 
   // ---------- spatial index ----------
@@ -493,14 +655,20 @@ export class Layout {
   groundHeight(x, z, y) {
     // Extra floors (the walk-in shop interiors, built off the map).
     for (const f of this.floors) if (x >= f.minX && x <= f.maxX && z >= f.minZ && z <= f.maxZ) return f.y;
-    if (this.blockContaining(x, z)) return CURB_H;
     let g = 0;
-    const u = this.underpasses.length ? this.underpassAt(x, z) : null;
-    if (u) g = this.dip(u, this.local(u, x, z).along);
+    if (this.blockContaining(x, z)) g = CURB_H;
+    else {
+      const u = this.underpasses.length ? this.underpassAt(x, z) : null;
+      if (u) g = this.dip(u, this.local(u, x, z).along);
+    }
     if (y !== undefined && this.flyovers.length) {
       const hit = this.flyoverAt(x, z);
       if (hit) {
-        const h = this.deckHeight(hit.f, hit.along, hit.arm);
+        const h = this.deckHeight(hit.f, hit.s);
+        if (h > 0.02 && y > h - 1.6) g = Math.max(g, h);
+      }
+      if (this.ramps.length) {
+        const h = this.rampAt(x, z);
         if (h > 0.02 && y > h - 1.6) g = Math.max(g, h);
       }
     }

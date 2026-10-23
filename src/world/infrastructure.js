@@ -1,6 +1,6 @@
 // Roads on the real network: carriageway strips per edge (mitred at gentle bends), junction
-// pads with zebra crossings, raised medians, underpasses (with floodable water), the Silk Board
-// and Hebbal flyovers, and dead-end barricades at the edge of the map.
+// pads with zebra crossings, raised medians, underpasses (with floodable water), flyovers and the
+// elevated airport road (with Hebbal's loops), and dead-end barricades at the edge of the map.
 import * as THREE from 'three';
 import { makeFrame } from './meshBuilder.js';
 import { put } from './landmarks.js';
@@ -125,10 +125,7 @@ export function buildInfrastructure(ctx) {
     const gapA = a.through ? 0 : (a.cut.get(e.id) || 0) + 4, gapB = e.b.through ? 0 : (e.b.cut.get(e.id) || 0) + 4;
     const cuts = [];
     for (const u of e.underpasses || []) cuts.push([u.at - u.half - 2, u.at + u.half + 2]);
-    for (const f of layout.flyovers) {
-      if (f.node === a) cuts.push([-1, f.half]);
-      if (f.node === e.b) cuts.push([len - f.half, len + 1]);
-    }
+    for (const c of e.flyCuts || []) cuts.push(c);
     cuts.sort((p, q) => p[0] - q[0]);
     let s = gapA;
     for (const [c0, c1] of [...cuts, [len - gapB, len + 1e9]]) {
@@ -200,69 +197,159 @@ export function buildInfrastructure(ctx) {
     u.waterMesh = water;
   }
 
-  // ---------- Flyovers: the inner lanes climb over the junction, one straight arm each side ----------
-  for (const f of layout.flyovers) {
-    const r = f.road;
-    const key = ensureRoadMat(1, r.median || 0, f.hw * 2);
-    const x0 = -f.hw, x1 = f.hw;
-    f.arms.forEach((arm, ai) => {
-      const fr = frameAlong(f.cx, f.cz, arm.ux, arm.uz);
-      const col = colliders.framed(fr);
-      B.xf = fr;
-      const deck = (z) => layout.deckHeight(f, z, arm);
-      stripZ(B.get(key), x0, x1, 0, arm.half, (z) => deck(z) + 0.02, 3);
-      // Near the junction an arm's parapet can cross the other arm's deck at a bend: leave it out there.
-      const other = f.arms[1 - ai];
-      const onOther = (lx, lz) => {
-        const [wx, wz] = [fr.ox + lx * fr.c + lz * fr.s, fr.oz - lx * fr.s + lz * fr.c];
-        const dx = wx - f.cx, dz = wz - f.cz;
-        const al = dx * other.ux + dz * other.uz, lt = -dx * other.uz + dz * other.ux;
-        return al > -f.hw && al < other.half && Math.abs(lt) < f.hw - 0.05;
-      };
-      const step = 3;
-      for (let a = 0; a < arm.half - 1e-6; a += step) {
-        const za = a, zb = Math.min(a + step, arm.half), ya = deck(za), yb = deck(zb);
-        const lowA = ya < 4 ? 0 : ya - 1.3, lowB = yb < 4 ? 0 : yb - 1.3;
-        const skip1 = onOther(x1, (za + zb) / 2), skip0 = onOther(x0, (za + zb) / 2);
-        if (!skip1) concrete.quad4([x1, lowB, zb], [x1, lowA, za], [x1, ya + 1.05, za], [x1, yb + 1.05, zb], [1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], 0xbab4aa);
-        if (!skip0) concrete.quad4([x0, lowA, za], [x0, lowB, zb], [x0, yb + 1.05, zb], [x0, ya + 1.05, za], [-1, 0, 0], [0, 0], [1, 0], [1, 1], [0, 1], 0xbab4aa);
-        if (ya >= 4 || yb >= 4) concrete.quad4([x0, lowA, za], [x1, lowA, za], [x1, lowB, zb], [x0, lowB, zb], [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 0x8a857c);
-        const hMax = Math.max(ya, yb), hMin = Math.min(ya, yb);
-        const y0 = hMax < 4 ? -100 : hMin - 0.7;
-        const ym = deck((za + zb) / 2) + 1.05;
-        if (!skip0) { col.add(x0 - 0.3, x0, za, zb, hMax + 1.05, 'wall', y0); concrete.box(x0 + 0.15, ym - 0.12, (za + zb) / 2, 0.3, 0.12, zb - za - 0.2, 0xf2c200); }
-        if (!skip1) { col.add(x1, x1 + 0.3, za, zb, hMax + 1.05, 'wall', y0); concrete.box(x1 - 0.15, ym - 0.12, (za + zb) / 2, 0.3, 0.12, zb - za - 0.2, 0xf2c200); }
+  // ---------- Flyovers: the inner lanes on a deck over the junctions, on piers in the median ----------
+  // Stations every few metres along a polyline, with the across-axis (local +x, as in frameAlong)
+  // mitred at its corners.
+  const stations = (pts, cum, step) => {
+    const out = [];
+    const axis = (i) => { const p = pts[i], q = pts[i + 1], l = Math.hypot(q.x - p.x, q.z - p.z) || 1; return { x: (q.z - p.z) / l, z: -(q.x - p.x) / l }; };
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a0 = cum[i], a1 = cum[i + 1], n = Math.max(1, Math.ceil((a1 - a0) / step)), ax = axis(i);
+      for (let k = 0; k < n; k++) {
+        const t = k / n, s = a0 + (a1 - a0) * t;
+        let px = ax.x, pz = ax.z, m = 1;
+        if (k === 0 && i > 0) {
+          const b = axis(i - 1), mx = b.x + ax.x, mz = b.z + ax.z, ml = Math.hypot(mx, mz) || 1;
+          px = mx / ml; pz = mz / ml; m = 1 / Math.max(0.5, px * ax.x + pz * ax.z);
+        }
+        out.push({ s, x: pts[i].x + (pts[i + 1].x - pts[i].x) * t, z: pts[i].z + (pts[i + 1].z - pts[i].z) * t, px, pz, m });
       }
-      let a = 0;
-      while (deck(a) > 4 && a < arm.half) a += 0.5;
-      // Blocks traffic beneath where the span gets low; cars on the deck pass over it.
-      col.add(x0, x1, a, a + 0.6, 3.0, 'wall');
-      for (let p = 22; p < a - 4; p += 18) {
-        const h = deck(p) - 1.3;
-        put(concrete, CYL, 0, h / 2, p, 0xb0aaa0, 0, 0.8, h, 0.8);
-        concrete.box(0, h - 0.8, p, f.hw * 2, 0.8, 1.6, 0xb0aaa0);
-        col.addCentered(0, p, 1.7, 1.7, h, 'pier');
-      }
-      if (ai === 0) ctx.sign({ key: 'fo_' + f.name, text: [f.name.toUpperCase(), 'ಮೇಲ್ಸೇತುವೆ'], bg: '#1f6a3a', fg: '#fff', x: 0, y: deck(arm.half * 0.6) + 3.2, z: arm.half * 0.6, w: f.hw * 2 - 0.6, h: 1.4, face: 's' });
-      B.xf = null;
-    });
-    // Fill the wedge where the two arms meet, and close its parapets.
-    const [A, Bm] = f.arms;
-    const P = (arm, s) => [f.cx - arm.uz * f.hw * s, f.cz + arm.ux * f.hw * s];
-    const pts = [P(A, 1), P(A, -1), P(Bm, 1), P(Bm, -1)].sort((p, q) => Math.atan2(p[1] - f.cz, p[0] - f.cx) - Math.atan2(q[1] - f.cz, q[0] - f.cx));
-    fanPoly(B.get(key), f.cx, f.cz, pts, f.height + 0.02, 0xffffff, (x, z) => [0.5, -z / ROAD_TILE]);
-    // Close the outer side of the bend (the inner side's parapets meet by themselves).
-    for (const [p, q] of [[P(A, 1), P(Bm, -1)], [P(A, -1), P(Bm, 1)]]) {
-      if (Math.hypot(p[0] - q[0], p[1] - q[1]) < 0.2) continue;
-      const mx = (p[0] + q[0]) / 2, mz = (p[1] + q[1]) / 2;
-      const inside = f.arms.some((arm) => { const dx = mx - f.cx, dz = mz - f.cz; const al = dx * arm.ux + dz * arm.uz, lt = -dx * arm.uz + dz * arm.ux; return al > 0 && Math.abs(lt) < f.hw - 0.3; });
-      if (inside) continue;
-      colliders.addSegment(p[0], p[1], q[0], q[1], 0.4, f.height + 1.05, 'wall', f.height - 0.7);
-      const fr = makeFrame(mx, mz, Math.atan2(-(q[1] - p[1]), q[0] - p[0]));
-      B.xf = fr;
-      concrete.box(0, f.height - 1.3, 0, Math.hypot(q[0] - p[0], q[1] - p[1]) + 0.3, 2.35, 0.3, 0xbab4aa);
-      B.xf = null;
     }
+    const l = pts.length - 1, ax = axis(l - 1);
+    out.push({ s: cum[l], x: pts[l].x, z: pts[l].z, px: ax.x, pz: ax.z, m: 1 });
+    return out;
+  };
+  const PARAPET = 1.05, LOW = 4;
+  // One elevated carriageway: deck, fascias, parapets (left out where `open(side, s)`), soffit,
+  // colliders. `hAt(s)` is the deck height; `edges(s)` its two sides as offsets across it.
+  const elevated = (st, hw, surf, hAt, open, edges = () => [-hw, hw]) => {
+    for (let k = 0; k < st.length - 1; k++) {
+      const A = st[k], Bq = st[k + 1], ya = hAt(A.s), yb = hAt(Bq.s), eA = edges(A.s), eB = edges(Bq.s);
+      if (eA[1] - eA[0] < 0.05 && eB[1] - eB[0] < 0.05) continue;
+      const P = (q, off, y) => [q.x + q.px * off * q.m, y, q.z + q.pz * off * q.m];
+      const ux = Bq.x - A.x, uz = Bq.z - A.z, ul = Math.hypot(ux, uz) || 1, slope = (yb - ya) / ul;
+      const nl = Math.hypot(slope, 1), n = [(-slope * ux) / ul / nl, 1 / nl, (-slope * uz) / ul / nl];
+      const U = (x) => (x + hw) / (2 * hw);
+      surf.quad4(P(Bq, eB[0], yb + 0.02), P(Bq, eB[1], yb + 0.02), P(A, eA[1], ya + 0.02), P(A, eA[0], ya + 0.02), n,
+        [U(eB[0]), -Bq.s / ROAD_TILE], [U(eB[1]), -Bq.s / ROAD_TILE], [U(eA[1]), -A.s / ROAD_TILE], [U(eA[0]), -A.s / ROAD_TILE]);
+      const lowA = ya < LOW ? 0 : ya - 1.3, lowB = yb < LOW ? 0 : yb - 1.3;
+      const hMax = Math.max(ya, yb), hMin = Math.min(ya, yb), mid = (A.s + Bq.s) / 2;
+      const y0 = hMax < LOW ? -100 : hMin - 0.7;
+      for (const side of [1, -1]) {
+        const gap = open(side, mid), top = gap ? 0 : PARAPET, i = side > 0 ? 1 : 0;
+        const xa = eA[i], xb = eB[i], xia = xa - side * 0.25, xib = xb - side * 0.25;
+        // Across-axis of this stretch of edge (it slants where the deck tapers).
+        const ex = (Bq.x + Bq.px * xb * Bq.m) - (A.x + A.px * xa * A.m), ez = (Bq.z + Bq.pz * xb * Bq.m) - (A.z + A.pz * xa * A.m), el = Math.hypot(ex, ez) || 1;
+        const pn = [ez / el, 0, -ex / el], nn = [-ez / el, 0, ex / el];
+        // Outer face, down to the soffit (or the ground, low down where the ramp is solid).
+        if (side > 0) concrete.quad4(P(Bq, xb, lowB), P(A, xa, lowA), P(A, xa, ya + top), P(Bq, xb, yb + top), pn, [0, 0], [1, 0], [1, 1], [0, 1], 0xbab4aa);
+        else concrete.quad4(P(A, xa, lowA), P(Bq, xb, lowB), P(Bq, xb, yb + top), P(A, xa, ya + top), nn, [0, 0], [1, 0], [1, 1], [0, 1], 0xbab4aa);
+        if (gap) continue;
+        // Inner face and the yellow-painted top.
+        if (side > 0) {
+          concrete.quad4(P(A, xia, ya), P(Bq, xib, yb), P(Bq, xib, yb + PARAPET), P(A, xia, ya + PARAPET), nn, [0, 0], [1, 0], [1, 1], [0, 1], 0xc4beb4);
+          concrete.quad4(P(Bq, xib, yb + PARAPET), P(Bq, xb, yb + PARAPET), P(A, xa, ya + PARAPET), P(A, xia, ya + PARAPET), [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 0xf2c200);
+        } else {
+          concrete.quad4(P(Bq, xib, yb), P(A, xia, ya), P(A, xia, ya + PARAPET), P(Bq, xib, yb + PARAPET), pn, [0, 0], [1, 0], [1, 1], [0, 1], 0xc4beb4);
+          concrete.quad4(P(Bq, xb, yb + PARAPET), P(Bq, xib, yb + PARAPET), P(A, xia, ya + PARAPET), P(A, xa, ya + PARAPET), [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 0xf2c200);
+        }
+        const [ax, , az] = P(A, xa - side * 0.1, 0), [bx, , bz] = P(Bq, xb - side * 0.1, 0);
+        colliders.addSegment(ax, az, bx, bz, 0.3, hMax + PARAPET, 'wall', y0);
+      }
+      if (ya >= LOW || yb >= LOW) concrete.quad4(P(A, eA[0], lowA), P(A, eA[1], lowA), P(Bq, eB[1], lowB), P(Bq, eB[0], lowB), [0, -1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 0x8a857c);
+    }
+  };
+  // Where the deck comes down to `LOW` on a ramp: a wall underneath stops you driving into it.
+  const lowWall = (st, hw, hAt, from, dir) => {
+    let k = from;
+    while (k >= 0 && k < st.length && hAt(st[k].s) > LOW) k += dir;
+    const q = st[Math.max(0, Math.min(st.length - 1, k))];
+    colliders.addSegment(q.x - q.px * hw, q.z - q.pz * hw, q.x + q.px * hw, q.z + q.pz * hw, 0.6, 3.0, 'wall');
+  };
+  const pier = (x, z, ux, uz, h, capW) => {
+    put(concrete, CYL, x, (h - 1.3) / 2, z, 0xb0aaa0, 0, 0.9, h - 1.3, 0.9);
+    B.xf = frameAlong(x, z, ux, uz);
+    concrete.box(0, h - 2.1, 0, capW, 0.8, 1.8, 0xa8a298);
+    B.xf = null;
+    colliders.addCentered(x, z, 1.9, 1.9, h - 1.3, 'pier');
+  };
+  const gantry = (q, h, hw, sides, key) => {
+    B.xf = frameAlong(q.x, q.z, -q.pz, q.px); // local +z along the deck
+    for (const x of [-hw + 0.35, hw - 0.35]) concrete.box(x, h, 0, 0.35, 6.2, 0.35, 0x6d7075);
+    concrete.box(0, h + 5.8, 0, hw * 2, 0.45, 0.45, 0x6d7075);
+    for (const g of sides) {
+      const x = g.dir * (g.cx || 0);
+      ctx.sign({ key, text: g.text, bg: '#1f6a3a', fg: '#fff', x, y: h + 4.9, z: -g.dir * 0.3, w: g.w, h: 1.6, face: g.dir > 0 ? 'n' : 's' });
+    }
+    B.xf = null;
+  };
+
+  for (const f of layout.flyovers) {
+    const surf = B.get(ensureRoadMat(f.lanes, f.median, f.hw * 2));
+    const st = stations(f.pts, f.cum, 3);
+    const hAt = (s) => layout.deckHeight(f, s);
+    elevated(st, f.hw, surf, hAt, (side, s) => f.gaps.some((g) => g.side === side && s > g.s0 && s < g.s1));
+    lowWall(st, f.hw, hAt, 0, 1);
+    lowWall(st, f.hw, hAt, st.length - 1, -1);
+    // A crash barrier down the middle.
+    if (f.median > 0) {
+      for (let k = 0; k < st.length - 1; k++) {
+        const A = st[k], Bq = st[k + 1], ya = hAt(A.s), yb = hAt(Bq.s);
+        const P = (q, off, y) => [q.x + q.px * off * q.m, y, q.z + q.pz * off * q.m];
+        concrete.quad4(P(Bq, 0.25, yb), P(A, 0.25, ya), P(A, 0.25, ya + 0.85), P(Bq, 0.25, yb + 0.85), [A.px, 0, A.pz], [0, 0], [1, 0], [1, 1], [0, 1], 0xc8c2b8);
+        concrete.quad4(P(A, -0.25, ya), P(Bq, -0.25, yb), P(Bq, -0.25, yb + 0.85), P(A, -0.25, ya + 0.85), [-A.px, 0, -A.pz], [0, 0], [1, 0], [1, 1], [0, 1], 0xc8c2b8);
+        concrete.quad4(P(Bq, -0.25, yb + 0.85), P(Bq, 0.25, yb + 0.85), P(A, 0.25, ya + 0.85), P(A, -0.25, ya + 0.85), [0, 1, 0], [0, 0], [1, 0], [1, 1], [0, 1], 0xd8d2c8);
+        const hMin = Math.min(ya, yb);
+        colliders.addSegment(A.x, A.z, Bq.x, Bq.z, 0.5, Math.max(ya, yb) + 0.85, 'wall', hMin < 1.2 ? -100 : hMin - 0.5);
+      }
+    }
+    // Piers in the median, clear of the junctions it passes over.
+    const inner = f.nodes.slice(1, -1);
+    for (let s = 12; s < f.len; s += 24) {
+      const h = hAt(s);
+      if (h < 4.5) continue;
+      const i = Math.max(0, f.cum.findIndex((c) => c > s) - 1), p = f.pts[i], q = f.pts[i + 1], t = (s - f.cum[i]) / f.seg[i];
+      const x = p.x + (q.x - p.x) * t, z = p.z + (q.z - p.z) * t;
+      if (inner.some((n) => n.adj.length > 2 && Math.hypot(n.x - x, n.z - z) < Math.max(...n.cut.values()) + 6)) continue;
+      if (layout.underpassAt(x, z)) continue;
+      pier(x, z, (q.x - p.x) / f.seg[i], (q.z - p.z) / f.seg[i], h, f.hw * 2 - 1.5);
+    }
+    // Direction signs on gantries, or the flyover's name at each end.
+    const half = f.median / 2 + (f.lanes * 3.4) / 2, w = f.lanes * 3.4 + 0.4;
+    const signs = f.gantries.length ? f.gantries : [{ at: (f.rampA * 0.85) / f.len, dir: 1, text: [f.name.toUpperCase(), 'ಮೇಲ್ಸೇತುವೆ'] }, { at: 1 - (f.rampB * 0.85) / f.len, dir: -1, text: [f.name.toUpperCase(), 'ಮೇಲ್ಸೇತುವೆ'] }];
+    for (const g of signs) {
+      const q = st.reduce((b, c) => (Math.abs(c.s - g.at * f.len) < Math.abs(b.s - g.at * f.len) ? c : b));
+      gantry(q, hAt(q.s), f.hw, [{ ...g, cx: half, w }], 'fo_' + f.name + g.at);
+    }
+  }
+
+  // ---------- Slip roads curling up onto a deck (Hebbal's loops) ----------
+  for (const r of layout.ramps) {
+    const surf = B.get(ensureRoadMat(1, 0, r.hw * 2));
+    const st = stations(r.pts, r.cum, 3);
+    const yAt = (s) => {
+      let j = 0;
+      while (j < r.cum.length - 2 && r.cum[j + 1] < s) j++;
+      const t = Math.max(0, Math.min(1, (s - r.cum[j]) / (r.cum[j + 1] - r.cum[j] || 1)));
+      return r.pts[j].y + (r.pts[j + 1].y - r.pts[j].y) * t;
+    };
+    const sMerge = r.cum[r.curve - 1], sEnd = r.cum[r.cum.length - 1];
+    // No parapets on the first few metres (you swing in from the kerb lane), nor along the deck it
+    // joins; there it tapers away, its outer parapet steering you on.
+    elevated(st, r.hw, surf, yAt, (side, s) => s < 6 || (side < 0 && s > sMerge), (s) => layout.rampEdges(r, s));
+    for (let s = 20; s < sEnd - 4; s += 20) {
+      const h = yAt(s);
+      if (h < 4.5) continue;
+      const q = st.reduce((b, c) => (Math.abs(c.s - s) < Math.abs(b.s - s) ? c : b));
+      if (layout.roadAt(q.x, q.z) || layout.flyoverAt(q.x, q.z)) continue;
+      pier(q.x, q.z, -q.pz, q.px, h, r.hw * 2 - 1);
+    }
+    const q = st.reduce((b, c) => (Math.abs(c.s - sMerge * 0.55) < Math.abs(b.s - sMerge * 0.55) ? c : b));
+    B.xf = frameAlong(q.x, q.z, -q.pz, q.px);
+    for (const x of [-r.hw + 0.3, r.hw - 0.3]) concrete.box(x, yAt(q.s), 0, 0.3, 5.6, 0.3, 0x6d7075);
+    concrete.box(0, yAt(q.s) + 5.3, 0, r.hw * 2, 0.4, 0.4, 0x6d7075);
+    ctx.sign({ key: 'loop_' + r.name, text: [r.name.toUpperCase(), 'ಹೆಬ್ಬಾಳ ಮೇಲ್ಸೇತುವೆ'], bg: '#1f6a3a', fg: '#fff', x: 0, y: yAt(q.s) + 4.5, z: -0.3, w: r.hw * 2 - 1, h: 1.4, face: 'n' });
+    B.xf = null;
   }
 
   // ---------- Dead ends at the edge of the map ----------

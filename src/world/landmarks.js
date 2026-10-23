@@ -397,6 +397,11 @@ const LIVERIES = [
   { body: 0xf4f4f4, tail: 0xd8202a, belly: 0xd8202a, name: 'Air India' },
   { body: 0xf6f2ea, tail: 0xf07a20, belly: 0xf07a20, name: 'Akasa Air' },
   { body: 0xf4f4f4, tail: 0x5a2a7a, belly: 0x6a6a6a, name: 'Air India Express' },
+  { body: 0xf4f4f4, tail: 0xd71a21, belly: 0xb8b8b8, name: 'SpiceJet' },
+  // Wide-bodies on the long-haul routes.
+  { body: 0xf6f6f6, tail: 0xc8102e, belly: 0xb0a080, name: 'Emirates', wide: true },
+  { body: 0xf4f4f4, tail: 0x1a2a5a, belly: 0x1a2a5a, name: 'Singapore Airlines', wide: true },
+  { body: 0xf2f2f2, tail: 0x0a1d3d, belly: 0x8a8a8a, name: 'Lufthansa', wide: true },
 ];
 
 // A narrow-body jet along local +x (nose at +x), wheels at y = 0.
@@ -485,49 +490,214 @@ function airport(ctx, block) {
   };
   fence(i.minX, i.minZ, i.maxX, i.minZ); fence(i.maxX, i.minZ, i.maxX, i.maxZ); fence(i.minX, i.minZ, i.minX, i.maxZ);
   fence(i.minX, az1 + 10, t1x - 120, az1 + 10); fence(t2x + 130, az1 + 10, i.maxX, az1 + 10);
-  // Departures: one jet at a time taxis onto the runway, rolls, rotates and climbs away.
-  const pb = new BuilderSet();
-  buildPlane(pb.get('m'), LIVERIES[0]);
-  const plane = new THREE.Group();
-  pb.buildAll({ m: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.2 }) }, plane);
-  group.add(plane);
-  let t = 20, liv = 0;
-  const paint = (k) => {
-    const L = LIVERIES[k], old = LIVERIES[(k + LIVERIES.length - 1) % LIVERIES.length];
-    plane.traverse((o) => {
-      if (!o.isMesh) return;
-      const c = o.geometry.attributes.color;
-      for (const [from, to] of [[old.tail, L.tail], [old.belly, L.belly]]) {
-        const a = new THREE.Color(from), b2 = new THREE.Color(to);
-        for (let q = 0; q < c.count; q++) if (Math.abs(c.getX(q) - a.r) < 0.004 && Math.abs(c.getY(q) - a.g) < 0.004 && Math.abs(c.getZ(q) - a.b) < 0.004) c.setXYZ(q, b2.r, b2.g, b2.b);
-      }
-      c.needsUpdate = true;
+  airTraffic(ctx, { rx0, rx1, rz, tz, standZ: termZ - 75, standXs: [i.minX + 690, i.minX + 760, i.maxX - 260, i.maxX - 190] });
+  return { name: 'Kempegowda International Airport', x: t1x, z: termZ + 50 };
+}
+
+// Flights at KIA. Arrivals come in from the west down a 3-degree glide path, flare, roll out and
+// taxi to a remote stand; after a turnaround they push back, taxi out, take off east and climb
+// away. Over the city, other flights cross high overhead on their way in or out.
+function airTraffic(ctx, A) {
+  const { group } = ctx;
+  const GLIDE = Math.tan((3 * Math.PI) / 180), YG = 0.17;
+  const xThr = A.rx0 + 40, xTd = A.rx0 + 160, xExit = A.rx1 - 60, xLine = A.rx0 + 60;
+  // One mesh per livery, reused flight after flight, with navigation lights and a strobe.
+  const navMat = (c) => new THREE.MeshBasicMaterial({ color: c, fog: false });
+  const lights = { red: navMat(0xff2a2a), green: navMat(0x2aff5a), white: navMat(0xffffff) };
+  const dot = new THREE.SphereGeometry(0.45, 6, 4);
+  // Up in the sky a jet isn't lost in the ground haze: high up it's drawn without fog.
+  const hull = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.2 });
+  const hullClear = hull.clone();
+  hullClear.fog = false;
+  const fleet = LIVERIES.map((liv) => {
+    const pb = new BuilderSet();
+    buildPlane(pb.get('m'), liv);
+    const g = new THREE.Group();
+    pb.buildAll({ m: hull }, g);
+    g.userData.hull = g.children.filter((o) => o.isMesh);
+    for (const [m, x, y, z] of [[lights.red, -2.5, 2.5, -16.4], [lights.green, -2.5, 2.5, 16.4], [lights.white, -19.5, 7.6, 0]]) {
+      const d = new THREE.Mesh(dot, m);
+      d.position.set(x, y, z);
+      g.add(d);
+      if (m === lights.white) g.userData.strobe = d;
+    }
+    g.scale.setScalar(liv.wide ? 1.4 : 1);
+    g.rotation.order = 'YXZ';
+    g.visible = false;
+    group.add(g);
+    return { g, liv, busy: false };
+  });
+  const take = (wide) => {
+    const free = fleet.filter((p) => !p.busy && (wide === undefined || !!p.liv.wide === wide));
+    if (!free.length) return null;
+    const p = free[Math.floor(Math.random() * free.length)];
+    p.busy = true;
+    return p;
+  };
+
+  // A taxi route: straight legs with rounded corners, walked at up to `v` m/s.
+  const route = (pts, r = 22) => {
+    const out = [pts[0]];
+    for (let k = 1; k < pts.length - 1; k++) {
+      const [px, pz] = pts[k - 1], [cx, cz] = pts[k], [nx, nz] = pts[k + 1];
+      const l1 = Math.hypot(cx - px, cz - pz), l2 = Math.hypot(nx - cx, nz - cz), rr = Math.min(r, l1 / 2, l2 / 2);
+      const a = [cx - ((cx - px) / l1) * rr, cz - ((cz - pz) / l1) * rr], b = [cx + ((nx - cx) / l2) * rr, cz + ((nz - cz) / l2) * rr];
+      for (let j = 0; j <= 6; j++) { const t = j / 6, u = 1 - t; out.push([u * u * a[0] + 2 * u * t * cx + t * t * b[0], u * u * a[1] + 2 * u * t * cz + t * t * b[1]]); }
+    }
+    out.push(pts[pts.length - 1]);
+    const cum = [0];
+    for (let k = 1; k < out.length; k++) cum.push(cum[k - 1] + Math.hypot(out[k][0] - out[k - 1][0], out[k][1] - out[k - 1][1]));
+    return { pts: out, cum, len: cum[cum.length - 1] };
+  };
+  const along = (R, s) => {
+    let k = 1;
+    while (k < R.cum.length - 1 && R.cum[k] < s) k++;
+    const a = R.pts[k - 1], b = R.pts[k], t = Math.max(0, Math.min(1, (s - R.cum[k - 1]) / (R.cum[k] - R.cum[k - 1] || 1)));
+    return { x: a[0] + (b[0] - a[0]) * t, z: a[1] + (b[1] - a[1]) * t, yaw: Math.atan2(-(b[1] - a[1]), b[0] - a[0]) };
+  };
+  const stands = A.standXs.map((x) => ({ x, z: A.standZ, plane: null }));
+  const flights = [];
+  const arrive = (d = 4200) => {
+    const p = take();
+    if (!p) return;
+    flights.push({ p, id: ids++, phase: 'approach', d, v: 70, t: 0 });
+  };
+  const turnaround = (f) => {
+    const st = stands.find((s) => !s.plane);
+    if (!st) { f.phase = 'taxiAway'; f.R = route([[xExit, A.rz], [xExit, A.tz], [A.rx1 - 40, A.tz]]); f.s = 0; return; }
+    st.plane = f;
+    f.stand = st;
+    f.phase = 'taxiIn';
+    f.R = route([[xExit, A.rz], [xExit, A.tz], [st.x, A.tz], [st.x, st.z]]);
+    f.s = 0;
+  };
+  const depart = (f) => {
+    const st = f.stand, x0 = st.x, z0 = st.z - 40;
+    f.phase = 'taxiOut';
+    f.R = route([[x0, z0], [x0 - 60, z0], [x0 - 60, A.tz], [xLine, A.tz], [xLine, A.rz + 40]]);
+    f.s = 0;
+  };
+  // Taxiing jets keep their distance: hold for anyone close ahead (head to head, the later flight waits).
+  let ids = 0;
+  const blocked = (f) => {
+    const fx = Math.cos(f.yaw ?? 0), fz = -Math.sin(f.yaw ?? 0);
+    return flights.some((o) => {
+      if (o === f || o.x0 === undefined || o.phase === 'approach' || o.phase === 'over' || o.phase === 'takeoff' && o.climb) return false;
+      const dx = o.x0 - f.x0, dz = o.z0 - f.z0, d = Math.hypot(dx, dz);
+      if (d > 75 || (dx * fx + dz * fz) < d * 0.5) return false;
+      const ox = Math.cos(o.yaw ?? 0), oz = -Math.sin(o.yaw ?? 0);
+      const mutual = -(dx * ox + dz * oz) > d * 0.5 && o.phase !== 'parked';
+      return !mutual || f.id > o.id;
     });
   };
-  ctx.anims.push((dt) => {
-    t += dt;
-    const cycle = 90;
-    if (t > cycle) { t = 0; liv = (liv + 1) % LIVERIES.length; paint(liv); }
-    const roll = rx1 - rx0 - 200;
-    let x, yy = 0, pitch = 0, vis = true;
-    plane.rotation.order = 'YZX';
-    let yaw = 0;
-    if (t < 25) {
-      // Taxi north from the taxiway onto the runway, then line up facing east.
-      x = rx0 + 60; vis = t > 2;
-      plane.position.set(x, 0.17, tz + (rz - tz) * Math.min(1, t / 20));
-      yaw = t < 20 ? Math.PI / 2 : (Math.PI / 2) * (1 - (t - 20) / 5);
-    } else {
-      const tt = t - 25, a = 2.2, d = 0.5 * a * tt * tt;
-      x = rx0 + 60 + Math.min(d, roll + 3000);
-      if (d > roll) { const over = d - roll; yy = over * Math.tan(0.14); pitch = Math.min(0.16, over / 150); }
-      vis = yy < 900;
-      plane.position.set(x, 0.17 + yy, rz);
+  // A couple of flights are already about when you arrive.
+  arrive(1800);
+  {
+    const p = take();
+    if (p) { const f = { p, id: ids++, phase: 'parked', t: 0, wait: 25 }; stands[0].plane = f; f.stand = stands[0]; flights.push(f); }
+  }
+  let nextArrival = 40, nextOver = 15, strobeT = 0;
+
+  ctx.anims.push((dt, time, camera) => {
+    if (dt <= 0) return;
+    dt = Math.min(dt, 0.1);
+    if ((nextArrival -= dt) <= 0) { arrive(); nextArrival = 55 + Math.random() * 50; }
+    strobeT += dt;
+    const strobe = strobeT % 1.2 < 0.08;
+    const cam = camera?.position;
+    // Overflights: high over wherever you are, when that's away from the airport.
+    if (cam && (nextOver -= dt) <= 0) {
+      nextOver = 50 + Math.random() * 60;
+      const awayFromKia = Math.hypot(cam.x - (A.rx0 + A.rx1) / 2, cam.z - A.rz) > 2500;
+      const p = awayFromKia ? take() : null;
+      if (p) {
+        const hd = Math.random() * Math.PI * 2, off = (Math.random() - 0.5) * 700;
+        const ux = Math.cos(hd), uz = Math.sin(hd);
+        flights.push({ p, id: ids++, phase: 'over', x: cam.x - ux * 2600 - uz * off, z: cam.z - uz * 2600 + ux * off, y: 220 + Math.random() * 130, ux, uz, v: 85 + Math.random() * 40, left: 5200 });
+      }
     }
-    plane.rotation.set(0, yaw, pitch);
-    plane.visible = vis;
+    for (let k = flights.length - 1; k >= 0; k--) {
+      const f = flights[k], g = f.p.g;
+      let x, y = YG, z, yaw = 0, pitch = 0, roll = 0, done = false;
+      switch (f.phase) {
+        case 'approach': {
+          f.d -= f.v * dt;
+          x = xTd - f.d; z = A.rz; y = YG + Math.max(0, f.d) * GLIDE;
+          // Flare over the threshold.
+          pitch = 0.03 + 0.06 * Math.max(0, 1 - f.d / 260);
+          if (f.d <= 0) { f.phase = 'rollout'; f.x = xTd; f.v = 68; }
+          break;
+        }
+        case 'rollout': {
+          f.v = Math.max(13, f.v - 3.0 * dt);
+          f.x += f.v * dt;
+          x = f.x; z = A.rz; pitch = f.v > 50 ? 0.04 * ((f.v - 50) / 18) : 0;
+          if (f.x >= xExit) turnaround(f);
+          break;
+        }
+        case 'taxiIn': case 'taxiOut': case 'taxiAway': case 'lineup': {
+          const left = f.R.len - f.s;
+          f.v = blocked(f) ? 0 : Math.min(11, Math.max(2.5, left * 0.35));
+          f.s = Math.min(f.R.len, f.s + f.v * dt);
+          const q = along(f.R, f.s);
+          x = q.x; z = q.z; yaw = q.yaw;
+          if (f.s >= f.R.len) {
+            if (f.phase === 'taxiIn') { f.phase = 'parked'; f.t = 0; f.wait = 50 + Math.random() * 60; }
+            else if (f.phase === 'taxiOut') { f.phase = 'hold'; f.t = 0; }
+            else if (f.phase === 'lineup') { f.phase = 'takeoff'; f.v = 0; f.x = x; }
+            else done = true;
+          }
+          break;
+        }
+        case 'parked': {
+          f.t += dt;
+          x = f.stand.x; z = f.stand.z; yaw = -Math.PI / 2; // nose towards the terminal
+          if (f.t > f.wait) { f.phase = 'push'; f.t = 0; }
+          break;
+        }
+        case 'push': {
+          // Pushed back off the stand, the tug swinging the tail round to face west.
+          f.t += dt;
+          const t = Math.min(1, f.t / 22);
+          x = f.stand.x; z = f.stand.z - 40 * t; yaw = -Math.PI / 2 - (Math.PI / 2) * t;
+          if (t >= 1) { f.stand.plane = null; depart(f); }
+          break;
+        }
+        case 'hold': {
+          // Short of the runway until it's clear and nothing is on short final.
+          f.t += dt;
+          x = xLine; z = A.rz + 40; yaw = Math.PI / 2;
+          const busy = flights.some((o) => o !== f && (o.phase === 'rollout' || o.phase === 'lineup' || o.phase === 'takeoff' || (o.phase === 'approach' && o.d < 3200)));
+          if (f.t > 8 && !busy) { f.phase = 'lineup'; f.R = route([[xLine, A.rz + 40], [xLine, A.rz], [xLine + 80, A.rz]], 30); f.s = 0; }
+          break;
+        }
+        case 'takeoff': {
+          f.v += 2.4 * dt;
+          f.x += f.v * dt;
+          x = f.x; z = A.rz;
+          if (f.v > 64) { f.climb = (f.climb || 0) + f.v * dt; y = YG + f.climb * 0.13; pitch = Math.min(0.16, f.climb / 120); }
+          if (f.climb > 4500) done = true;
+          break;
+        }
+        case 'over': {
+          const s = f.v * dt;
+          f.x += f.ux * s; f.z += f.uz * s; f.left -= s;
+          x = f.x; z = f.z; y = f.y; yaw = Math.atan2(-f.uz, f.ux);
+          if (f.left <= 0) done = true;
+          break;
+        }
+      }
+      if (done) { g.visible = false; f.p.busy = false; flights.splice(k, 1); continue; }
+      f.x0 = x; f.z0 = z; f.yaw = yaw;
+      g.position.set(x, y, z);
+      g.rotation.set(roll, yaw, pitch);
+      g.userData.strobe.visible = strobe;
+      const m = y > 120 ? hullClear : hull;
+      for (const o of g.userData.hull) o.material = m;
+      // Nothing to draw beyond the haze.
+      g.visible = !cam || Math.hypot(x - cam.x, z - cam.z) < (y > 150 ? 3200 : 2400);
+    }
   });
-  return { name: 'Kempegowda International Airport', x: t1x, z: termZ + 50 };
 }
 
 // International Tech Park Bangalore (ITPL), Whitefield: glass towers named after explorers.
