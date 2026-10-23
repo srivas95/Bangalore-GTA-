@@ -232,7 +232,7 @@ export class Layout {
   buildFeatures() {
     this.underpasses = [];
     this.levelCrossings = [];
-    this.rails = MD.RAIL_LINES.map((l) => ({ ...l }));
+    this.rails = MD.RAIL_LINES.map((l) => ({ ...l, pts: this.clearOfRoads(l.pts) }));
     const addUnderpass = (e, t, type, name) => {
       const ax = e.a.x, az = e.a.z;
       const dx = (e.b.x - ax) / e.len, dz = (e.b.z - az) / e.len;
@@ -284,6 +284,46 @@ export class Layout {
       this.flyovers.push(f);
       for (const h of along) for (const d of h.e.dirs) d.flyover = f;
     }
+  }
+
+  // A railway alignment eased sideways off any road running alongside it (the real lines hug the
+  // Tumkur Road and the roads out to Whitefield), so the track never runs along a carriageway; it
+  // still crosses roads where it really does (those meet it at an angle and don't push).
+  clearOfRoads(pts0) {
+    const pts = [];
+    for (let i = 0; i < pts0.length - 1; i++) {
+      const [ax, az] = pts0[i], [bx, bz] = pts0[i + 1], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 12));
+      for (let k = 0; k < n; k++) pts.push([ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n]);
+    }
+    pts.push([...pts0[pts0.length - 1]]);
+    const edges = this.undirected;
+    for (let iter = 0; iter < 6; iter++) {
+      const push = pts.map(() => [0, 0]);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const [x, z] = pts[i];
+        let tx = pts[i + 1][0] - pts[i - 1][0], tz = pts[i + 1][1] - pts[i - 1][1];
+        const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
+        for (const e of edges) {
+          const need = e.r.width / 2 + 9;
+          if (x < Math.min(e.a.x, e.b.x) - need || x > Math.max(e.a.x, e.b.x) + need || z < Math.min(e.a.z, e.b.z) - need || z > Math.max(e.a.z, e.b.z) + need) continue;
+          const ex = (e.b.x - e.a.x) / e.len, ez = (e.b.z - e.a.z) / e.len;
+          if (Math.abs(ex * tx + ez * tz) < 0.82) continue; // crossing, not running alongside
+          const t = Math.max(0, Math.min(e.len, (x - e.a.x) * ex + (z - e.a.z) * ez));
+          const qx = e.a.x + ex * t, qz = e.a.z + ez * t, d = Math.hypot(x - qx, z - qz);
+          if (d >= need) continue;
+          let nx = -ez, nz = ex; // away from the road, on whichever side we already are
+          if ((x - qx) * nx + (z - qz) * nz < 0) { nx = -nx; nz = -nz; }
+          push[i][0] += nx * (need - d); push[i][1] += nz * (need - d);
+        }
+      }
+      for (let i = 1; i < pts.length - 1; i++) { pts[i][0] += push[i][0] * 0.6; pts[i][1] += push[i][1] * 0.6; }
+      // Keep the curve smooth (trains take it at speed).
+      for (let i = 1; i < pts.length - 1; i++) {
+        pts[i][0] += ((pts[i - 1][0] + pts[i + 1][0]) / 2 - pts[i][0]) * 0.35;
+        pts[i][1] += ((pts[i - 1][1] + pts[i + 1][1]) / 2 - pts[i][1]) * 0.35;
+      }
+    }
+    return pts;
   }
 
   // Road surface height inside an underpass, as a function of distance along its road.

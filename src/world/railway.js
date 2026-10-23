@@ -20,7 +20,9 @@ export function buildRailway(ctx) {
   const { B, layout, colliders, group } = ctx;
   const st = B.get('stone'), metal = B.get('metal');
   const lines = layout.rails.map((l) => ({ ...l, path: new Path(l.pts) }));
-  const onRoad = (x, z) => !layout.blockContaining(x, z) && !layout.underpassAt(x, z);
+  // On a carriageway (not just outside every block: past the edge of the road network the
+  // line runs across open land, which wants ballast, not rails set in asphalt).
+  const onRoad = (x, z) => !layout.blockContaining(x, z) && !layout.underpassAt(x, z) && !!layout.roadAt(x, z);
   const inBlock = (x, z) => { const b = layout.blockContaining(x, z); return b && !b.island; };
   // Where roads cross each line (level crossings and rail underpasses), as distances along it.
   const roadCrossings = (line) => {
@@ -78,11 +80,22 @@ export function buildRailway(ctx) {
       walls[side] = null;
     };
     const at = {};
-    for (let s = 0; s < P.length - 1e-6; s += PIECE) {
-      const l = Math.min(PIECE, P.length - s);
+    // Does the bed of a piece centred at `at` (l long, 10 m wide) reach onto a road?
+    const bedOnRoad = (l) => {
+      for (const a of [-l / 2, 0, l / 2]) for (const off of [-5, 0, 5]) if (onRoad(at.x + at.dx * a - at.dz * off, at.z + at.dz * a + at.dx * off)) return true;
+      return false;
+    };
+    for (let s = 0, step = PIECE; s < P.length - 1e-6; s += step) {
+      // Where the line meets a road, lay it in short pieces, so the ballast stops at the kerb
+      // and the rails run flush across the road (an 8 m piece crossing at an angle used to stick
+      // out onto the carriageway).
+      step = PIECE;
+      P.at(s + Math.min(PIECE, P.length - s) / 2, at);
+      if (bedOnRoad(PIECE)) step = 2;
+      const l = Math.min(step, P.length - s);
       P.at(s + l / 2, at);
       const f = makeFrame(at.x, at.z, Math.atan2(-at.dz, at.dx));
-      const road = onRoad(at.x, at.z);
+      const road = step < PIECE ? bedOnRoad(l) : onRoad(at.x, at.z);
       B.xf = f;
       if (road) {
         // Level crossing: rails set flush into the road.
