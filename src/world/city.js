@@ -415,11 +415,11 @@ export function buildCity(scene, layout, colliders, renderer) {
     const sh = h.mall ? 3.6 : 4.2, y = top + (h.mall ? -sh / 2 - 0.6 : sh / 2 + 0.6);
     const key = `brand_${h.name}`;
     B.get('stone').box(cx, top, cz, w * 0.8, h.mall ? 0.4 : sh + 1.2, d * 0.8, 0x2a2a2a);
-    const sw2 = Math.min(Math.min(w, d) * 0.78, sh * 6);
     for (const [face, x, z, depth] of [['n', cx, lot.minZ - 0.06, d], ['s', cx, lot.maxZ + 0.06, d], ['e', lot.maxX + 0.06, cz, w], ['w', lot.minX - 0.06, cz, w]]) {
+      const sw2 = Math.min((face === 'n' || face === 's' ? w : d) * 0.7, sh * 6);
       const inset = h.mall ? 0 : 0.1 * depth;
       const px = face === 'e' ? x - inset : face === 'w' ? x + inset : x, pz = face === 's' ? z - inset : face === 'n' ? z + inset : z;
-      sign({ key, text: [h.name, h.sub], bg: h.bg, fg: h.fg, x: px, y, z: pz, w: sw2, h: sh, face, fonts: [`bold ${h.mall ? 72 : 96}px "Oswald", Arial, sans-serif`, `${h.mall ? 34 : 40}px "Oswald", Arial, sans-serif`] });
+      sign({ key: `${key}_${Math.round(sw2)}`, text: [h.name, h.sub], bg: h.bg, fg: h.fg, x: px, y, z: pz, w: sw2, h: sh, face, fonts: [`bold ${h.mall ? 72 : 96}px "Oswald", Arial, sans-serif`, `${h.mall ? 34 : 40}px "Oswald", Arial, sans-serif`] });
     }
     const [wx, wz] = W(cx, cz);
     pois.landmarks.push({ name: h.label, x: wx, z: wz });
@@ -483,16 +483,20 @@ export function buildCity(scene, layout, colliders, renderer) {
 
   function buildStreetBlock(block, o) {
     const lots = lotsAlong(block, o.frontage, o.depth);
-    eachLot(lots, (lot) => {
+    const hotel = hotelFor(block);
+    // A hotel goes in the middle of the block; the widest street lot is kept for it in case there's no room.
+    const spare = hotel ? lots.reduce((a, l) => (!a || l.maxX - l.minX > a.maxX - a.minX ? l : a), null) : null;
+    const street = (lot) => {
       const shop = rng() < o.shop && lot.road;
       if (block.zone !== 'market' && fuelStation(lot, block)) return;
       building(lot, { style: pick(o.styles), floors: Math.round(rand(...o.floors)), shop, tint: pick(o.tints), block });
-    });
-    const hotel = hotelFor(block);
+    };
+    eachLot(lots.filter((l) => l !== spare), street);
     const c = centreLot(block, o.depth[1] + 3, hotel ? 22 : 40);
+    if (spare) eachLot([spare], (lot) => (c ? street(lot) : brandedTower(lot, hotel, block)));
     if (!c) return;
     eachLot([c], (lot) => {
-      if (hotel) brandedTower(lot, hotel, block);
+      if (hotel && !hotel.used) brandedTower(lot, hotel, block);
       else if (rng() < 0.6) building(lot, { style: pick(o.styles), floors: Math.round(rand(o.floors[0] + 1, o.floors[1] + 3)), tint: pick(o.tints), block });
       else for (let k = 0; k < 6; k++) treeAt(rand(lot.minX, lot.maxX), rand(lot.minZ, lot.maxZ), rand(0.8, 1.2), 0);
     });
@@ -515,9 +519,9 @@ export function buildCity(scene, layout, colliders, renderer) {
     if (block.landmark === 'wtc') { reserveRect(block, cx, cz, 64, 44); pois.landmarks.push(LANDMARKS.wtc(ctx, cx, cz)); }
     const hotel = hotelFor(block);
     const lots = lotsAlong(block, [22, 36], [18, 28], { gapChance: 0.6 });
-    let first = true;
+    const site = hotel ? lots.reduce((a, l) => (!a || l.maxX - l.minX > a.maxX - a.minX ? l : a), null) : null;
     eachLot(lots, (lot) => {
-      if (hotel && first && lot.maxX - lot.minX > 20) { first = false; brandedTower(lot, hotel, block); return; }
+      if (lot === site) { brandedTower(lot, hotel, block); return; }
       if (rng() < 0.15) { treeAt((lot.minX + lot.maxX) / 2, (lot.minZ + lot.maxZ) / 2, 1.2, 0); return; }
       building(lot, { style: rng() < 0.75 ? 'glass' : 'apartment', floors: Math.round(rand(8, 24)), shop: rng() < 0.3, tint: pick([0xd0e0ff, 0xe0f0e8, 0xf0e8d8, 0xc8d8f0]), block });
     });
@@ -862,7 +866,9 @@ export function buildCity(scene, layout, colliders, renderer) {
 
   // Nothing beyond the fog is drawn: cull chunked meshes by distance every few frames.
   const cullable = group.children.filter((m) => m.geometry && m.name !== 'ground' && !m.isInstancedMesh);
-  for (const m of cullable) { m.geometry.computeBoundingSphere(); m.userData.c = m.geometry.boundingSphere.center.clone(); m.userData.r = m.geometry.boundingSphere.radius; }
+  // (In world space: chunks have baked vertices, but text signs are planes placed by their transform.)
+  group.updateMatrixWorld(true);
+  for (const m of cullable) { m.geometry.computeBoundingSphere(); m.userData.c = m.geometry.boundingSphere.center.clone().applyMatrix4(m.matrixWorld); m.userData.r = m.geometry.boundingSphere.radius; }
   let cullT = 0;
   const update = (dt, t, camera) => {
     for (const a of anims) a(dt, t, camera);
