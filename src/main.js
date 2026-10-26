@@ -700,7 +700,7 @@ async function init() {
   tick();
   // Debug/test hook: advance the simulation without rendering.
   const step = (n = 1, dt = 1 / 60) => { for (let k = 0; k < n; k++) update(dt); };
-  window.__game = { audio, story, metroRide, rides, autoDuty, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
+  window.__game = { audio, city, story, metroRide, rides, autoDuty, gangs, pickups, particles, metro, scene, player, traffic, layout, renderer, camera, rig, missions, hud, streetLife, free, input, step, police, env, signals, world, aoUniforms, blobs, halos, get composer() { return getComposer(); } };
 }
 
 // Vehicle-vehicle collisions for free/player/police vehicles against everything else.

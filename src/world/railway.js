@@ -29,14 +29,14 @@ export function buildRailway(ctx) {
     for (const u of layout.underpasses) if (u.type === 'rail' && line.path.project(u.cx, u.cz).d < 20) out.push(line.path.project(u.cx, u.cz).s);
     return out;
   };
-  // A station needs ~140 m of track clear of roads for its platforms, and land beside it for the
+  // A station needs ~132 m of track clear of roads for its 130 m platforms, and land beside it for the
   // building; slide it along the line to the nearest such spot (stations used to straddle roads).
   const stationFits = (line, s) => {
     if (s < 90 || s > line.path.length - 90) return false;
     const at = line.path.at(s);
     const side = [1, -1].find((k) => inBlock(at.x - at.dz * 20 * k, at.z + at.dx * 20 * k));
     if (!side) return false;
-    for (let a = -70; a <= 70; a += 3) {
+    for (let a = -66; a <= 66; a += 3) {
       const p = line.path.at(Math.max(0, Math.min(line.path.length, s + a)));
       for (const off of [-9, 0, 9, side * 12, side * 19, side * 27]) {
         if (Math.abs(off) > 10 && Math.abs(a) > 37) continue; // the building is 72 m long
@@ -49,11 +49,12 @@ export function buildRailway(ctx) {
     const line = lines[st0.line];
     const s0 = line.path.project(st0.at[0], st0.at[1]).s;
     const xs = roadCrossings(line);
-    // Prefer spots whose platforms end well short of a crossing (stopped trains keep its gates down).
+    // Prefer spots whose platforms end well short of a crossing (stopped trains keep its gates down),
+    // but stay near the real station: closer in, a shorter gap will do.
     const clear = (s, gap) => xs.every((x) => Math.abs(x - s) > gap);
     let best = s0;
-    search: for (const gap of [140, 80, 0]) {
-      for (let d = 0; d <= 600; d += 5) {
+    search: for (const [gap, reach] of [[140, 60], [80, 120], [0, 600]]) {
+      for (let d = 0; d <= reach; d += 5) {
         for (const s of d ? [s0 + d, s0 - d] : [s0]) if (clear(s, gap) && stationFits(line, s)) { best = s; break search; }
       }
     }
