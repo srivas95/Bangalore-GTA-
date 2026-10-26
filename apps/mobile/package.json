@@ -1,6 +1,6 @@
 {
   "name": "namma-bengaluru-mobile",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "private": true,
   "description": "Android app wrapper (Capacitor) for Namma Bengaluru",
   "scripts": {

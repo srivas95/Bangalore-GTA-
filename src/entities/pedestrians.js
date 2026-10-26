@@ -346,10 +346,14 @@ export class StreetLife {
     for (const s of this.stalls) {
       const near = Math.abs(s.x - focus.x) < 150 && Math.abs(s.z - focus.z) < 150;
       if (near && !s.peds.length && !s.cool) {
-        for (let k = 0; k < 3; k++) {
-          const a = (k / 3) * Math.PI * 2 + rand(0, 1);
-          const p = this.newPed(this.takeHuman(), { kind: 'stall', state: 'idle', group: s, x: s.x + Math.cos(a) * 1.4, z: s.z + Math.sin(a) * 1.2 });
-          p.h.group.rotation.y = Math.atan2(s.x - p.x, s.z - p.z);
+        // Chai stalls get a ring of three; waiting crowds (bus platforms) stand scattered over `spread`.
+        const n = s.n || 3;
+        for (let k = 0; k < n; k++) {
+          const a = (k / n) * Math.PI * 2 + rand(0, 1);
+          const x = s.spread ? s.x + rand(-s.spread[0], s.spread[0]) : s.x + Math.cos(a) * 1.4;
+          const z = s.spread ? s.z + rand(-s.spread[1], s.spread[1]) : s.z + Math.sin(a) * 1.2;
+          const p = this.newPed(this.takeHuman(), { kind: 'stall', state: 'idle', group: s, x, z });
+          p.h.group.rotation.y = s.spread ? (s.face ?? 0) + rand(-0.8, 0.8) : Math.atan2(s.x - p.x, s.z - p.z);
           s.peds.push(p);
         }
       } else if (!near && s.peds.length) {

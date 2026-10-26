@@ -215,7 +215,30 @@ export function buildRailway(ctx) {
     const fits = (k) => [-36, -18, 0, 18, 36].every((x) => [11, 19, 27].every((z) => land(x, k * z)));
     const side = [1, -1].find(fits);
     const bz = (side || 1) * 19;
-    if (side) {
+    if (side && sn.name.startsWith('Krantivira')) {
+      // KSR Bengaluru City: a long cream-and-maroon front with an arcade of arches, a clock tower
+      // over the entrance and the station's name in Kannada and English.
+      const her = B.get('heritage'), roof = B.get('roof');
+      const cream = 0xf2e4c4, maroon = 0x8a2a22, s2 = side;
+      her.box(0, CURB_H, bz, 72, 11, 14, cream, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
+      st.box(0, CURB_H + 11, bz, 73, 1.2, 15, maroon);
+      st.box(0, CURB_H + 4.6, bz + s2 * 7.05, 72, 0.6, 0.3, maroon); // string course
+      for (let x = -33; x <= 33; x += 6) { // the arcade: dark arches between cream piers
+        st.box(x, CURB_H, bz + s2 * 7.1, 3.6, 3.4, 0.2, 0x2a2420);
+        put(st, CYL, x, CURB_H + 3.4, bz + s2 * 7.1, 0x2a2420, 0, 1.8, 0.2, 1.8, Math.PI / 2);
+      }
+      // Clock tower.
+      her.box(0, CURB_H, bz, 12, 24, 12, cream, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof });
+      st.box(0, CURB_H + 24, bz, 13, 1, 13, maroon);
+      put(st, CONE4, 0, CURB_H + 27.5, bz, maroon, Math.PI / 4, 10, 6, 10);
+      for (const fz of [s2 * 6.1]) {
+        put(st, CYL, 0, CURB_H + 19.5, bz + fz, 0xf8f4e8, 0, 2.4, 0.2, 2.4, Math.PI / 2);
+        st.box(0, CURB_H + 20.2, bz + fz + s2 * 0.12, 0.18, 1.6, 0.05, 0x111111);
+        st.box(0.45, CURB_H + 19.5, bz + fz + s2 * 0.12, 1.1, 0.16, 0.05, 0x111111);
+      }
+      col.addCentered(0, bz, 73, 15, 26, 'building');
+      ctx.sign({ key: 'rsb_' + sn.name, text: ['ಕ್ರಾಂತಿವೀರ ಸಂಗೊಳ್ಳಿ ರಾಯಣ್ಣ ಬೆಂಗಳೂರು ನಿಲ್ದಾಣ', 'KSR BENGALURU CITY RAILWAY STATION'], x: 0, y: CURB_H + 8.4, z: bz + s2 * 7.3, w: 30, h: 2.6, face: s2 > 0 ? 's' : 'n', bg: '#8a2a22', fg: '#fff4d8' });
+    } else if (side) {
       const her = B.get('heritage'), roof = B.get('roof');
       her.box(0, CURB_H, bz, 70, 9, 14, 0xf0e2c8, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 10 });
       st.box(0, CURB_H + 9, bz, 72, 1, 16, 0xa8302a);

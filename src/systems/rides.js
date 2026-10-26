@@ -47,6 +47,8 @@ export class Rides {
   }
 
   get active() { return this.state !== null; }
+  // Menus, boarding and riding take over the player; waving down an auto or waiting for a bus don't.
+  get blocking() { return this.state !== null && this.state !== 'hail' && this.state !== 'wait'; }
   // Aboard (the player is carried, not walking).
   get carrying() { return this.state === 'ride' || this.state === 'busRide' || this.state === 'board' || this.state === 'busBoard'; }
 
@@ -257,20 +259,21 @@ export class Rides {
     return h && h.e.dirs && h.d <= h.e.r.width / 2 + SIDEWALK_W + 1.5 ? h : null;
   }
 
-  // H on foot: wave down an auto from the roadside.
-  hailAuto(world) {
+  // H on foot: wave down an auto from the roadside. You keep control while it comes: stand still
+  // and you wave; it stops by you (or as near as the traffic lets it) and waits for you.
+  hailAuto(world, retry = false) {
     const p = world.player;
     if (world.police.level > 0) { this.hud.say('No auto will stop for someone with the police after them.', 3); return; }
     const h = this.roadside(p);
-    if (!h) { this.hud.say('Walk to the roadside to wave down an auto.', 2.5); return; }
+    if (!h) { this.hud.say(retry ? 'No auto in sight. Try again from the roadside.' : 'Walk to the roadside to wave down an auto.', 2.5); if (retry) this.release(); return; }
     // The direction of travel that has you on its left kerb (India keeps left).
     const [d1, d2] = h.e.dirs;
     const px = h.e.a.x + (h.e.b.x - h.e.a.x) * h.t, pz = h.e.a.z + (h.e.b.z - h.e.a.z) * h.t;
     const side = (d) => (p.x - px) * d.dir.z + (p.z - pz) * -d.dir.x;
     const d = side(d1) >= side(d2) ? d1 : d2;
     const stopS = sAlong(d, p.x, p.z);
-    // Bring one in from 45-odd metres back, round the corner if need be.
-    let edge = d, s = stopS - 45, route = [];
+    // Bring one in from 45-odd metres back (less on a retry), round the corner if need be.
+    let edge = d, s = stopS - (retry ? 30 : 45), route = [];
     if (s < 0) {
       const ins = d.from.out.map((e) => e.rev).filter((e) => e && e !== d.rev);
       if (ins.length) {
@@ -280,7 +283,7 @@ export class Rides {
         route = [d];
       } else s = 0;
     }
-    if (edge === d && stopS - s < 12) { this.hud.say('No autos coming this way. Try further along the road.', 2.5); return; }
+    this.freeAgent();
     const a = this.traffic.spawnOn('auto', edge, s);
     a.keep = true;
     a.route = route;
@@ -291,10 +294,15 @@ export class Rides {
     this.kind = 'auto';
     this.state = 'hail';
     this.t = 0;
+    this.retried = retry;
+    this.waitT = 0;
     this.standX = p.x; this.standZ = p.z;
     this.faceRoad = Math.atan2(px - p.x, pz - p.z);
-    this.hud.say('You stick your arm out: "Auto!"', 2);
-    this.audio.voice?.('vo_kn_he', { gender: 'm' });
+    if (retry) this.hud.say('That one got stuck in traffic. Another auto is coming.', 2.5);
+    else {
+      this.hud.say('You stick your arm out: "Auto!"', 2);
+      this.audio.voice?.('vo_kn_he', { gender: 'm' });
+    }
   }
 
   autoMenu(world) {
@@ -470,12 +478,41 @@ export class Rides {
     const moved = input.down('KeyW') || input.down('KeyA') || input.down('KeyS') || input.down('KeyD');
     switch (this.state) {
       case 'hail': {
-        h.group.position.set(p.x, p.y, p.z);
-        h.group.rotation.y = p.heading = this.faceRoad;
-        poseHail(h, t);
-        if (a.stopped) { a.hold = true; this.state = 'menu'; this.autoMenu(world); break; }
-        if (input.hit('KeyQ') || moved || this.t > 45) { if (this.t > 45) this.hud.say('No luck. The autos all have passengers.', 2.5); this.release(); break; }
-        this.setBanner('#e0b000', '🛺 Waving down an auto', a.stopped ? '' : 'One is pulling in…', 'Q / move to give up');
+        const v = a.v, d = Math.hypot(v.x - p.x, v.z - p.z);
+        const still = !moved && !input.stick && !p.vehicle;
+        // Standing still: arm out, facing the road.
+        if (still && !this.waitT) { h.group.rotation.y = p.heading = this.faceRoad; poseHail(h, t); }
+        // Pulled in at your spot, or stopped close by because the traffic won't let it any nearer.
+        const here = a.stopped || (this.t > 2 && a.speed < 0.8 && d < 14 && !a.turning);
+        if (here && !a.hold) { a.hold = true; this.audio.voice?.('vo_kn_elli', { gender: 'm' }); }
+        if (a.hold) {
+          if (d < 9 && !p.vehicle) {
+            // Climb up to it: the destination menu.
+            p.heading = Math.atan2(v.x - p.x, v.z - p.z);
+            h.group.rotation.y = p.heading;
+            this.state = 'menu';
+            this.autoMenu(world);
+            break;
+          }
+          this.waitT += dt;
+          if (this.waitT > 30) { this.hud.say('The auto driver got tired of waiting and drove off.', 2.5); this.release(); break; }
+          this.setBanner('#e0b000', '🛺 Your auto is waiting', `Walk over to it (${Math.round(d)} m)`, 'Q never mind');
+        } else {
+          // Taking too long (stuck behind something): one more auto, a bit closer.
+          if (this.t > (this.retried ? 60 : 35) || (a.stuck > 10 && d > 25)) {
+            if (this.retried) { this.hud.say('No luck. The autos all have passengers.', 2.5); this.release(); break; }
+            this.hailAuto(world, true);
+            break;
+          }
+          this.setBanner('#e0b000', '🛺 Waving down an auto', d < 60 ? `One is pulling in… ${Math.round(d)} m` : 'Watch the traffic for a free one…', 'Q give up');
+        }
+        // Giving up: Q, getting into something, the police, or walking off.
+        const off = Math.hypot(p.x - this.standX, p.z - this.standZ) > 40 && d > 25;
+        if (input.hit('KeyQ') || p.vehicle || world.police.level > 0 || off) {
+          if (off) this.hud.say('You walked off. The auto goes on its way.', 2);
+          else if (world.police.level > 0) this.hud.say('The auto driver sees the police and keeps going.', 2.5);
+          this.release();
+        }
         break;
       }
       case 'menu': {
@@ -494,16 +531,25 @@ export class Rides {
         break;
       }
       case 'wait': {
-        h.group.position.set(p.x, p.y, p.z);
-        h.group.rotation.y = p.heading = this.faceRoad;
-        poseIdle(h, t);
-        const st = this.trip.from;
-        if (a.stopped && a.stop?.q === st) { this.pay(world, this.trip.fare, `BMTC ${this.trip.route.num} ticket`); this.boardStart(world); break; }
+        const st = this.trip.from, v = a.v;
+        const d = Math.hypot(v.x - p.x, v.z - p.z), fromStop = Math.hypot(p.x - this.standX, p.z - this.standZ);
+        if (a.stopped && a.stop?.q === st) {
+          // At your stop: get on if you're there; it waits a few seconds if you're not.
+          if (d < 14 && !p.vehicle) { this.pay(world, this.trip.fare, `BMTC ${this.trip.route.num} ticket`); this.boardStart(world); break; }
+          this.dwell += dt;
+          this.setBanner('#1f4ea8', `🚌 Your bus is here!`, `The ${this.trip.route.num} is at ${st.shelter.name}: get to the door (${Math.round(d)} m)`, 'Q give up');
+          if (this.dwell > 10) { this.hud.say(`You missed the ${this.trip.route.num}.`, 2.5); this.release(); }
+          break;
+        }
         if (a.stopped) { this.dwell += dt; if (this.dwell > 3) this.nextBusStop(); }
         if (input.hit('KeyT')) this.spawnBus(35);
-        if (input.hit('KeyQ') || moved) { this.release(); break; }
+        if (input.hit('KeyQ') || p.vehicle || fromStop > 30) {
+          if (fromStop > 30) this.hud.say('You wandered off from the bus stop.', 2);
+          this.release();
+          break;
+        }
         const away = Math.max(0, st.at - this.routeAt(a));
-        this.setBanner('#1f4ea8', `🚌 ${st.shelter.name}`, `${this.trip.route.num} to ${this.trip.route.to}: ${away < 40 ? 'arriving' : `${Math.max(1, Math.round(away / 150))} min away`}`, 'T skip the wait · Q / move to give up');
+        this.setBanner('#1f4ea8', `🚌 ${st.shelter.name}`, `${this.trip.route.num} to ${this.trip.route.to}: ${away < 40 ? 'arriving' : `${Math.max(1, Math.round(away / 150))} min away`}`, 'T skip the wait · Q give up');
         break;
       }
       case 'board':

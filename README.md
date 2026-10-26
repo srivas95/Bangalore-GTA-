@@ -82,10 +82,15 @@ and signing.
   towers in Ashok Nagar, factories in Peenya, pubs in Indiranagar and Koramangala.
 - **Parks and lakes** are where they should be: Cubbon Park, Lalbagh, the Palace Grounds,
   Bangalore University, and Ulsoor, Sankey, Hebbal, Madiwala, Agara and Yediyur lakes.
+  - **Cubbon Park** is dense with old rain trees and bamboo, with winding laterite walks, heritage
+    lamps, benches and an iron railing. Inside: the State Central Library, the red Government
+    Museum, the bandstand, Jawahar Bal Bhavan's toy train and the statue.
 - **Landmarks** sit at their real locations: Vidhana Soudha, the High Court, Chinnaswamy Stadium,
-  St. Mark's Cathedral, ISKCON, WTC at Brigade Gateway, IBC Platinum City, the Forum, Central Silk
+  St. Mark's Cathedral, ISKCON, WTC and the Sheraton Grand at Brigade Gateway, IBC Platinum City in
+  Peenya, Taj Yeshwantpur, Vaishnavi Sapphire, Yeshwanthpur Junction, the Forum, Central Silk
   Board, the Lalbagh Glass House, the State Central Library, the **Kempegowda Bus Station**
-  at Majestic, **ITPL** in Whitefield, and the **airport** with both terminals, the control tower,
+  at Majestic (buses in the bays, crowds on the platforms, departure boards) facing the
+  clock-towered KSR Bengaluru City station, **ITPL** in Whitefield, and the **airport** with both terminals, the control tower,
   parked jets and departures taking off every minute and a half.
 - **Flyovers.** The Silk Board and Hebbal flyovers carry the inner lanes over the junction. The
   Hebbal one follows Bellary Road round the bend.
@@ -112,7 +117,8 @@ and signing.
 
 ### Autos and BMTC buses
 
-- **Waving down an auto.** Stand at any roadside and press **H**: an auto pulls in.
+- **Waving down an auto.** Stand at any roadside and press **H**: an auto pulls in. You can walk
+  about while it comes (**Q** gives up); when it's waiting, walk over and tell the driver where to go.
   - Tell the driver where to go: a district, or your GPS waypoint. Each shows a fare estimate.
   - Ride in the back while the driver tears through the real traffic (flat out, late on the brakes,
     through the end of the amber) and the meter runs at the Bengaluru tariff: ₹30 for
@@ -122,7 +128,8 @@ and signing.
 - **BMTC buses.** Nine routes after real ones (500D Hebbal–Silk Board, 335E Majestic–Whitefield, 13
   to Banashankari, G-3 to Electronic City Road and more) run both ways.
   - Their stops have shelters on the footpath and show as blue dots on the minimap.
-  - At a stop, press **E**, pick a stop further down one of its routes, and wait for the bus.
+  - At a stop, press **E**, pick a stop further down one of its routes, and wait for the bus. You
+    can wander about the stop while you wait; be back when it pulls in, or it leaves without you.
   - The conductor sells you a ticket by stage (₹6 a stage).
   - The bus stops at every stop on the way. **E** gets you off at the next one, and **T** skips
     ahead.
@@ -139,7 +146,8 @@ and signing.
 ### Vehicles and driving
 
 - **Tyre physics.** Driving uses a bicycle model with slip angles, load transfer and handbrake
-  turns, plus a stability assist that keeps it fun. Two-wheelers lean.
+  turns, plus a stability assist that keeps it fun. Two-wheelers lean. Cars have arcade-level
+  cornering grip (about 1.5 g in a hatchback), so you can take a junction at speed.
 - **Real car models**, each with its own proportions:
   - Maruti Alto, WagonR, Swift and Dzire
   - Hyundai i10, Verna and Creta
@@ -231,9 +239,16 @@ and signing.
 ### Brands
 
 - **Shops.** 26 real Bengaluru names, many in their home neighbourhoods: A2B, MTR, Vidyarthi
-  Bhavan, CTR, Meghana Foods, Truffles, Toit, Café Coffee Day and more.
+  Bhavan, CTR, Meghana Foods, Truffles, Toit, Café Coffee Day and more, each with its own logo
+  mark, lettering and colours.
+- **Neighbourhood signboards** look like the real thing: printed flex boards with a picture, the
+  Kannada name on top (Karnataka's 60 % rule), a phone number and a Pepsi or Airtel strip;
+  hand-painted boards; and aluminium panels with channel letters. All of them are sun-faded,
+  dusty and streaked, some torn at a corner. Lodges and travels by Majestic, hardware
+  stores, medicals, darshinis and lathe works in Peenya.
 - **Fuel stations.** HP, Indian Oil and Bharat Petroleum forecourts.
-- **Hotels and malls.** The JW Marriott, ITC Gardenia, Taj MG Road, Orion Mall and Mantri Square.
+- **Hotels and malls.** The JW Marriott, ITC Gardenia, Taj MG Road, Sheraton Grand at Brigade
+  Gateway, Taj Yeshwantpur, Vaishnavi Sapphire, Orion Mall and Mantri Square.
 
 ### Story and gigs
 
@@ -268,6 +283,7 @@ src/
     landmarks.js       Procedural landmark models
     geom.js, path.js   Polygon fill/walls, rectangle overlap, arc-length polylines
     textures.js        Canvas-painted textures (facades, lit windows, shop-front atlas, leaves, pavers, signs)
+    signboards.js      Shop signboards: flex, hand-painted and ACP boards, brand logos, Kannada-first lettering
     sky.js             Time-of-day sky (twilight, sun/moon, stars, clouds) and the distant skyline ring
     surface.js         Shader detail on city materials: paint masks, grime, lit windows, kerbs, ground variation
     meshBuilder.js     Merged/chunked geometry with local frames, per-vertex PBR material, rigid skinning

@@ -108,6 +108,60 @@ function library(ctx, block) {
   return { name: 'State Central Library', x: cx, z: cz + 14 };
 }
 
+// Government Museum and Venkatappa Art Gallery on Kasturba Road: Pompeian red with white
+// pilasters and a pedimented porch.
+function museum(ctx, block) {
+  const { B, colliders, signs } = ctx;
+  const { cx, cz } = centre(block);
+  const her = B.get('heritage'), stone = B.get('stone'), roof = B.get('roof');
+  const red = 0xa83a2c, white = 0xf2ece0;
+  her.box(cx, 0.15, cz, 60, 10, 16, red, { tileW: FACADE_TILE.w, tileH: FACADE_TILE.h, topBuilder: roof, topTile: 8 });
+  stone.box(cx, 10.15, cz, 61, 0.9, 17, white); // cornice
+  stone.box(cx, 0.15, cz, 61, 0.9, 17, 0xd8d0c0); // plinth
+  for (let x = -28; x <= 28; x += 4) stone.box(cx + x, 0.15, cz + 8.05, 0.9, 10, 0.3, white); // pilasters
+  // Porch with columns and a pediment.
+  stone.box(cx, 0.15, cz + 11, 16, 0.6, 6, 0xd8d0c0);
+  for (let x = -6; x <= 6; x += 3) put(stone, G.cyl8, cx + x, 5.2, cz + 13.4, white, 0, 0.45, 10, 0.45);
+  stone.box(cx, 10.15, cz + 11, 17, 1, 6.4, white);
+  put(stone, G.cone4, cx, 12.4, cz + 11, red, Math.PI / 4, 12.5, 3.2, 5);
+  colliders.addCentered(cx, cz, 61, 17, 12, 'building');
+  colliders.addCentered(cx, cz + 11, 17, 6, 11, 'building');
+  signs.push({ key: 'museum', text: ['ಸರ್ಕಾರಿ ವಸ್ತುಸಂಗ್ರಹಾಲಯ', 'GOVERNMENT MUSEUM · ESTD. 1865'], x: cx, y: 8.6, z: cz + 14.25, w: 13, h: 1.6, face: 's', bg: '#f2ece0', fg: '#7a1a10' });
+  return { name: 'Government Museum', x: cx, z: cz + 20 };
+}
+
+// Jawahar Bal Bhavan: the toy train going round its little oval track under the trees.
+function balBhavan(ctx, block) {
+  const { B, colliders, signs } = ctx;
+  const { cx, cz } = centre(block);
+  const stone = B.get('stone'), metal = B.get('metal');
+  const A = 30, Bz = 16, N = 64;
+  const pt = (k) => { const a = (k / N) * Math.PI * 2; return [cx + Math.cos(a) * A, cz + Math.sin(a) * Bz]; };
+  for (let k = 0; k < N; k++) {
+    const [x0, z0] = pt(k), [x1, z1] = pt(k + 1);
+    const l = Math.hypot(x1 - x0, z1 - z0), ang = Math.atan2(x1 - x0, z1 - z0);
+    for (const o of [-0.35, 0.35]) put(metal, G.box, (x0 + x1) / 2 + Math.cos(ang) * o, 0.22, (z0 + z1) / 2 - Math.sin(ang) * o, 0x7a7a7a, ang, 0.06, 0.08, l + 0.05);
+    put(stone, G.box, (x0 + x1) / 2, 0.16, (z0 + z1) / 2, 0x6e5a48, ang, 1.4, 0.06, l + 0.05);
+  }
+  // The train: a little red engine and three open coaches, stopped by the platform.
+  const cars = [[0xc0181a, 2.6, 1.7], [0xf2c200, 2.4, 1.2], [0x1a5aa8, 2.4, 1.2], [0x2a9a3a, 2.4, 1.2]];
+  let x = cx - 6;
+  for (const [c, l, h] of cars) {
+    stone.box(x, 0.3, cz + Bz, l, h, 1.1, c);
+    stone.box(x, 0.3 + h, cz + Bz, l + 0.1, 0.08, 1.2, 0xf4f0e8);
+    x += l + 0.3;
+  }
+  put(metal, G.cyl8, cx - 6.8, 2.6, cz + Bz, 0x1a1a1a, 0, 0.18, 0.9, 0.18); // chimney
+  colliders.addCentered(cx - 1.5, cz + Bz, 11, 1.3, 2, 'building');
+  // Station shelter and the gate.
+  stone.box(cx, 0.15, cz + Bz + 3, 10, 0.35, 3, 0xd8d0c0);
+  stone.box(cx, 3, cz + Bz + 3, 11, 0.2, 3.6, 0xc8402a);
+  for (const sx of [-4.8, 4.8]) put(stone, G.cyl8, cx + sx, 1.6, cz + Bz + 3, 0xf4f0e8, 0, 0.12, 2.9, 0.12);
+  signs.push({ key: 'balbhavan', text: ['ಜವಾಹರ ಬಾಲ ಭವನ', 'JAWAHAR BAL BHAVAN · TOY TRAIN'], x: cx, y: 3.9, z: cz + Bz + 4.85, w: 9, h: 1.3, face: 's', bg: '#f2c200', fg: '#7a1a10' });
+  ctx.trees(cx, cz, 9, 8); // trees in the middle of the loop
+  return { name: 'Jawahar Bal Bhavan', x: cx, z: cz + Bz + 8 };
+}
+
 function bandstand(ctx, block) {
   const { B, colliders } = ctx;
   const { cx, cz } = centre(block);
@@ -276,6 +330,7 @@ function busStand(ctx, block) {
   signs.push({ key: 'kbsN', text: ['ಕೆಂಪೇಗೌಡ ಬಸ್ ನಿಲ್ದಾಣ', 'KEMPEGOWDA BUS STATION'], x: cx, y: 10.3, z: tz - 6.1, w: 22, h: 3, face: 'n', bg: '#9a2a2a', fg: '#fff6d8' });
   // Platform islands with canopies, bays between them.
   const rows = Math.max(1, Math.floor((d - 24) / 16));
+  const bays = [], crowds = [];
   for (let r = 0; r < rows; r++) {
     const pz = tz + 16 + r * 16;
     if (pz > i.maxZ - 6) break;
@@ -287,8 +342,23 @@ function busStand(ctx, block) {
     metal.box(cx, 5.1, pz, bw - 8, 0.25, 7, 0x8a9aa8);
     stone.box(cx, 5.35, pz, bw - 8, 0.12, 7.2, 0xc0182a, { top: false });
     signs.push({ key: 'kbsP' + r, text: [`PLATFORM ${r * 2 + 1}–${r * 2 + 2}`, 'ವೇದಿಕೆ'], x: cx - bw / 2 + 6, y: 4.2, z: pz + 0.4, w: 3.2, h: 0.9, face: 's', bg: '#1a3a6a', fg: '#fff' });
+    // An LED departures board hanging under the canopy.
+    const dests = [['500D', 'HEBBAL'], ['335E', 'WHITEFIELD'], ['13', 'BANASHANKARI'], ['401', 'YELAHANKA'], ['KBS-8', 'JAYANAGAR'], ['G-3', 'ELECTRONIC CITY']];
+    const [n1, d1] = dests[(r * 2) % dests.length], [n2, d2] = dests[(r * 2 + 1) % dests.length];
+    signs.push({ key: 'kbsLed' + r, text: [`${n1}  ${d1}   ${r * 2 + 1}`, `${n2}  ${d2}   ${r * 2 + 2}`], x: cx + bw / 4, y: 4.1, z: pz + 0.35, w: 7, h: 1.2, face: 's', bg: '#0a0a0a', fg: '#ff9a1a' });
+    // People waiting along the platform.
+    for (let k = 0; k < 3; k++) crowds.push({ x: cx - bw / 2 + 14 + (k + 0.5) * ((bw - 28) / 3), z: pz, spread: [((bw - 28) / 3 - 4) / 2, 1.2], n: 5 });
+    // Buses nose-in to the platform in the bays to its south.
+    if (pz + 16 <= i.maxZ - 6) for (let x = cx - bw / 2 + 12; x <= cx + bw / 2 - 12; x += 5) bays.push({ x, z: pz + 8.4, heading: Math.PI });
   }
-  return { name: 'Kempegowda Bus Station', x: cx, z: tz + 12 };
+  // Kiosks by the terminal: milk booth and a chai counter.
+  for (const [kx, label, bg, fg] of [[cx - bw / 2 + 14, ['ನಂದಿನಿ', 'NANDINI MILK'], '#0a5cad', '#ffffff'], [cx + bw / 2 - 14, ['ಚಹಾ · ಕಾಫಿ', 'TEA · COFFEE · SNACKS'], '#ffd200', '#3a1d0f']]) {
+    her.box(kx, 0.15, tz + 8.5, 4, 2.6, 2.4, 0xe8e0d0);
+    stone.box(kx, 2.75, tz + 8.5, 4.6, 0.2, 3, 0x9a2a2a);
+    colliders.addCentered(kx, tz + 8.5, 4, 2.4, 2.8, 'building');
+    signs.push({ key: 'kbsK' + label[1], text: label, x: kx, y: 2.2, z: tz + 9.75, w: 3.6, h: 0.8, face: 's', bg, fg });
+  }
+  return { name: 'Kempegowda Bus Station', x: cx, z: tz + 12, busBays: bays, crowds };
 }
 
 // ISKCON temple on its hillock at Rajajinagar: tall gold-and-glass tower over a stepped plinth.
@@ -547,5 +617,5 @@ function itpl(ctx, block) {
 
 export const LANDMARKS = {
   vidhanaSoudha, highCourt, library, bandstand, stadium, cathedral, skyTower, statue,
-  ibcPlatinumCity, busStand, airport, itpl, iskcon, wtc, glassHouse, forumMall, silkBoardOffice,
+  ibcPlatinumCity, busStand, airport, itpl, iskcon, wtc, glassHouse, forumMall, silkBoardOffice, museum, balBhavan,
 };

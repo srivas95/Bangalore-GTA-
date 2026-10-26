@@ -1,6 +1,7 @@
 // Procedurally painted canvas textures. No external image assets needed.
 import * as THREE from 'three';
 import { SHOP_SIGNS, LANE_W } from '../config.js';
+import { drawSignboard } from './signboards.js';
 
 let rng = mulberry32(1337);
 export function mulberry32(a) {
@@ -442,45 +443,22 @@ export function roofTexture() {
   return toTexture(c);
 }
 
-// Atlas of shop signs: 4 columns x 16 rows, each 512 x 128. Real brands use their own colours.
+// Atlas of shop signs: 4 columns x 16 rows, each 512 x 128 (see signboards.js for how they're
+// drawn). Each shop appears more than once, each time as a different board.
 export const SIGN_COLS = 4, SIGN_ROWS = 16;
 export function signAtlas() {
   const [c, ctx] = canvas(2048, 2048);
-  const bgs = [['#c0392b', '#fff'], ['#f1c40f', '#7a1010'], ['#1e7a3c', '#fff'], ['#1f4e8c', '#ffe066'],
-    ['#e67e22', '#fff'], ['#fafafa', '#b0151f'], ['#6a1b9a', '#fff'], ['#111', '#f5c518']];
   const W = 512, H = 128;
   for (let k = 0; k < SIGN_COLS * SIGN_ROWS; k++) {
     const sign = SHOP_SIGNS[k % SHOP_SIGNS.length];
-    const [bg, fg] = sign.brand ? [sign.bg, sign.fg] : bgs[(k * 7 + Math.floor(k / SHOP_SIGNS.length)) % bgs.length];
     const x = (k % SIGN_COLS) * W, y = Math.floor(k / SIGN_COLS) * H;
-    ctx.fillStyle = bg;
-    ctx.fillRect(x, y, W, H);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    if (sign.brand) {
-      // Clean brand panel: thin inner keyline, the name large, tagline underneath.
-      ctx.strokeStyle = fg; ctx.globalAlpha = 0.5; ctx.lineWidth = 3;
-      ctx.strokeRect(x + 8, y + 8, W - 16, H - 16);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = fg;
-      const serif = /Bhavan|Coffee Bar|MTR|CTR|Empire/.test(sign.en);
-      const short = sign.en.length <= 5;
-      ctx.font = `${serif ? 'bold' : '700'} ${short ? 70 : 54}px ${serif ? 'Georgia, "Times New Roman", serif' : '"Oswald", "Arial Narrow", Arial, sans-serif'}`;
-      fitText(ctx, sign.en, x + W / 2, y + 50, W - 40);
-      ctx.font = '600 22px "Noto Sans Kannada", "Oswald", Arial, sans-serif';
-      fitText(ctx, sign.kn, x + W / 2, y + 102, W - 50);
-      continue;
-    }
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 8;
-    ctx.strokeRect(x + 4, y + 4, W - 8, H - 8);
-    ctx.fillStyle = fg;
-    ctx.font = 'bold 52px "Noto Sans Kannada", "Arial Narrow", Arial, sans-serif';
-    fitText(ctx, sign.en.toUpperCase(), x + W / 2, y + 48, W - 32);
-    ctx.font = '32px "Noto Sans Kannada", sans-serif';
-    fitText(ctx, sign.kn, x + W / 2, y + 100, W - 32);
+    const rnd = mulberry32(1013 + k * 7919);
+    ctx.save();
+    ctx.translate(x, y);
+    drawSignboard(ctx, sign, W, H, rnd);
+    ctx.restore();
   }
-  const t = toTexture(c, { repeat: false });
-  return t;
+  return toTexture(c, { repeat: false });
 }
 
 function fitText(ctx, text, x, y, maxW) {

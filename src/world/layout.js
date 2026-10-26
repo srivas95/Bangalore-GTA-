@@ -158,7 +158,7 @@ export class Layout {
 
   // Landmarks go in the block at their real location, or the nearest one big enough to hold them.
   assignSpecials() {
-    const NEED = { vidhanaSoudha: [104, 84], highCourt: [80, 40], stadium: [60, 60], iskcon: [74, 60], wtc: [66, 46], ibcPlatinumCity: [100, 100],
+    const NEED = { vidhanaSoudha: [104, 84], highCourt: [80, 40], stadium: [60, 60], iskcon: [74, 60], wtc: [66, 46], ibcPlatinumCity: [84, 96],
       forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60], airport: [600, 380], itpl: [90, 90] };
     const fits = (b, s) => { const [nw, nd] = NEED[s.landmark] || [30, 30]; return !b.special && b.zone !== 'park' && b.zone !== 'lake' && b.inner.maxX - b.inner.minX >= nw && b.inner.maxZ - b.inner.minZ >= nd; };
     const put = (b, s) => { const { at, ...rest } = s; Object.assign(b, rest, { special: true }); };
@@ -186,6 +186,26 @@ export class Layout {
         if (d < bd) { bd = d; best = b; }
       }
       if (best) put(best, s);
+    }
+    // Hotels and malls: the block at the site, or the nearest one that can take a tower (it becomes a towers block).
+    const takes = (b) => !b.edge && !b.hotel && !['park', 'lake', 'rural', 'landmark', 'gov'].includes(b.zone) && (!b.landmark || b.zone === 'towers') &&
+      b.inner.maxX - b.inner.minX >= 36 && b.inner.maxZ - b.inner.minZ >= 26;
+    // Nearest pairs first, so two sites close together don't push each other a block too far.
+    const pairs = [];
+    for (const h of MD.HOTEL_SITES) {
+      for (const b of this.blocks) {
+        if (!takes(b)) continue;
+        const d = pointInPoly(h.at[0], h.at[1], b.poly) ? 0 : Math.hypot(b.cx - h.at[0], b.cz - h.at[1]);
+        if (d < 300) pairs.push({ h, b, d });
+      }
+    }
+    pairs.sort((p, q) => p.d - q.d);
+    const placed = new Set();
+    for (const { h, b } of pairs) {
+      if (placed.has(h) || b.hotel) continue;
+      placed.add(h);
+      b.hotel = h;
+      if (b.zone !== 'commercial') b.zone = 'towers';
     }
   }
 

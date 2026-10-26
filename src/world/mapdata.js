@@ -112,7 +112,7 @@ export const METRO = [
       ['Nagasandra', 'ನಾಗಸಂದ್ರ', 13.048, 77.5], ['Dasarahalli', 'ದಾಸರಹಳ್ಳಿ', 13.0435, 77.5126],
       ['Jalahalli', 'ಜಾಲಹಳ್ಳಿ', 13.0395, 77.5196], ['Peenya Industry', 'ಪೀಣ್ಯ ಇಂಡಸ್ಟ್ರಿ', 13.0365, 77.5262],
       ['Peenya', 'ಪೀಣ್ಯ', 13.033, 77.5332], ['Goraguntepalya', 'ಗೊರಗುಂಟೆಪಾಳ್ಯ', 13.0285, 77.5404],
-      ['Yeshwanthpur', 'ಯಶವಂತಪುರ', 13.0218, 77.553], ['Sandal Soap Factory', 'ಸ್ಯಾಂಡಲ್ ಸೋಪ್ ಫ್ಯಾಕ್ಟರಿ', 13.0147, 77.5539],
+      ['Yeshwanthpur', 'ಯಶವಂತಪುರ', 13.0234, 77.5496], ['Sandal Soap Factory', 'ಸ್ಯಾಂಡಲ್ ಸೋಪ್ ಫ್ಯಾಕ್ಟರಿ', 13.0147, 77.5539],
       ['Mahalakshmi', 'ಮಹಾಲಕ್ಷ್ಮಿ', 13.0083, 77.5488], ['Rajajinagar', 'ರಾಜಾಜಿನಗರ', 12.9995, 77.5497],
       ['Mahakavi Kuvempu Road', 'ಮಹಾಕವಿ ಕುವೆಂಪು ರಸ್ತೆ', 12.9985, 77.5568], ['Srirampura', 'ಶ್ರೀರಾಂಪುರ', 12.9967, 77.5636],
       ['Mantri Square Sampige Road', 'ಮಂತ್ರಿ ಸ್ಕ್ವೇರ್ ಸಂಪಿಗೆ ರಸ್ತೆ', 12.9905, 77.5707],
@@ -131,12 +131,12 @@ export const METRO = [
 
 // Indian Railways: KSR City (Majestic) out to Yeshwanthpur and Tumkur, and east via Cantonment.
 export const RAIL_LINES = [
-  { name: 'KSR - Yeshwanthpur', pts: G([[12.9785, 77.569], [12.986, 77.562], [12.997, 77.5605], [13.01, 77.5585], [13.0235, 77.5575], [13.032, 77.548], [13.042, 77.527], [13.049, 77.508], [13.055, 77.484]]) },
+  { name: 'KSR - Yeshwanthpur', pts: G([[12.9785, 77.569], [12.986, 77.562], [12.997, 77.5605], [13.01, 77.557], [13.0238, 77.5512], [13.032, 77.548], [13.042, 77.527], [13.049, 77.508], [13.055, 77.484]]) },
   { name: 'KSR - Cantonment', pts: G([[12.9785, 77.569], [12.9815, 77.578], [12.988, 77.5905], [12.9935, 77.599], [12.996, 77.615], [12.9975, 77.633], [12.999, 77.65], [13.0005, 77.6635], [13.0035, 77.678], [13.0015, 77.695], [12.9995, 77.714], [12.998, 77.74], [12.9975, 77.7605], [12.998, 77.775]]) },
 ];
 export const RAIL_STATIONS = [
   { name: 'Krantivira Sangolli Rayanna (Bengaluru City) Station', kn: 'ಬೆಂಗಳೂರು ನಗರ ರೈಲು ನಿಲ್ದಾಣ', board: 'KSR BENGALURU CITY JN.', short: 'KSR BENGALURU', at: geo(12.9785, 77.569), line: 0 },
-  { name: 'Yeshwanthpur Junction', kn: 'ಯಶವಂತಪುರ ಜಂಕ್ಷನ್', board: 'YESHWANTHPUR JN.', short: 'YESHWANTHPUR', at: geo(13.0235, 77.5575), line: 0 },
+  { name: 'Yeshwanthpur Junction', kn: 'ಯಶವಂತಪುರ ಜಂಕ್ಷನ್', board: 'YESHWANTHPUR JN.', short: 'YESHWANTHPUR', at: geo(13.0238, 77.5512), line: 0 },
   { name: 'Bengaluru Cantonment', kn: 'ಬೆಂಗಳೂರು ದಂಡು', board: 'BENGALURU CANTT.', short: 'BENGALURU CANTT.', at: geo(12.9935, 77.599), line: 1 },
   { name: 'Krishnarajapuram', kn: 'ಕೃಷ್ಣರಾಜಪುರಂ', board: 'KRISHNARAJAPURAM', short: 'K.R. PURAM', at: geo(13.003, 77.682), line: 1 },
   { name: 'Whitefield', kn: 'ವೈಟ್‌ಫೀಲ್ಡ್', board: 'WHITEFIELD', short: 'WHITEFIELD', at: geo(12.9976, 77.757), line: 1 },
@@ -145,7 +145,7 @@ export const RAIL_STATIONS = [
 // Open spaces: polygons (game coords) the street grid stays out of.
 const box = (lat, lon, w, h) => { const [x, z] = geo(lat, lon); return [[x - w / 2, z - h / 2], [x + w / 2, z - h / 2], [x + w / 2, z + h / 2], [x - w / 2, z + h / 2]]; };
 export const PARKS = [
-  { name: 'Cubbon Park', poly: [[372, -50], [590, -50], [626, 80], [560, 150], [380, 150]], landmarks: ['library', 'bandstand', 'statue'] },
+  { name: 'Cubbon Park', poly: [[372, -50], [590, -50], [626, 80], [560, 150], [380, 150]], landmarks: ['library', 'museum', 'bandstand', 'balBhavan', 'statue'] },
   { name: 'Lalbagh Botanical Garden', poly: [[205, 470], [400, 470], [430, 640], [330, 700], [205, 680]], landmarks: ['glassHouse'] },
   { name: 'Bangalore Palace Grounds', poly: box(12.9985, 77.5925, 240, 180) },
   { name: 'Bangalore University', poly: box(12.946, 77.505, 300, 200) },
@@ -209,7 +209,7 @@ export const SPECIAL_BLOCKS = [
   B(12.9788, 77.5996, { zone: 'landmark', landmark: 'stadium', district: 'Chinnaswamy Stadium' }),
   B(13.0098, 77.5511, { zone: 'landmark', landmark: 'iskcon', district: 'Rajajinagar' }),
   B(13.013, 77.556, { zone: 'towers', landmark: 'wtc', district: 'Brigade Gateway' }),
-  B(13.029, 77.531, { zone: 'landmark', landmark: 'ibcPlatinumCity', district: 'Peenya' }),
+  B(13.0354, 77.5316, { zone: 'landmark', landmark: 'ibcPlatinumCity', district: 'Peenya' }),
   B(12.9346, 77.6113, { zone: 'landmark', landmark: 'forumMall', district: 'Koramangala' }),
   B(12.918, 77.628, { zone: 'landmark', landmark: 'silkBoardOffice', district: 'Silk Board' }),
   B(12.973, 77.6005, { zone: 'commercial', landmark: 'cathedral', district: "St. Mark's" }),
@@ -237,6 +237,10 @@ export const HOTEL_SITES = [
   { at: geo(12.972, 77.5955), label: 'JW Marriott Hotel', name: 'JW MARRIOTT', sub: 'BENGALURU', bg: '#1c1c1c', fg: '#e8d6a8', floors: 20, tint: 0xc8d4e0 },
   { at: geo(12.9655, 77.597), label: 'ITC Gardenia', name: 'ITC GARDENIA', sub: 'A LUXURY COLLECTION HOTEL', bg: '#2e4a2a', fg: '#f0e6c8', floors: 14, tint: 0xe0d8c8 },
   { at: geo(12.974, 77.612), label: 'Taj MG Road', name: 'TAJ MG ROAD', sub: 'BENGALURU', bg: '#1a1a1a', fg: '#d8b56a', floors: 12, tint: 0xf0e6d4, style: 'apartment' },
+  { at: geo(13.0134, 77.5549), label: 'Sheraton Grand Bangalore at Brigade Gateway', name: 'SHERATON GRAND', sub: 'BANGALORE · BRIGADE GATEWAY', bg: '#1a1a1a', fg: '#e8e0d0', floors: 18, tint: 0xd8dce4 },
+  { at: geo(13.0296, 77.5403), label: 'Taj Yeshwantpur', name: 'TAJ YESHWANTPUR', sub: 'BENGALURU', bg: '#1a1a1a', fg: '#d8b56a', floors: 11, tint: 0xece2d0, style: 'apartment' },
+  { at: geo(13.0251, 77.5482), label: 'Vaishnavi Sapphire Centre', name: 'VAISHNAVI SAPPHIRE', sub: 'MALL · YESHWANTHPUR', bg: '#0e2f6a', fg: '#ffffff', floors: 5, mall: true, tint: 0xe6e8ee },
+  { at: geo(13.0279, 77.546), label: 'Golden Grand', name: 'GOLDEN GRAND', sub: 'YESHWANTHPUR', bg: '#3a2a10', fg: '#f0c860', floors: 22, tint: 0xf0e4c8, style: 'apartment' },
   { at: geo(13.0115, 77.5555), label: 'Orion Mall', name: 'ORION MALL', sub: 'BRIGADE GATEWAY', bg: '#ffffff', fg: '#c8102e', floors: 5, mall: true, tint: 0xf0ece4 },
   { at: geo(12.9975, 77.6965), label: 'Phoenix Marketcity', name: 'PHOENIX MARKETCITY', sub: 'MAHADEVAPURA', bg: '#1a1a1a', fg: '#f0c040', floors: 5, mall: true, tint: 0xece6dc },
   { at: geo(12.989, 77.728), label: 'Nexus Shantiniketan', name: 'NEXUS SHANTINIKETAN', sub: 'WHITEFIELD', bg: '#0f2a4a', fg: '#ffffff', floors: 5, mall: true, tint: 0xe4e8ee },

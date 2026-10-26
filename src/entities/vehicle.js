@@ -173,12 +173,15 @@ export class Vehicle {
     const hcg = s.twoWheeler ? 0.6 : s.length > 7 ? 1.3 : 0.55;
     const wet = world ? world.wetness || 0 : 0;
     const mu = (s.grip / 9) * (1 - wet * 0.22) * (depth > 0.1 ? 0.75 : 1) * (s.twoWheeler ? 1.05 : 1);
+    // Cornering grip beyond a real road tyre's ~1 g (an arcade allowance, like GTA's): sideways
+    // force only, so acceleration and braking stay real. A car takes a city junction at 50 km/h.
+    const corner = s.twoWheeler || s.length > 7 ? 1.25 : 1.45, muLat = mu * corner;
     // Load transfer from last step's longitudinal acceleration.
     const dN = Math.max(-0.35, Math.min(0.35, (this.ax * hcg) / (g * L))) * m * g;
     const Nf = Math.max(0.1 * m * g, (m * g * b) / L - dN), Nr = Math.max(0.1 * m * g, (m * g * a) / L + dN);
 
     // Steering: quick, but less lock at speed (like any arcade-sim racer).
-    const lock = s.steer / (1 + Math.abs(u) * (s.twoWheeler ? 0.22 : s.length > 7 ? 0.035 : 0.05));
+    const lock = s.steer / (1 + Math.abs(u) * (s.twoWheeler ? 0.18 : s.length > 7 ? 0.03 : 0.035));
     const target = (input ? input.steer : 0) * lock;
     const rate = (Math.abs(target) < Math.abs(this.steer) ? 6 : 3.2) * s.steer;
     this.steer += Math.max(-rate * dt, Math.min(rate * dt, target - this.steer));
@@ -204,10 +207,10 @@ export class Vehicle {
     const wLong = vfx * cd + vfy * sd, wLat = -vfx * sd + vfy * cd;
     const sp = Math.hypot(u, v);
     const low = Math.min(1, sp / 3); // below walking pace, tyres just roll
-    let Ffl = -mu * Nf * curve(Math.atan2(wLat, Math.abs(wLong) + 0.5)) * low;
+    let Ffl = -muLat * Nf * curve(Math.atan2(wLat, Math.abs(wLong) + 0.5)) * low;
     // Rear axle.
     const vry = v - b * r;
-    const rearMu = mu * (hb && input ? (s.twoWheeler ? 0.85 : 0.42) : s.twoWheeler ? 1 : 1.15); // a planted rear = stable
+    const rearMu = muLat * (hb && input ? (s.twoWheeler ? 0.85 : 0.42) : s.twoWheeler ? 1 : 1.15); // a planted rear = stable
     let Frl = -rearMu * Nr * curve(Math.atan2(vry, Math.abs(u) + 0.5)) * low;
     // Brakes split 60/40 front/rear; drive goes through the front (most Indian cars are FWD).
     const sgn = Math.sign(u) || 1;
@@ -215,7 +218,7 @@ export class Vehicle {
     let Fxr = Fdrive * 0.3 - (Fbrake * 0.4 + (hb && input ? m * 5 : 0)) * sgn * Math.min(1, Math.abs(u) / 0.4);
     // Friction circle per axle: hard braking or wheelspin steals cornering grip.
     const circle = (Fx, Fy, Fmax) => { const t = Math.hypot(Fx, Fy); return t > Fmax ? Fmax / t : 1; };
-    const kf = circle(Fxf, Ffl, mu * Nf * 1.05), kr = circle(Fxr, Frl, rearMu * Nr * 1.05);
+    const kf = circle(Fxf, Ffl, muLat * Nf * 1.05), kr = circle(Fxr, Frl, rearMu * Nr * 1.05);
     Fxf *= kf; Ffl *= kf; Fxr *= kr; Frl *= kr;
     // Body-frame forces.
     const Fx = Fxf * cd - Ffl * sd + Fxr;
@@ -233,14 +236,14 @@ export class Vehicle {
     r += (Mz / I) * dt;
     if (s.twoWheeler) {
       // Bikes lean rather than slide: they follow their front wheel, up to the grip limit.
-      const rk = (u * Math.tan(d)) / L, rMax = (mu * g) / Math.max(2, Math.abs(u));
+      const rk = (u * Math.tan(d)) / L, rMax = (muLat * g) / Math.max(2, Math.abs(u));
       r = Math.max(-rMax, Math.min(rMax, rk));
       v *= Math.exp(-8 * dt);
     } else {
       // Stability assist: rein in yaw beyond what the tyres can hold, so a car slides and
       // recovers instead of spinning, unless you're deliberately on the handbrake.
       const ai = this.driver && this.driver !== 'player';
-      const rMax = (mu * g * 1.15) / Math.max(2, Math.abs(u)) + (hb && input ? 2.5 : ai ? 0.05 : 0.35);
+      const rMax = (muLat * g * 1.15) / Math.max(2, Math.abs(u)) + (hb && input ? 2.5 : ai ? 0.05 : 0.35);
       if (Math.abs(r) > rMax) r -= (Math.abs(r) - rMax) * Math.sign(r) * Math.min(1, dt * (ai ? 12 : 4));
     }
     if (low < 1) { // near standstill blend to pure rolling so cars don't drift at 2 km/h

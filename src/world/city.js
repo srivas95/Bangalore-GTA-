@@ -8,7 +8,6 @@ import { LANDMARKS, put } from './landmarks.js';
 import { buildInfrastructure } from './infrastructure.js';
 import { fillPoly, polyWalls, rectCorners, rectsOverlap } from './geom.js';
 import { pointInPoly, polyArea, insetPolygon } from './roadnet.js';
-import { HOTEL_SITES } from './mapdata.js';
 import { metroRoutes } from './metro.js';
 import { CURB_H, SHOP_SIGNS, FUEL_BRANDS } from '../config.js';
 import { DETAIL, textScale } from './detail.js';
@@ -404,7 +403,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   }
 
   function hotelFor(block) {
-    return HOTEL_SITES.find((h) => !h.used && pointInPoly(h.at[0], h.at[1], block.poly));
+    return block.hotel && !block.hotel.used ? block.hotel : null;
   }
 
   // A hotel tower (or a mall) with its name lit up on all four sides of the crown.
@@ -609,7 +608,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   }
 
   // Trees scattered inside the block, away from reserved footprints.
-  function scatterInBlock(block, n, pinkChance = 0.15, margin = 3) {
+  function scatterInBlock(block, n, pinkChance = 0.15, margin = 3, size = [0.9, 1.6]) {
     const P = block.innerPoly, i = block.inner, bb = block.bbox;
     let placed = 0;
     for (let k = 0; k < n * 4 && placed < n; k++) {
@@ -618,7 +617,7 @@ export function buildCity(scene, layout, colliders, renderer) {
       if (block.placed.some((q) => pointInPoly(x, z, q))) continue;
       if (nearRail(x, z, 9)) continue;
       void i;
-      trees.push({ x, z, s: rand(0.9, 1.6), t: rng() < pinkChance ? 1 : 0 });
+      trees.push({ x, z, s: rand(...size), t: rng() < pinkChance ? 1 : 0 });
       placed++;
     }
   }
@@ -626,6 +625,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   function buildPark(block) {
     lawn(block);
     const { cx, cz } = mid(block);
+    if (block.park?.name === 'Cubbon Park') { buildCubbon(block, cx, cz); return; }
     // Footpaths from the middle out to each side.
     const path = B.get('plaza');
     if (block.innerPoly && pointInPoly(cx, cz, block.innerPoly)) {
@@ -646,6 +646,110 @@ export function buildCity(scene, layout, colliders, renderer) {
     const [px, pz] = [block.poly[0][0], block.poly[0][1]];
     pois.parking.push({ x: px, z: pz });
     if (block.park && !block.park.labelled) { block.park.labelled = true; pois.landmarks.push({ name: block.park.name, x: cx, z: cz }); }
+  }
+
+  // Cubbon Park: winding red laterite walks under a dense canopy of old rain trees and flowering
+  // trees, bamboo groves, black heritage lamp posts and benches along the walks, and an iron railing
+  // round each section with gaps for the gates. The section's landmark stands in the middle.
+  function buildCubbon(block, cx, cz) {
+    const P = block.innerPoly;
+    if (!P || !pointInPoly(cx, cz, P)) { scatterInBlock(block, Math.min(320, Math.round(block.area / 90)), 0.2, 4, [1.2, 2.2]); return; }
+    const path = B.get('plaza'), stone = B.get('stone'), metal = B.get('metal');
+    const LATERITE = 0xa25a3e;
+    const hasHall = block.landmark && block.landmark !== 'statue';
+    const RW = hasHall ? 40 : 6, RD = hasHall ? 24 : 6; // half-size of what stands in the middle
+    const walk = (ax, az, bx, bz, w = 3.4) => {
+      const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz);
+      if (l < 0.5) return;
+      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      B.xf = makeFrame(mx, mz, Math.atan2(dx, dz));
+      path.rect(-w / 2, w / 2, -l / 2 - 0.4, l / 2 + 0.4, CURB_H + 0.03, LATERITE, (x, z) => [x / 4, -z / 4]);
+      B.xf = null;
+      block.placed.push(rectCorners(mx, mz, dz / l, -dx / l, w / 2 + 1.5, l / 2 + 0.5));
+    };
+    const lamp = (x, z) => {
+      put(metal, CHIMNEY, x, CURB_H + 1.9, z, 0x1a1a1a, 0, 0.07, 3.8, 0.07);
+      metal.box(x, CURB_H + 3.8, z, 0.42, 0.5, 0.42, 0xf4ecd0);
+      put(metal, CONE6, x, CURB_H + 4.25, z, 0x1a1a1a, 0, 0.36, 0.4, 0.36);
+      col().addCentered(x, z, 0.25, 0.25, 4, 'pole');
+    };
+    const bench = (x, z, ang) => {
+      B.xf = makeFrame(x, z, ang);
+      stone.box(0, CURB_H + 0.42, 0, 1.7, 0.08, 0.45, 0x8a6a48);
+      stone.box(0, CURB_H + 0.62, -0.2, 1.7, 0.35, 0.06, 0x8a6a48);
+      for (const lx of [-0.7, 0.7]) stone.box(lx, CURB_H, 0, 0.08, 0.42, 0.42, 0x2a2a2a);
+      B.xf = null;
+    };
+    // Walks: out from round the middle to each side, bowing gently, with lamps and benches.
+    const gates = [];
+    for (const E of edgeFrames(block)) {
+      const [ex, ez] = frameToWorld(E.f, (E.a0 + E.a1) / 2, 0);
+      const dx = ex - cx, dz = ez - cz, l = Math.hypot(dx, dz);
+      if (l < 14) continue;
+      const t0 = Math.min(1, Math.min(dx ? (RW + 2) / Math.abs(dx) : 9, dz ? (RD + 2) / Math.abs(dz) : 9));
+      if (t0 > 0.8) continue;
+      const nx = -dz / l, nz = dx / l, bow = rand(-0.12, 0.12) * l;
+      const N = Math.max(4, Math.round(l / 7));
+      let px = cx + dx * t0, pz = cz + dz * t0;
+      for (let k = 1; k <= N; k++) {
+        const t = t0 + (1 - t0) * (k / N), b = Math.sin(((t - t0) / (1 - t0)) * Math.PI) * bow;
+        const qx = cx + dx * t + nx * b, qz = cz + dz * t + nz * b;
+        walk(px, pz, qx, qz);
+        if (k % 3 === 1 && k < N) {
+          const sd = k % 6 === 1 ? 1 : -1;
+          lamp(qx + nx * 2.6 * sd, qz + nz * 2.6 * sd);
+          if (rng() < 0.6) bench(qx - nx * 2.9 * sd, qz - nz * 2.9 * sd, Math.atan2(nx * sd, nz * sd));
+        }
+        px = qx; pz = qz;
+      }
+      gates.push({ x: ex, z: ez });
+    }
+    // A walk all the way round what stands in the middle.
+    const ring = [[cx - RW - 2, cz - RD - 2], [cx + RW + 2, cz - RD - 2], [cx + RW + 2, cz + RD + 2], [cx - RW - 2, cz + RD + 2]];
+    if (ring.every(([x, z]) => pointInPoly(x, z, P))) ring.forEach(([x, z], k) => { const [x2, z2] = ring[(k + 1) % 4]; walk(x, z, x2, z2, 3); });
+    // The landmark.
+    if (block.landmark === 'statue') { LANDMARKS.statue(ctx, cx, cz); reserveRect(block, cx, cz, 10, 10); }
+    else if (block.landmark) { pois.landmarks.push(LANDMARKS[block.landmark](ctx, block)); reserveRect(block, cx, cz, RW * 2, RD * 2); }
+    // Bamboo groves: clumps of tall culms leaning out a little.
+    for (let g = 0; g < Math.min(6, Math.round(block.area / 3000)); g++) {
+      const gx = rand(block.inner.minX + 8, block.inner.maxX - 8), gz = rand(block.inner.minZ + 8, block.inner.maxZ - 8);
+      if (!pointInPoly(gx, gz, P) || block.placed.some((q) => pointInPoly(gx, gz, q))) continue;
+      for (let k = 0; k < 14; k++) {
+        const a = rand(0, Math.PI * 2), r = rand(0, 1.6), h = rand(8, 13), lean = rand(0.04, 0.16);
+        const bx = gx + Math.cos(a) * r, bz = gz + Math.sin(a) * r;
+        put(stone, CHIMNEY, bx + Math.cos(a) * h * lean * 0.5, CURB_H + h / 2, bz + Math.sin(a) * h * lean * 0.5, k % 3 ? 0x7a9a3a : 0x5f7f2f, 0, 0.07, h, 0.07, Math.sin(a) * lean, -Math.cos(a) * lean);
+        put(stone, CONE6, bx + Math.cos(a) * h * lean, CURB_H + h + 0.6, bz + Math.sin(a) * h * lean, 0x4a7a2a, 0, 0.9, 2.4, 0.9);
+      }
+      reserveRect(block, gx, gz, 5, 5);
+    }
+    // The canopy: dense, big and old, some flowering.
+    scatterInBlock(block, Math.min(320, Math.round(block.area / 90)), 0.2, 4, [1.2, 2.2]);
+    // Iron railing round the section, open where the walks come out.
+    const rail = insetPolygon(P, P.map(() => 0.6));
+    if (rail) {
+      for (let i = 0; i < rail.length; i++) {
+        const [ax, az] = rail[i], [bx, bz] = rail[(i + 1) % rail.length];
+        const L = Math.hypot(bx - ax, bz - az);
+        const n = Math.max(1, Math.round(L / 3));
+        for (let k = 0; k < n; k++) {
+          const t0 = k / n, t1 = (k + 1) / n;
+          const x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+          const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+          if (gates.some((g) => Math.hypot(g.x - mx, g.z - mz) < 4)) continue;
+          B.xf = makeFrame(mx, mz, Math.atan2(x1 - x0, z1 - z0));
+          const l = Math.hypot(x1 - x0, z1 - z0);
+          metal.box(0, CURB_H + 0.25, 0, 0.05, 0.05, l, 0x1a1a1a);
+          metal.box(0, CURB_H + 1.05, 0, 0.05, 0.05, l, 0x1a1a1a);
+          metal.box(0, CURB_H, -l / 2, 0.09, 1.25, 0.09, 0x1a1a1a);
+          if (!DETAIL.lite) for (let b = -l / 2 + 0.25; b < l / 2; b += 0.25) metal.box(0, CURB_H, b, 0.02, 1.1, 0.02, 0x1a1a1a);
+          B.xf = null;
+          col().addSegment(x0, z0, x1, z1, 0.1, 1.2, 'wall');
+        }
+      }
+    }
+    const [px, pz] = [block.poly[0][0], block.poly[0][1]];
+    pois.parking.push({ x: px, z: pz });
+    if (!block.park.labelled) { block.park.labelled = true; pois.landmarks.push({ name: block.park.name, x: cx, z: cz }); }
   }
 
   function buildLake(block) {
@@ -802,6 +906,7 @@ function distToPolyline(x, z, pts) {
 
 const BOXG = new THREE.BoxGeometry(1, 1, 1);
 const CHIMNEY = new THREE.CylinderGeometry(1, 1, 1, 12);
+const CONE6 = new THREE.ConeGeometry(1, 1, 6);
 
 // Trees are instanced per type and 320 m chunk, with a cheap canopy for distant chunks.
 function buildInstancedTrees(group, trees, colliders) {

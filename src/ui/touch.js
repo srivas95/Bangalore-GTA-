@@ -25,9 +25,9 @@ const TOP = [
   { id: 'map', label: 'MAP', code: 'KeyM' },
   { id: 'gig', label: '📱 ACCEPT', code: 'KeyJ', when: (c) => c.offer },
   { id: 'duty', label: '🛺 DUTY', code: 'KeyJ', when: (c) => c.duty },
-  { id: 'skip', label: 'SKIP ⏩', code: 'KeyT', when: (c) => c.metro || ['wait', 'ride', 'busRide'].includes(c.ride) },
+  { id: 'skip', label: 'SKIP ⏩', code: 'KeyT', when: (c) => c.metro || ['ride', 'busRide'].includes(c.ride) || c.waiting === 'wait' },
   { id: 'stop', label: 'GET OFF', code: 'KeyF', when: (c) => c.ride === 'ride' || c.ride === 'busRide' },
-  { id: 'leave', label: 'LEAVE', code: 'KeyQ', when: (c) => c.metro || ['hail', 'wait'].includes(c.ride) },
+  { id: 'leave', label: 'LEAVE', code: 'KeyQ', when: (c) => c.metro || !!c.waiting },
 ];
 
 export class TouchControls {

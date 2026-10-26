@@ -63,7 +63,10 @@ THREE.ShaderChunk.envmap_physical_pars_fragment = THREE.ShaderChunk.envmap_physi
 
 async function init() {
   // Wait for the Kannada font so the canvas-painted signs render the script.
-  try { await Promise.race([document.fonts.load('26px "Noto Sans Kannada"'), document.fonts.load('40px "Oswald"'), new Promise((r) => setTimeout(r, 2500))]); } catch { /* offline */ }
+  try {
+    await Promise.race([Promise.all(['26px "Noto Sans Kannada"', '40px "Oswald"', '800 40px "Baloo Tamma 2"', '40px "Anton"', '40px "Yellowtail"'].map((f) => document.fonts.load(f, 'ಕನ್ನಡ Aa'))),
+      new Promise((r) => setTimeout(r, 3500))]);
+  } catch { /* offline */ }
 
   // World detail is fixed at build time. If the last start never got as far as drawing the city
   // (a phone running out of memory kills the page), step down a level automatically.
@@ -210,6 +213,11 @@ async function init() {
     park(types[Math.floor(Math.random() * types.length)], p.x, p.z, p.heading);
   }
   city.pois.industrial.filter((_, k) => k % 4 === 0).slice(0, 14).forEach((p) => park(Math.random() < 0.6 ? 'lorry' : 'miniTruck', p.x, p.z, p.heading));
+  // Majestic: BMTC buses nosed into the bus station bays, and crowds waiting on its platforms.
+  for (const lm of city.pois.landmarks) {
+    (lm.busBays || []).forEach((b, k) => { if (k % 3 === 1) park('bus', b.x, b.z, b.heading); });
+    (lm.crowds || []).forEach((c) => streetLife.stalls.push({ ...c, peds: [] }));
+  }
 
   const input = new Input(renderer.domElement);
   const rig = new CameraRig(camera);
@@ -573,7 +581,7 @@ async function init() {
       if (screenT <= 0) respawn();
     } else if (metroRide.active) {
       metroRide.update(dt, input, world, missions, camera);
-    } else if (rides.active) {
+    } else if (rides.blocking) {
       rideCam = rides.update(dt, input, world);
     } else if (garages.menu) {
       garages.update(dt, input);
@@ -584,6 +592,8 @@ async function init() {
       if (player.vehicle && !free.includes(player.vehicle)) free.push(player.vehicle);
       if (player.vehicle !== wasIn) audio.radio(!!player.vehicle && radioOn);
       if (player.vehicle) audio.radio(radioOn);
+      // Waving down an auto or waiting for a bus: you can still walk about.
+      if (rides.active) rideCam = rides.update(dt, input, world);
     }
     world.focus.x = player.pos.x; world.focus.z = player.pos.z;
 
@@ -623,7 +633,8 @@ async function init() {
     story.update(dt, input);
     audio.setRain(env.rain);
 
-    if (metroRide.active || garages.menu || rides.active) hud.prompt('');
+    if (metroRide.active || garages.menu || rides.blocking) hud.prompt('');
+    else if (rides.active) hud.prompt('Q  Give up waiting');
     else if (garages.nearStall) { /* the garage set its own prompt */ }
     else if (entrance) hud.prompt(`E  Namma Metro · ${entrance.st.en}`);
     else if (shelter) hud.prompt(`E  BMTC bus stop · ${shelter.name}`);
@@ -649,7 +660,7 @@ async function init() {
     touch.update({
       driving: !!player.vehicle, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police,
       use: !!entrance || !!shelter || !!story.active || garages.nearStall || !!garages.menu, offer: !!missions.offer, metro: metroRide.active,
-      ride: rides.state, hail: onFoot && !entrance && !shelter, duty: player.vehicle?.type === 'auto' && !autoDuty.fare,
+      ride: rides.blocking ? rides.state : null, waiting: rides.active && !rides.blocking ? rides.state : null, hail: onFoot && !entrance && !shelter, duty: player.vehicle?.type === 'auto' && !autoDuty.fare,
     });
     { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
     world.rigPitch = rig.pitch;
