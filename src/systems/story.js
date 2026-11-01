@@ -3,7 +3,7 @@
 // map; walk into the marker to start. Progress and money are saved to localStorage.
 // The story is fiction: see docs/STORY.md.
 import { Marker } from './missions.js';
-import { geo } from '../world/mapdata.js';
+import { geo, SCALE } from '../world/mapdata.js';
 
 const SAVE_KEY = 'namma-bengaluru-save-v1';
 const ACT1 = 'Act I · Majestic';
@@ -137,7 +137,7 @@ const MISSIONS = [
         ['Raghu', 'What\'s in it?'],
         ['Babu', 'Mobile covers. Very fragile mobile covers. Two and a half minutes, or the customer gets angry.'],
       ]),
-      go('den', 'Get the parcel to the lodge in Chickpete.', { timer: 100, failText: 'The parcel was late. Kotte Kumar doesn\'t like late.' }),
+      go('den', 'Get the parcel to the lodge in Chickpete.', { timer: Math.round(100 * 5 / SCALE), failText: 'The parcel was late. Kotte Kumar doesn\'t like late.' }),
       talk([
         ['Kotte Kumar', 'So you\'re the delivery boy. Babu says you\'re fast.'],
         ['Kotte Kumar', 'Fast is good. Quiet is better. You know who I am?'],

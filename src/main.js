@@ -30,7 +30,7 @@ import { Settings, PRESETS } from './systems/settings.js';
 import { TouchControls } from './ui/touch.js';
 import { Garages } from './systems/garages.js';
 import { LINES, CURB_H } from './config.js';
-import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, WORLD, geo } from './world/mapdata.js';
+import { POLICE_STATIONS as PS, HOSPITALS as HS, SPAWN, WORLD, CBD, geo } from './world/mapdata.js';
 import { DETAIL, setDetail } from './world/detail.js';
 import { bakeAO, aoUniforms } from './world/ao.js';
 import { BlobShadows } from './world/blobs.js';
@@ -204,7 +204,7 @@ async function init() {
   const types = ['scooter', 'scooter', 'bike', 'sportBike', 'auto', 'hatch', 'sedan', 'taxi', 'suv', 'delivery'];
   for (const b of layout.blocks) {
     if (b.edge || b.zone === 'lake' || b.zone === 'park' || b.zone === 'industrial' || b.zone === 'landmark' || b.zone === 'rural') continue;
-    const cbd = Math.hypot(b.cx - 300, b.cz) < 650;
+    const cbd = Math.hypot(b.cx - CBD.x, b.cz - CBD.z) < CBD.r;
     if (Math.random() > (cbd ? 0.3 : 0.06)) continue;
     const k = Math.floor(Math.random() * b.poly.length);
     if (!b.edgeWidths[k]) continue;

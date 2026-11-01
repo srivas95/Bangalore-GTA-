@@ -15,7 +15,7 @@ export class Layout {
     this.rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     this.world = MD.WORLD;
     const avoid = [...MD.PARKS.map((p) => p.poly), ...MD.LAKES.map((l) => l.poly), MD.AIRPORT.poly];
-    const net = buildRoadNet({ world: this.world, arterials: MD.ARTERIALS, avoid, rng: this.rng, spacing: 150, urban: MD.URBAN, ruralSpacing: 650 });
+    const net = buildRoadNet({ world: this.world, arterials: MD.ARTERIALS, avoid, rng: this.rng, spacing: MD.STREET_SPACING, urban: MD.URBAN, ruralSpacing: MD.RURAL_SPACING });
     this.net = net;
     this.roads = net.roads.filter((r) => !r.boundary);
     this.buildGraph(net);

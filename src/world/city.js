@@ -8,6 +8,7 @@ import { LANDMARKS, put } from './landmarks.js';
 import { buildInfrastructure } from './infrastructure.js';
 import { fillPoly, polyWalls, rectCorners, rectsOverlap } from './geom.js';
 import { pointInPoly, polyArea, insetPolygon } from './roadnet.js';
+import { CBD } from './mapdata.js';
 import { metroRoutes } from './metro.js';
 import { CURB_H, SHOP_SIGNS, FUEL_BRANDS } from '../config.js';
 import { DETAIL, textScale } from './detail.js';
@@ -183,7 +184,31 @@ export function buildCity(scene, layout, colliders, renderer) {
       metroSegs.push({ pts: [[st.x - (dx / l) * 38, st.z - (dz / l) * 38], [st.x + (dx / l) * 38, st.z + (dz / l) * 38]], r: 13 });
     }
   }
-  const nearRail = (x, z, d) => railPts.some((pts) => distToPolyline(x, z, pts) < d) || metroSegs.some((m) => distToPolyline(x, z, m.pts) < m.r + d - 9);
+  // Segments of both in a coarse grid, as each lot asks (a scan of every point took seconds).
+  const RC = 64, railGrid = new Map(), railKey = (i, j) => i * 100003 + j;
+  const addSegs = (pts, pad) => {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[i + 1], seg = { ax, az, bx, bz, pad };
+      for (let gi = Math.floor(Math.min(ax, bx) / RC); gi <= Math.floor(Math.max(ax, bx) / RC); gi++) {
+        for (let gj = Math.floor(Math.min(az, bz) / RC); gj <= Math.floor(Math.max(az, bz) / RC); gj++) {
+          const k = railKey(gi, gj);
+          (railGrid.get(k) || railGrid.set(k, []).get(k)).push(seg);
+        }
+      }
+    }
+  };
+  for (const pts of railPts) addSegs(pts, 0);
+  for (const m of metroSegs) addSegs(m.pts, m.r - 9);
+  const nearRail = (x, z, d) => {
+    const reach = d + 8;
+    for (let gi = Math.floor((x - reach) / RC); gi <= Math.floor((x + reach) / RC); gi++) {
+      for (let gj = Math.floor((z - reach) / RC); gj <= Math.floor((z + reach) / RC); gj++) {
+        const list = railGrid.get(railKey(gi, gj));
+        if (list) for (const g of list) if (segDist(x, z, g) < g.pad + d) return true;
+      }
+    }
+    return false;
+  };
 
   // Park landmarks go to the largest blocks of each park.
   for (const p of new Set(layout.blocks.filter((b) => b.park).map((b) => b.park))) {
@@ -657,7 +682,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   // round each section with gaps for the gates. The section's landmark stands in the middle.
   function buildCubbon(block, cx, cz) {
     const P = block.innerPoly;
-    if (!P || !pointInPoly(cx, cz, P)) { scatterInBlock(block, Math.min(320, Math.round(block.area / 90)), 0.2, 4, [1.2, 2.2]); return; }
+    if (!P || !pointInPoly(cx, cz, P)) { scatterInBlock(block, Math.min(700, Math.round(block.area / 70)), 0.2, 4, [1.2, 2.2]); return; }
     const path = B.get('plaza'), stone = B.get('stone'), metal = B.get('metal');
     const LATERITE = 0xa25a3e;
     const hasHall = block.landmark && block.landmark !== 'statue';
@@ -727,7 +752,7 @@ export function buildCity(scene, layout, colliders, renderer) {
       reserveRect(block, gx, gz, 5, 5);
     }
     // The canopy: dense, big and old, some flowering.
-    scatterInBlock(block, Math.min(320, Math.round(block.area / 90)), 0.2, 4, [1.2, 2.2]);
+    scatterInBlock(block, Math.min(700, Math.round(block.area / 70)), 0.2, 4, [1.2, 2.2]);
     // Iron railing round the section, open where the walks come out.
     const rail = insetPolygon(P, P.map(() => 0.6));
     if (rail) {
@@ -823,7 +848,7 @@ export function buildCity(scene, layout, colliders, renderer) {
 
   function avenueTrees(block) {
     if (block.zone === 'lake' || block.zone === 'rural') return;
-    const cbd = Math.abs(block.cx - 300) < 500 && Math.abs(block.cz) < 450;
+    const cbd = Math.abs(block.cx - CBD.x) < CBD.r * 0.77 && Math.abs(block.cz - CBD.z) < CBD.r * 0.7;
     const base = block.zone === 'commercial' || block.zone === 'market' || block.zone === 'industrial' ? 30 : cbd ? 16 : 22;
     kerbRuns(block, 1.0, (k) => {
       const spacing = k.w > 14 ? base : base * 1.5; // side streets are sparser
@@ -898,16 +923,10 @@ function rectPoly(r) {
   return [[r.minX, r.minZ], [r.maxX, r.minZ], [r.maxX, r.maxZ], [r.minX, r.maxZ]];
 }
 
-function distToPolyline(x, z, pts) {
-  let best = Infinity;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
-    if (Math.min(ax, bx) - 40 > x || Math.max(ax, bx) + 40 < x || Math.min(az, bz) - 40 > z || Math.max(az, bz) + 40 < z) continue;
-    const abx = bx - ax, abz = bz - az, l2 = abx * abx + abz * abz || 1;
-    const t = Math.max(0, Math.min(1, ((x - ax) * abx + (z - az) * abz) / l2));
-    best = Math.min(best, Math.hypot(ax + abx * t - x, az + abz * t - z));
-  }
-  return best;
+function segDist(x, z, g) {
+  const abx = g.bx - g.ax, abz = g.bz - g.az, l2 = abx * abx + abz * abz || 1;
+  const t = Math.max(0, Math.min(1, ((x - g.ax) * abx + (z - g.az) * abz) / l2));
+  return Math.hypot(g.ax + abx * t - x, g.az + abz * t - z);
 }
 
 const BOXG = new THREE.BoxGeometry(1, 1, 1);

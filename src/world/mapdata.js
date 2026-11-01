@@ -1,23 +1,30 @@
-// Real Bengaluru geography, compressed 5x around Kempegowda (Majestic) bus station.
+// Real Bengaluru geography, compressed SCALE times around Kempegowda (Majestic) bus station.
 // geo(lat, lon) -> [x, z] in metres: +x east, +z south. Roads, metro stations, lakes, parks,
 // districts and landmarks below are placed from their real coordinates (approximate).
 
-export const SCALE = 5;
+export const SCALE = 3;
 const LAT0 = 12.9767, LON0 = 77.5713;
 const MX = 108600 / SCALE, MZ = 110600 / SCALE; // metres per degree
 export const geo = (lat, lon) => [(lon - LON0) * MX, (LAT0 - lat) * MZ];
 const G = (pts) => pts.map(([a, b]) => geo(a, b));
 
-export const WORLD = { minX: -2000, maxX: 4300, minZ: -5150, maxZ: 2640 };
+// Distances in metres as they'd be at 1:5 (the scale the map was first drawn at), for sizes below.
+const S5 = 5 / SCALE;
+const llRect = (latN, lonW, latS, lonE) => { const [x0, z0] = geo(latN, lonW), [x1, z1] = geo(latS, lonE); return { minX: x0, maxX: x1, minZ: z0, maxZ: z1 }; };
+export const WORLD = llRect(13.2095, 77.4792, 12.8574, 77.7693);
+// The central business district (MG Road to Majestic): denser parking, taller frontages.
+export const CBD = { x: geo(12.9767, 77.5851)[0], z: 0, r: 650 * S5 };
+// Local street grid spacing in the city and out in the countryside (game metres).
+export const STREET_SPACING = 200, RURAL_SPACING = 650;
 
 // Built-up areas get the dense street grid; the rest is countryside with village roads.
 const rectPoly = (x0, z0, x1, z1) => [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
 export const URBAN = [
-  rectPoly(-2000, -1720, 2000, 2640), // the city proper
-  rectPoly(2000, -800, 4300, 1000), // KR Puram, Mahadevapura, Marathahalli, Whitefield
-  rectPoly(-20, -3260, 1080, -2230), // Yelahanka
-  rectPoly(-20, -2230, 1200, -1720), // Kodigehalli, Jakkur, Sahakara Nagar
-];
+  [13.0545, 77.4792, 12.8574, 77.6634], // the city proper
+  [13.0129, 77.6634, 12.9315, 77.7693], // KR Puram, Mahadevapura, Marathahalli, Whitefield
+  [13.1241, 77.5704, 13.0775, 77.621], // Yelahanka
+  [13.0775, 77.5704, 13.0545, 77.6265], // Kodigehalli, Jakkur, Sahakara Nagar
+].map(([n, w, so, e]) => { const r = llRect(n, w, so, e); return rectPoly(r.minX, r.minZ, r.maxX, r.maxZ); });
 
 // Arterials. lanes: per direction. median: width (m). metro: carries a viaduct.
 export const ARTERIALS = [
@@ -143,10 +150,10 @@ export const RAIL_STATIONS = [
 ];
 
 // Open spaces: polygons (game coords) the street grid stays out of.
-const box = (lat, lon, w, h) => { const [x, z] = geo(lat, lon); return [[x - w / 2, z - h / 2], [x + w / 2, z - h / 2], [x + w / 2, z + h / 2], [x - w / 2, z + h / 2]]; };
+const box = (lat, lon, w, h) => { const [x, z] = geo(lat, lon); w *= S5; h *= S5; return [[x - w / 2, z - h / 2], [x + w / 2, z - h / 2], [x + w / 2, z + h / 2], [x - w / 2, z + h / 2]]; };
 export const PARKS = [
-  { name: 'Cubbon Park', poly: [[372, -50], [590, -50], [626, 80], [560, 150], [380, 150]], landmarks: ['library', 'museum', 'bandstand', 'balBhavan', 'statue'] },
-  { name: 'Lalbagh Botanical Garden', poly: [[205, 470], [400, 470], [430, 640], [330, 700], [205, 680]], landmarks: ['glassHouse'] },
+  { name: 'Cubbon Park', poly: G([[12.979, 77.5884], [12.979, 77.5985], [12.9731, 77.6001], [12.9699, 77.5971], [12.9699, 77.5888]]), landmarks: ['library', 'museum', 'bandstand', 'balBhavan', 'statue'] },
+  { name: 'Lalbagh Botanical Garden', poly: G([[12.9555, 77.5807], [12.9555, 77.5897], [12.9478, 77.5911], [12.9451, 77.5865], [12.946, 77.5807]]), landmarks: ['glassHouse'] },
   { name: 'Bangalore Palace Grounds', poly: box(12.9985, 77.5925, 240, 180) },
   { name: 'Bangalore University', poly: box(12.946, 77.505, 300, 200) },
 ];
@@ -254,8 +261,8 @@ export const ROAD_UNDERPASSES = [
 ];
 // Flyovers carry the inner lanes of `road` over the junction near `at`.
 export const FLYOVER_SITES = [
-  { name: 'Silk Board Flyover', road: 'Hosur Road', at: geo(12.9177, 77.6238), half: 120, height: 6.5 },
-  { name: 'Hebbal Flyover', road: 'Bellary Road', at: geo(13.0358, 77.597), half: 110, height: 6.5 },
+  { name: 'Silk Board Flyover', road: 'Hosur Road', at: geo(12.9177, 77.6238), half: 120 * Math.min(1.6, S5), height: 6.5 },
+  { name: 'Hebbal Flyover', road: 'Bellary Road', at: geo(13.0358, 77.597), half: 110 * Math.min(1.6, S5), height: 6.5 },
 ];
 
 export const SPAWN = geo(12.9772, 77.5728); // Majestic bus stand

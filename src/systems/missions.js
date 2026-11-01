@@ -1,5 +1,6 @@
 // Gig-economy jobs: food deliveries on anything (auto fares are in autoDuty.js).
 import * as THREE from 'three';
+import { SCALE } from '../world/mapdata.js';
 
 // Cash in your pocket at the start of a new game.
 export const START_MONEY = 1000;
@@ -66,7 +67,7 @@ export class Missions {
     const to = near(this.pois.homes, 150, 700);
     const dish = DISHES[Math.floor(Math.random() * DISHES.length)];
     const dist = Math.hypot(to.x - from.x, to.z - from.z);
-    this.offer = { type: 'delivery', from, to, dish, pay: Math.round(40 + dist * 0.25), title: 'New order', text: `${dish} from ${from.name} → ${to.name}`, dist };
+    this.offer = { type: 'delivery', from, to, dish, pay: Math.round(40 + dist * 0.05 * SCALE), title: 'New order', text: `${dish} from ${from.name} → ${to.name}`, dist };
     this.offerTimer = 15;
     this.audio.ping();
     this.hud.phone(`<b>📱 ${this.offer.title} · ₹${this.offer.pay}</b><br>${this.offer.text}<br><span class="key">J</span> accept`);
