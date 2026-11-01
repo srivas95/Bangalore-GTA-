@@ -9,6 +9,55 @@ let nextId = 1;
 export const damageFromSpeed = (s) => (s > 3 ? Math.pow(s - 3, 1.5) * 1.15 : 0);
 const TOUGHNESS = { bus: 0.3, schoolBus: 0.35, lorry: 0.3, tanker: 0.3, tempo: 0.6, miniTruck: 0.7, suv: 0.8, hoysala: 0.8 };
 
+// Handling, modelled on the ideas behind GTA San Andreas' handling setup (turn mass, drag,
+// traction, traction loss and bias, drive type, brake bias, steering lock). The values are our
+// own, tuned for Indian vehicles; mass, top speed, acceleration and braking come from the spec.
+//   traction  peak tyre grip in g (arcade: real road tyres manage about 1 g)
+//   loss      grip while sliding, as a fraction of peak; a slide only ends once the tyre's slip
+//             drops back under the peak (hysteresis), so slides hold and can be caught
+//   bias      front share of grip: below 0.5 safe understeer, above it a pointy nose
+//   drive     'F' | 'R' | '4': which tyres the engine uses up grip on (RWD: power oversteer)
+//   turnMass  yaw inertia multiplier: heavy things are slow to rotate and steady in a slide
+//   lock      steering lock (degrees) at low speed; fall: how quickly it narrows with speed
+//   cg        centre-of-gravity height (m): load transfer under brakes and power
+//   hb        rear grip left with the handbrake pulled
+//   alpha     slip angle (rad) of peak grip: smaller = sharper response
+const HANDLING = {
+  hatch: { traction: 1.72, loss: 0.8, bias: 0.465, drive: 'F', turnMass: 0.9, brakeBias: 0.62 },
+  sedan: { traction: 1.72, loss: 0.8, bias: 0.46, drive: 'F', brakeBias: 0.6 },
+  taxi: { traction: 1.68, loss: 0.8, bias: 0.46, drive: 'F', brakeBias: 0.6 },
+  hoysala: { traction: 1.8, loss: 0.82, bias: 0.46, drive: 'F', turnMass: 0.95, brakeBias: 0.6 },
+  // Scorpio / Bolero-style: rear drive, softer and taller, will hang the tail out on the throttle.
+  suv: { traction: 1.58, loss: 0.76, bias: 0.47, drive: 'R', turnMass: 1.15, cg: 0.75, brakeBias: 0.58 },
+  auto: { traction: 1.2, loss: 0.8, bias: 0.44, drive: 'R', turnMass: 0.85, cg: 0.75, hb: 0.5, fall: 0.03 },
+  goodsAuto: { traction: 1.15, loss: 0.8, bias: 0.44, drive: 'R', turnMass: 0.95, cg: 0.85, hb: 0.5, fall: 0.03 },
+  tempo: { traction: 1.25, loss: 0.76, bias: 0.45, drive: 'R', turnMass: 1.3, drag: 1.4, cg: 1.0, fall: 0.02 },
+  miniTruck: { traction: 1.28, loss: 0.78, bias: 0.45, drive: 'R', turnMass: 1.15, drag: 1.3, cg: 0.9, fall: 0.025 },
+  lorry: { traction: 1.02, loss: 0.72, bias: 0.45, drive: 'R', turnMass: 1.6, drag: 1.8, cg: 1.4 },
+  tanker: { traction: 1.0, loss: 0.72, bias: 0.45, drive: 'R', turnMass: 1.7, drag: 1.8, cg: 1.5 },
+  bus: { traction: 1.08, loss: 0.75, bias: 0.45, drive: 'R', turnMass: 1.5, drag: 1.6, cg: 1.3 },
+  schoolBus: { traction: 1.08, loss: 0.75, bias: 0.45, drive: 'R', turnMass: 1.45, drag: 1.6, cg: 1.25 },
+  scooter: { traction: 1.4 }, delivery: { traction: 1.4 }, bike: { traction: 1.45 }, sportBike: { traction: 1.55, fall: 0.15 },
+};
+
+// Handling for a vehicle type: the table above, else sensible defaults from the spec (so new
+// types just work); a spec may also carry its own `handling` overrides.
+export function handlingFor(type, s) {
+  const two = !!s.twoWheeler, heavy = !two && s.length > 7;
+  const van = !two && !heavy && (s.length > 5 || s.mass > 2200);
+  const three = !two && s.width < 1.5 && s.length < 3.3, big = !two && s.mass > 1500;
+  const base = two ? { traction: 1.4 * (s.grip || 10) / 10, loss: 0.85, bias: 0.5, drive: 'R', brakeBias: 0.65, fall: 0.18, cg: 0.6, hb: 0.85, alpha: 0.1 }
+    : heavy ? { traction: 1.05 * (s.grip || 7) / 7, loss: 0.74, drive: 'R', turnMass: 1.5, drag: 1.7, brakeBias: 0.55, fall: 0.015, cg: 1.3, hb: 0.6, alpha: 0.1 }
+    : van ? { traction: 1.3 * (s.grip || 8) / 8, loss: 0.76, drive: 'R', turnMass: 1.25, drag: 1.3, fall: 0.02, cg: 1.0, hb: 0.5 }
+    : three ? { traction: 1.2 * (s.grip || 8) / 8, loss: 0.8, bias: 0.44, drive: 'R', turnMass: 0.9, cg: 0.75, hb: 0.5, fall: 0.03 }
+    : big ? { traction: 1.58 * (s.grip || 8.5) / 8.5, loss: 0.76, bias: 0.47, drive: 'R', turnMass: 1.15, cg: 0.75 }
+    : { traction: 1.72 * (s.grip || 9) / 9, loss: 0.8, drive: 'F' };
+  const h = { bias: 0.45, drag: 1, turnMass: 1, brakeBias: 0.6, fall: 0.022, cg: 0.55, hb: 0.45, alpha: 0.085, lock: (s.steer || 0.55) * 180 / Math.PI, ...base, ...HANDLING[type], ...s.handling };
+  h.lockRad = (h.lock * Math.PI) / 180;
+  h.frontDrive = h.drive === 'F' ? 1 : h.drive === 'R' ? 0 : 0.45;
+  return h;
+}
+
 // Police light-bar lamps flash in sync across all Hoysalas.
 export const policeLampMats = {
   red: new THREE.MeshBasicMaterial({ color: 0xff2020, toneMapped: false }),
@@ -46,7 +95,9 @@ export class Vehicle {
     this.driver = null; // 'player' | 'ai' | 'police' | null
     this.radius = this.spec.width / 2;
     this.mass = this.spec.mass;
-    this.inertia = (this.mass * (this.spec.length ** 2 + this.spec.width ** 2)) / 12;
+    this.handling = handlingFor(type, this.spec);
+    this.inertia = (this.mass * (this.spec.length ** 2 + this.spec.width ** 2)) / 12 * this.handling.turnMass;
+    this.slideF = 0; this.slideR = 0; // 0 gripping .. 1 sliding, per axle
     this.rider = null;
     this.hornPitch = 0.93 + rng() * 0.14;
     this.stalled = false;
@@ -135,10 +186,12 @@ export class Vehicle {
     return out;
   }
 
-  // Physics: a planar rigid body on four tyres (a "bicycle model" with front and rear axles).
-  // Tyres make lateral force from their slip angle up to a friction limit that depends on the
-  // load on that axle, so braking shifts grip to the nose, throttle to the tail, and the
-  // handbrake lets the rear step out. input: {throttle -1..1, steer -1..1 (left +), handbrake}.
+  // Physics: a planar rigid body on two axles (a "bicycle model"). Each axle's tyres make
+  // sideways force from their slip angle up to a grip limit set by traction, bias and the load
+  // on that axle; engine and brake forces use up the same grip (friction circle). Push a tyre
+  // past its limit and it slides at traction-loss grip until its slip comes back down, so
+  // braking shifts grip to the nose, throttle on a rear-driven car to the tail, and the
+  // handbrake lets the rear go. input: {throttle -1..1, steer -1..1 (left +), handbrake}.
   update(dt, input, world) {
     const n = Math.max(1, Math.ceil(dt / (1 / 120)));
     let impact = 0;
@@ -150,14 +203,14 @@ export class Vehicle {
   }
 
   step(dt, input, world) {
-    const s = this.spec;
+    const s = this.spec, h = this.handling, two = s.twoWheeler;
     const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
     const lx = fz, lz = -fx;
     let u = this.vx * fx + this.vz * fz; // forward speed
     let v = this.vx * lx + this.vz * lz; // sideways speed (left +)
     let r = this.angVel; // yaw rate (left +)
     let thr = input ? input.throttle : 0;
-    const hb = input ? input.handbrake : true;
+    const hb = !!(input && input.handbrake);
     const dead = this.engineDead;
 
     // Flood water: drag, and (for the player) a drowned engine if it's too deep.
@@ -170,62 +223,98 @@ export class Vehicle {
 
     const m = this.mass, L = s.wheelbase, a = L * 0.47, b = L - a, g = 9.81;
     const I = this.inertia;
-    const hcg = s.twoWheeler ? 0.6 : s.length > 7 ? 1.3 : 0.55;
     const wet = world ? world.wetness || 0 : 0;
-    const mu = (s.grip / 9) * (1 - wet * 0.22) * (depth > 0.1 ? 0.75 : 1) * (s.twoWheeler ? 1.05 : 1);
-    // Cornering grip beyond a real road tyre's ~1 g (an arcade allowance, like GTA's): sideways
-    // force only, so acceleration and braking stay real. A car takes a city junction at 50 km/h.
-    const corner = s.twoWheeler || s.length > 7 ? 1.25 : 1.45, muLat = mu * corner;
+    const mu = h.traction * (1 - wet * 0.2) * (depth > 0.1 ? 0.75 : 1);
+    const muF = mu * 2 * h.bias, muR = mu * 2 * (1 - h.bias);
     // Load transfer from last step's longitudinal acceleration.
-    const dN = Math.max(-0.35, Math.min(0.35, (this.ax * hcg) / (g * L))) * m * g;
+    const dN = Math.max(-0.35, Math.min(0.35, (this.ax * h.cg) / (g * L))) * m * g;
     const Nf = Math.max(0.1 * m * g, (m * g * b) / L - dN), Nr = Math.max(0.1 * m * g, (m * g * a) / L + dN);
+    const sp = Math.hypot(u, v);
+    const low = Math.min(1, sp / 3); // below walking pace, tyres just roll
 
-    // Steering: quick, but less lock at speed (like any arcade-sim racer).
-    const lock = s.steer / (1 + Math.abs(u) * (s.twoWheeler ? 0.18 : s.length > 7 ? 0.03 : 0.035));
-    const target = (input ? input.steer : 0) * lock;
-    const rate = (Math.abs(target) < Math.abs(this.steer) ? 6 : 3.2) * s.steer;
+    // Steering: full lock at low speed, narrowing gently as speed builds.
+    const lock = h.lockRad / (1 + Math.max(0, Math.abs(u) - 4) * h.fall);
+    let target = (input ? input.steer : 0) * lock;
+    if (!two && u > 4) {
+      // Steering assist: the front tyres turn no further than just short of their grip peak,
+      // measured from the way the front axle is actually travelling. Full lock at speed then
+      // corners at the limit instead of ploughing on, and countersteer is never held back.
+      const travel = Math.atan2(v + a * r, u), cap = h.alpha * 1.1, w = Math.min(1, (u - 4) / 4);
+      let t = target;
+      if (t > 0) t = Math.min(t, Math.max(0, travel + cap));
+      else if (t < 0) t = Math.max(t, Math.min(0, travel - cap));
+      target += (t - target) * w;
+    }
+    const rate = (Math.abs(target) < Math.abs(this.steer) ? 7 : 4.5) * h.lockRad;
     this.steer += Math.max(-rate * dt, Math.min(rate * dt, target - this.steer));
     const d = this.steer;
 
-    // Longitudinal: engine, brakes, reverse.
+    // Engine, brakes, reverse. The engine pulls hard low down and fades to nothing at top speed
+    // (it also covers rolling and air resistance, so top speed is the spec's).
+    const resist = 0.012 * m * u + 0.0004 * h.drag * m * u * Math.abs(u);
     let Fdrive = 0, Fbrake = 0;
     if (thr > 0) {
       if (u < -0.5) Fbrake = m * s.brake * thr;
-      else Fdrive = m * s.accel * thr * Math.pow(Math.max(0, 1 - Math.max(0, u) / s.maxSpeed), 0.6) * (1 + 0.3 * Math.max(0, 1 - Math.abs(u) / 6));
+      else {
+        const x = Math.max(0, u) / s.maxSpeed;
+        Fdrive = thr * (x < 1 ? m * s.accel * (1 - x ** 1.6) * (1 + 0.25 * Math.max(0, 1 - u / 6)) + Math.max(0, resist) : 0);
+      }
     } else if (thr < 0) {
       if (u > 0.5) Fbrake = m * s.brake * -thr;
       else Fdrive = u > -s.reverse ? m * s.accel * 0.6 * thr : 0;
     }
     if (!input) Fbrake += m * 7; // nobody at the wheel: parked, in gear
     if (this.stalled || dead) Fdrive = 0;
+    const sgn = Math.sign(u) || 1, stop = Math.min(1, Math.abs(u) / 0.4);
+    const peakF = muF * Nf, peakR = muR * Nr, LONG = 1.2; // tyres grip a little harder end-on
+    // The engine alone never spins the wheels (a launch is all go, no smoke); add cornering
+    // force on top, though, and a rear-driven car's tail steps out.
+    const dF = Fdrive * h.frontDrive, dR = Fdrive * (1 - h.frontDrive);
+    let Fxf = Math.sign(dF) * Math.min(Math.abs(dF), peakF * LONG) - Fbrake * h.brakeBias * sgn * stop;
+    let Fxr = Math.sign(dR) * Math.min(Math.abs(dR), peakR * LONG) - Fbrake * (1 - h.brakeBias) * sgn * stop;
 
-    // Tyres. Slip angle in each axle's own frame; a softened Pacejka-style curve.
-    const curve = (al) => Math.sin(1.25 * Math.atan(18 * al)); // peaks near 10 degrees of slip
+    // Tyres: grip rises with slip angle to its peak at alpha, then holds.
+    const curve = (al) => { const x = Math.min(1, Math.abs(al) / h.alpha); return Math.sign(al) * x * (1.5 - 0.5 * x * x); };
+    // Sliding: past the peak (slip, or engine/brake force beyond the grip) a tyre lets go and
+    // slides at traction-loss grip; it bites again once its slip falls back under the peak.
+    const slide = (cur, demand) => {
+      const goal = demand > 1.25 ? 1 : demand < 0.9 ? 0 : cur;
+      return cur + (goal - cur) * Math.min(1, dt * (goal > cur ? 12 : 5));
+    };
     // Front axle.
     const vfx = u, vfy = v + a * r;
     const cd = Math.cos(d), sd = Math.sin(d);
     const wLong = vfx * cd + vfy * sd, wLat = -vfx * sd + vfy * cd;
-    const sp = Math.hypot(u, v);
-    const low = Math.min(1, sp / 3); // below walking pace, tyres just roll
-    let Ffl = -muLat * Nf * curve(Math.atan2(wLat, Math.abs(wLong) + 0.5)) * low;
+    const aF = Math.atan2(wLat, Math.abs(wLong) + 0.5);
+    this.slideF = slide(this.slideF, Math.hypot(Fxf / (peakF * LONG), (Math.abs(aF) / h.alpha) * low));
+    const capF = peakF * (1 - this.slideF * (1 - h.loss));
+    let Ffl = -capF * curve(aF) * low;
     // Rear axle.
     const vry = v - b * r;
-    const rearMu = muLat * (hb && input ? (s.twoWheeler ? 0.85 : 0.42) : s.twoWheeler ? 1 : 1.15); // a planted rear = stable
-    let Frl = -rearMu * Nr * curve(Math.atan2(vry, Math.abs(u) + 0.5)) * low;
-    // Brakes split 60/40 front/rear; drive goes through the front (most Indian cars are FWD).
-    const sgn = Math.sign(u) || 1;
-    let Fxf = Fdrive * 0.7 - Fbrake * 0.6 * sgn * Math.min(1, Math.abs(u) / 0.4);
-    let Fxr = Fdrive * 0.3 - (Fbrake * 0.4 + (hb && input ? m * 5 : 0)) * sgn * Math.min(1, Math.abs(u) / 0.4);
+    const aR = Math.atan2(vry, Math.abs(u) + 0.5);
+    let Frl, capR;
+    if (hb && !two) {
+      // Handbrake: the rear wheels lock and skid, the force straight against their motion.
+      this.slideR += (1 - this.slideR) * Math.min(1, dt * 12);
+      capR = peakR * h.hb;
+      const vm = Math.hypot(u, vry) + 0.3;
+      Fxr = -capR * (u / vm); Frl = -capR * (vry / vm);
+    } else {
+      if (hb) Fxr -= m * 5 * sgn * stop; // two-wheelers: rear brake
+      this.slideR = slide(this.slideR, Math.hypot(Fxr / (peakR * LONG), (Math.abs(aR) / h.alpha) * low));
+      capR = peakR * (1 - this.slideR * (1 - h.loss)) * (hb ? 0.85 : 1);
+      Frl = -capR * curve(aR) * low;
+    }
     // Friction circle per axle: hard braking or wheelspin steals cornering grip.
-    const circle = (Fx, Fy, Fmax) => { const t = Math.hypot(Fx, Fy); return t > Fmax ? Fmax / t : 1; };
-    const kf = circle(Fxf, Ffl, muLat * Nf * 1.05), kr = circle(Fxr, Frl, rearMu * Nr * 1.05);
+    const circle = (Fx, Fy, Fmax) => { const t = Math.hypot(Fx / LONG, Fy); return t > Fmax ? Fmax / t : 1; };
+    const kf = circle(Fxf, Ffl, capF), kr = circle(Fxr, Frl, capR * 1.001);
     Fxf *= kf; Ffl *= kf; Fxr *= kr; Frl *= kr;
     // Body-frame forces.
     const Fx = Fxf * cd - Ffl * sd + Fxr;
     const Fy = Fxf * sd + Ffl * cd + Frl;
     const Mz = a * (Fxf * sd + Ffl * cd) - b * Frl;
     // Resistance: rolling, aero, and wading through water.
-    const drag = 0.012 * m * u + 0.0004 * m * u * Math.abs(u) + (depth > 0.04 ? m * Math.min(6, depth * 3.5) * u * 0.25 : 0);
+    const drag = resist + (depth > 0.04 ? m * Math.min(6, depth * 3.5) * u * 0.25 : 0);
 
     // Velocity is re-projected onto the (rotating) body axes every step, so the frame's
     // rotation is already accounted for: no Coriolis terms here.
@@ -234,17 +323,20 @@ export class Vehicle {
     u += ax * dt;
     v += ay * dt;
     r += (Mz / I) * dt;
-    if (s.twoWheeler) {
+    if (two) {
       // Bikes lean rather than slide: they follow their front wheel, up to the grip limit.
-      const rk = (u * Math.tan(d)) / L, rMax = (muLat * g) / Math.max(2, Math.abs(u));
+      const rk = (u * Math.tan(d)) / L, rMax = (mu * g) / Math.max(2, Math.abs(u));
       r = Math.max(-rMax, Math.min(rMax, rk));
       v *= Math.exp(-8 * dt);
     } else {
-      // Stability assist: rein in yaw beyond what the tyres can hold, so a car slides and
-      // recovers instead of spinning, unless you're deliberately on the handbrake.
+      // Stability assist: rein in yaw well beyond what the tyres can hold, and once the tail is
+      // hanging out past a drift angle, stop it swinging further. A slide stays a slide, not a
+      // spin, unless you're deliberately on the handbrake. AI drivers get a firmer hand.
       const ai = this.driver && this.driver !== 'player';
-      const rMax = (muLat * g * 1.15) / Math.max(2, Math.abs(u)) + (hb && input ? 2.5 : ai ? 0.05 : 0.35);
-      if (Math.abs(r) > rMax) r -= (Math.abs(r) - rMax) * Math.sign(r) * Math.min(1, dt * (ai ? 12 : 4));
+      const rMax = (mu * g * 1.1) / Math.max(2, sp) + (hb ? 2.5 : ai ? 0.08 : 0.5);
+      if (Math.abs(r) > rMax) r -= (Math.abs(r) - rMax) * Math.sign(r) * Math.min(1, dt * (ai ? 12 : 3));
+      const over = Math.abs(aR) - (ai ? 0.15 : 0.45);
+      if (!hb && over > 0 && aR * r < 0 && sp > 3) r -= Math.sign(r) * Math.min(Math.abs(r), over * (ai ? 30 : 12) * dt);
     }
     if (low < 1) { // near standstill blend to pure rolling so cars don't drift at 2 km/h
       const rk = (u * Math.tan(d)) / L;
@@ -254,7 +346,8 @@ export class Vehicle {
     // Coast to a stop rather than creeping forever.
     if (!thr && Math.abs(u) < 0.25 && sp < 0.3) { u = 0; v = 0; r *= 0.5; }
     this.ax = ax; this.ay = ay;
-    this.slip = Math.abs(Math.atan2(vry, Math.abs(u) + 0.5));
+    // Tyre noise and smoke: rear slip angle, or either axle letting go.
+    this.slip = two ? Math.abs(aR) : Math.max(Math.abs(aR) * low, (0.2 * this.slideF + 0.2 * this.slideR) * Math.min(1, sp / 6));
     this.vx = fx * u + lx * v;
     this.vz = fz * u + lz * v;
     this.angVel = r;

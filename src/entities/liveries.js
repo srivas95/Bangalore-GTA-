@@ -1,18 +1,21 @@
 // Painted liveries for vehicles, drawn into ONE canvas atlas so every decal on every vehicle
 // shares a single material: the Hoysala's blue swoosh and 112 branding, the five BMTC bus
-// liveries (Ordinary, Vajra, Vayu Vajra, electric, Metro Feeder) and LED destination boards.
+// liveries (Ordinary, Vajra, Vayu Vajra, electric, Metro Feeder), the three KSRTC coach liveries,
+// the 108 ambulance and BBMP panels, and LED destination boards.
 import * as THREE from 'three';
 
-const S = 2048;
+const S = 2048, SH = 2560; // atlas width and height
 const rects = {};
-const rect = (name, x, y, w, h) => { rects[name] = { x, y, w, h, uv: [x / S, 1 - (y + h) / S, (x + w) / S, 1 - y / S] }; };
+const rect = (name, x, y, w, h) => { rects[name] = { x, y, w, h, uv: [x / S, 1 - (y + h) / SH, (x + w) / S, 1 - y / SH] }; };
 
 // Small text cells (512 x 128).
-const CELLS = ['hoysalaText', 'police', 'hornOk', 'school', 'spare', 'pinkText', 'water', 'cab'];
+const CELLS = ['hoysalaText', 'police', 'hornOk', 'school', 'amb', 'pinkText', 'water', 'cab'];
 CELLS.forEach((n, k) => rect(n, (k % 4) * 512, Math.floor(k / 4) * 128, 512, 128));
 rect('hoysalaR', 0, 256, 1024, 192); rect('hoysalaL', 1024, 256, 1024, 192);
 rect('pinkR', 0, 448, 1024, 192); rect('pinkL', 1024, 448, 1024, 192);
 rect('bonnet', 0, 640, 512, 256);
+rect('bbmp', 0, 896, 512, 128);
+rect('ambFront', 0, 1984, 512, 64);
 
 export const BUS_LIVERIES = {
   ordinary: { body: 0x1d7fd4, frontLow: 0x1d7fd4, roof: 0x1d7fd4, ac: 0xe8e8e8, routes: [['226N', 'HAL MARKET'], ['258C', 'PEENYA 2ND STAGE'], ['171', 'KORAMANGALA']] },
@@ -29,6 +32,24 @@ for (const k of LIVERY_KEYS) {
     const name = `board${boardIdx}`;
     rect(name, 512 + (boardIdx % 3) * 512, 640 + Math.floor(boardIdx / 3) * 96, 512, 96);
     boardIdx++;
+    return { name, route: r };
+  });
+}
+
+// KSRTC coaches. body: upper body and roof; the lower sides are painted (drawKsrtc).
+export const KSRTC_LIVERIES = {
+  sarige: { body: 0xe4e2dc, stripe: 0xc8102e, front: 0xc8102e, ac: 0xe4e2dc, routes: [['KSRTC', 'MYSURU'], ['KSRTC', 'TUMAKURU']] },
+  airavat: { body: 0xf2f3f4, stripe: 0x2a4a8a, front: 0xf2f3f4, ac: 0xd8dadc, routes: [['AIRAVAT', 'MANGALURU'], ['AIRAVAT', 'HUBBALLI']] },
+  rajahamsa: { body: 0xf1ead8, stripe: 0x7a1830, front: 0x7a1830, ac: 0xf1ead8, routes: [['KSRTC', 'MADIKERI'], ['KSRTC', 'SHIVAMOGGA']] },
+};
+const KSRTC_KEYS = Object.keys(KSRTC_LIVERIES);
+KSRTC_KEYS.forEach((k, j) => { rect(`ksrtc_${k}_R`, 0, 2048 + j * 128, 1024, 128); rect(`ksrtc_${k}_L`, 1024, 2048 + j * 128, 1024, 128); });
+let kBoard = 0;
+for (const k of KSRTC_KEYS) {
+  KSRTC_LIVERIES[k].boards = KSRTC_LIVERIES[k].routes.map((r) => {
+    const name = `kboard${kBoard}`;
+    rect(name, (kBoard % 4) * 512, 2432 + Math.floor(kBoard / 4) * 64, 512, 64);
+    kBoard++;
     return { name, route: r };
   });
 }
@@ -138,7 +159,7 @@ function drawBonnet(ctx, r) {
 function drawBoard(ctx, r, [num, dest]) {
   ctx.fillStyle = '#0b0b0b'; ctx.fillRect(r.x, r.y, r.w, r.h);
   ctx.fillStyle = '#ffae2a'; ctx.textBaseline = 'middle';
-  ctx.font = `bold 58px ${FONT}`; ctx.textAlign = 'left';
+  ctx.font = `bold ${Math.round(58 * Math.min(1, r.h / 96))}px ${FONT}`; ctx.textAlign = 'left';
   ctx.fillText(num, r.x + 16, r.y + r.h / 2 + 3, 150);
   const nw = Math.min(150, ctx.measureText(num).width);
   ctx.textAlign = 'center';
@@ -243,11 +264,85 @@ function drawBus(ctx, r, key, frontRight, kerb) {
   ctx.restore();
 }
 
+// KSRTC coach lower side, sill to window line (11.8 m x 1.2 m): bands, the name, luggage-bay
+// doors, the kerb-side entrance and wheel arches cut out.
+function drawKsrtc(ctx, r, key, frontRight, kerb) {
+  const P = frame(ctx, r, frontRight);
+  const L = 11.8, pxm = r.w / L, pym = r.h / 1.2;
+  const U = (z) => (z + L / 2) / L;
+  const fillRect = (u0, v0, u1, v1, c) => {
+    const [x0, y0] = P(u0, v0), [x1, y1] = P(u1, v1);
+    ctx.fillStyle = c; ctx.fillRect(Math.min(x0, x1), y0, Math.abs(x1 - x0), y1 - y0);
+  };
+  ctx.save();
+  ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+  if (key === 'sarige') {
+    // Karnataka Sarige: the red lower body with a cream pinstripe.
+    fillRect(0, 0, 1, 1, '#c8102e');
+    fillRect(0, 0.1, 1, 0.14, '#f2d16a');
+    fillRect(0, 0.92, 1, 1, '#6a0a18');
+    const [x, y] = P(0.55, 0.5);
+    text(ctx, 'ಕರ್ನಾಟಕ ಸಾರಿಗೆ', x, y - 8, `bold 46px ${KN}`, '#ffffff', 420);
+    text(ctx, 'KSRTC', x, y + 34, `bold 26px ${FONT}`, '#ffffff', 200);
+  } else if (key === 'airavat') {
+    // Airavat: white, with a blue sweep rising from the front wheel towards the rear.
+    fillRect(0, 0, 1, 1, '#f2f3f4');
+    ctx.fillStyle = '#2a4a8a';
+    path(ctx, P, [['M', [1, 0.95]], ['C', [0.6, 0.95], [0.3, 0.6], [0, 0.15]], ['L', [0, 0.45]], ['C', [0.3, 0.85], [0.6, 1.0], [1, 1.0]]]);
+    ctx.fill();
+    ctx.fillStyle = '#8aa6d6';
+    path(ctx, P, [['M', [1, 0.86]], ['C', [0.6, 0.86], [0.3, 0.45], [0, 0.0]], ['L', [0, 0.1]], ['C', [0.3, 0.55], [0.6, 0.9], [1, 0.9]]]);
+    ctx.fill();
+    const [x, y] = P(0.6, 0.38);
+    text(ctx, 'AIRAVAT', x, y, `italic bold 52px ${FONT}`, '#2a4a8a', 360);
+    const [kx, ky] = P(0.6, 0.66);
+    text(ctx, 'ಐರಾವತ  ·  KSRTC', kx, ky, `bold 26px ${KN}`, '#2a4a8a', 360);
+  } else {
+    // Rajahamsa: cream, a maroon band edged in gold.
+    fillRect(0, 0, 1, 1, '#f1ead8');
+    fillRect(0, 0.12, 1, 0.42, '#7a1830');
+    fillRect(0, 0.44, 1, 0.48, '#d0a030');
+    fillRect(0, 0.9, 1, 1, '#3a0c18');
+    const [x, y] = P(0.55, 0.27);
+    text(ctx, 'RAJAHAMSA  ರಾಜಹಂಸ', x, y + 2, `bold 32px ${KN}`, '#f1ead8', 520);
+  }
+  // Luggage-bay doors between the axles.
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2;
+  for (let z = -2.0; z < 2.4; z += 1.4) {
+    const [x0, y0] = P(U(z + 0.06), 0.3), [x1, y1] = P(U(z + 1.34), 0.88);
+    ctx.strokeRect(Math.min(x0, x1), y0, Math.abs(x1 - x0), y1 - y0);
+  }
+  // The passenger door ahead of the front wheel, on the kerb side.
+  if (kerb) {
+    const u0 = U(4.2), u1 = U(5.05);
+    fillRect(u0 - 0.003, 0, u1 + 0.003, 1, '#1a1a1a');
+    fillRect(u0, 0, u1, 0.97, '#1a242a');
+    fillRect((u0 + u1) / 2 - 0.0015, 0, (u0 + u1) / 2 + 0.0015, 0.97, '#0a0a0a');
+  }
+  for (const z of key === 'airavat' ? [3.3, -2.7, -4.05] : [3.3, -2.7]) cutEllipse(ctx, P, U(z), 1.1, 0.62 * pxm, 0.62 * pym);
+  ctx.restore();
+}
+
+// 108: the blue Star of Life, a big red 108, AMBULANCE and ಆಂಬ್ಯುಲೆನ್ಸ್.
+function drawAmb(ctx, r) {
+  const cx = r.x + 64, cy = r.y + 64;
+  ctx.fillStyle = '#1a4ab0';
+  for (let k = 0; k < 3; k++) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate((k * Math.PI) / 3);
+    ctx.fillRect(-14, -54, 28, 108);
+    ctx.restore();
+  }
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 3, cy - 36, 6, 72);
+  text(ctx, '108', r.x + 210, r.y + 66, `bold 104px ${FONT}`, '#d8202a', 160);
+  text(ctx, 'AMBULANCE', r.x + 400, r.y + 48, `bold 44px ${FONT}`, '#d8202a', 210);
+  text(ctx, 'ಆಂಬ್ಯುಲೆನ್ಸ್', r.x + 400, r.y + 96, `bold 30px ${KN}`, '#1a4ab0', 210);
+}
+
 let atlas = null;
 export function decalAtlas() {
   if (atlas) return atlas;
   const c = document.createElement('canvas');
-  c.width = S; c.height = S;
+  c.width = S; c.height = SH;
   const ctx = c.getContext('2d');
   const cells = {
     hoysalaText: { t: ['HOYSALA', 'ಹೊಯ್ಸಳ'], fg: '#2e3192' },
@@ -257,10 +352,12 @@ export function decalAtlas() {
     pinkText: { t: ['PINK HOYSALA', 'ಹೊಯ್ಸಳ · 112'], fg: '#ffffff' },
     water: { t: ['DRINKING WATER', 'ಕುಡಿಯುವ ನೀರು'], fg: '#1a4ab0' },
     cab: { t: ['CITY CAB'], fg: '#111' },
+    bbmp: { t: ['BBMP', 'ಸ್ವಚ್ಛ ಬೆಂಗಳೂರು · ಬಿಬಿಎಂಪಿ'], fg: '#1a7a3a', bg: '#ffffff' },
   };
   for (const [name, cell] of Object.entries(cells)) {
     const { x, y } = rects[name];
     if (cell.bg) { ctx.fillStyle = cell.bg; ctx.fillRect(x, y, 512, 128); }
+    if (cell.bg && name === 'bbmp') { ctx.strokeStyle = cell.fg; ctx.lineWidth = 8; ctx.strokeRect(x + 4, y + 4, 504, 120); }
     if (cell.t.length === 1) text(ctx, cell.t[0], x + 256, y + 66, `bold 64px ${FONT}`, cell.fg, 490);
     else {
       text(ctx, cell.t[0], x + 256, y + 44, `bold 56px ${FONT}`, cell.fg, 490);
@@ -272,6 +369,19 @@ export function decalAtlas() {
   drawHoysala(ctx, rects.pinkR, true, true);
   drawHoysala(ctx, rects.pinkL, false, true);
   drawBonnet(ctx, rects.bonnet);
+  drawAmb(ctx, rects.amb);
+  // Mirror-written, so it reads the right way round in the mirror of the car ahead.
+  {
+    const r = rects.ambFront;
+    ctx.save(); ctx.translate(r.x + r.w / 2, r.y + r.h / 2); ctx.scale(-1, 1);
+    text(ctx, 'AMBULANCE', 0, 3, `bold 58px ${FONT}`, '#d8202a', r.w - 20);
+    ctx.restore();
+  }
+  for (const k of KSRTC_KEYS) {
+    drawKsrtc(ctx, rects[`ksrtc_${k}_R`], k, true, false);
+    drawKsrtc(ctx, rects[`ksrtc_${k}_L`], k, false, true);
+    for (const b of KSRTC_LIVERIES[k].boards) drawBoard(ctx, rects[b.name], b.route);
+  }
   for (const k of LIVERY_KEYS) {
     drawBus(ctx, rects[`bus_${k}_R`], k, true, false);
     drawBus(ctx, rects[`bus_${k}_L`], k, false, true);
@@ -282,10 +392,10 @@ export function decalAtlas() {
   map.anisotropy = 8;
   // Only the LED boards glow: a half-size copy of the atlas with just those cells.
   const e = document.createElement('canvas');
-  e.width = e.height = S / 2;
+  e.width = S / 2; e.height = SH / 2;
   const ectx = e.getContext('2d');
-  ectx.fillStyle = '#000'; ectx.fillRect(0, 0, S / 2, S / 2);
-  for (const k of LIVERY_KEYS) for (const b of BUS_LIVERIES[k].boards) {
+  ectx.fillStyle = '#000'; ectx.fillRect(0, 0, S / 2, SH / 2);
+  for (const b of [...LIVERY_KEYS.flatMap((k) => BUS_LIVERIES[k].boards), ...KSRTC_KEYS.flatMap((k) => KSRTC_LIVERIES[k].boards)]) {
     const r = rects[b.name];
     ectx.drawImage(c, r.x, r.y, r.w, r.h, r.x / 2, r.y / 2, r.w / 2, r.h / 2);
   }

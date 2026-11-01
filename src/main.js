@@ -597,6 +597,11 @@ async function init() {
     }
     world.focus.x = player.pos.x; world.focus.z = player.pos.z;
 
+    // Wrecks from traffic crashes are tidied away once you're well clear of them.
+    for (let i = free.length - 1; i >= 0; i--) {
+      const v = free[i];
+      if (v.temp && v !== player.vehicle && (Math.abs(v.x - world.focus.x) > 340 || Math.abs(v.z - world.focus.z) > 340)) { free.splice(i, 1); traffic.recycle(v); }
+    }
     for (const v of free) {
       if (v === player.vehicle) continue;
       if (v.speed > 0.05 || Math.abs(v.angVel) > 0.02) v.update(dt, null, world);

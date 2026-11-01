@@ -29,19 +29,35 @@ const SITES = [
 
 // What Chikka sells: [label, type, model, price].
 export const FOR_SALE = [
-  ['Honda Activa (scooter)', 'scooter', null, 3000],
+  ['Honda Activa (scooter)', 'scooter', 'activa', 3000],
+  ['Ola S1 Pro (electric scooter)', 'scooter', 'ola', 4500],
+  ['Ather 450X (electric scooter)', 'scooter', 'ather', 5000],
   ['Royal Enfield Bullet', 'bike', null, 8500],
   ['KTM Duke (sports bike)', 'sportBike', null, 14000],
   ['Bajaj auto rickshaw', 'auto', null, 6000],
+  ['Maruti Omni (van)', 'van', 'omni', 7500],
+  ['Maruti Eeco (van)', 'van', 'eeco', 10500],
   ['Maruti Alto', 'hatch', 'alto', 11000],
-  ['Maruti Swift', 'hatch', 'swift', 16000],
+  ['Tata Tiago', 'hatch', 'tiago', 13500],
   ['Hyundai i10', 'hatch', 'i10', 14000],
+  ['Maruti Swift', 'hatch', 'swift', 16000],
+  ['Maruti Baleno', 'hatch', 'baleno', 17500],
+  ['Hyundai i20', 'hatch', 'i20', 18500],
   ['Maruti Swift Dzire', 'sedan', 'dzire', 19000],
   ['Toyota Etios', 'sedan', 'etios', 19500],
+  ['Tata Punch', 'suv', 'punch', 20000],
   ['Honda City', 'sedan', 'city', 26000],
+  ['Hyundai Venue', 'suv', 'venue', 26500],
+  ['Maruti Brezza', 'suv', 'brezza', 27500],
   ['Toyota Innova', 'suv', 'innova', 34000],
   ['Hyundai Creta', 'suv', 'creta', 38000],
+  ['Kia Seltos', 'suv', 'seltos', 39000],
+  ['Kia Carens', 'suv', 'carens', 36000],
   ['Mahindra Scorpio', 'suv', 'scorpio', 42000],
+  ['Mahindra Thar', 'suv', 'thar', 45000],
+  ['MG Hector', 'suv', 'hector', 47000],
+  ['Mahindra XUV700', 'suv', 'xuv700', 52000],
+  ['Toyota Fortuner', 'suv', 'fortuner', 62000],
 ];
 const PAINTS = [0xf2f2f2, 0x1a1a1a, 0xb01c22, 0x1c3a7a, 0x8a8e92, 0x2f6a3a, 0xe0a020, 0x6a2a6a, 0x3a8ab0, 0xc87a30];
 
@@ -253,7 +269,7 @@ export class Garages {
     if (old && old !== this.world.player.vehicle) { this.scene.remove(old.group); const i = this.world.free?.indexOf(old); if (i >= 0) this.world.free.splice(i, 1); }
     const heading = Math.atan2(site.ux, site.uz);
     const x = site.bay.x + site.ux * 6, z = site.bay.z + site.uz * 6;
-    const v = this.world.park(rec.type, x, z, heading, { color: rec.color, model: rec.model || undefined });
+    const v = this.world.park(rec.type, x, z, heading, { color: rec.color, model: rec.model || (rec.type === 'scooter' ? 'activa' : undefined) }); // older saves: a petrol Activa
     v.owned = true;
     this.live.set(rec, v);
     if (announce) this.hud.say(`Your ${rec.label} is parked outside ${site.name}.`, 3);

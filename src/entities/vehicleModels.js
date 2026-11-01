@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { MeshBuilder, buildSkinned, makePbrMaterial } from '../world/meshBuilder.js';
 import { put } from '../world/landmarks.js';
 import { textTexture } from '../world/textures.js';
-import { decalAtlas, decalUV, BUS_LIVERIES, pickBusLivery } from './liveries.js';
+import { decalAtlas, decalUV, BUS_LIVERIES, pickBusLivery, KSRTC_LIVERIES } from './liveries.js';
 import { CAR_MODELS, TYPE_MODELS, buildCarShell } from './carBodies.js';
 
 // horn: profile key in systems/audio.js. stall: water depth (m) that floods the engine.
@@ -28,6 +28,11 @@ export const VEHICLE_TYPES = {
   tanker: { label: 'Water Tanker', length: 8.0, width: 2.5, wheelbase: 4.6, maxSpeed: 17, accel: 2, brake: 7, reverse: 3, steer: 0.5, grip: 7, mass: 10000, cam: 13, horn: 'air', engine: 'bus', stall: 1.1 },
   bus: { label: 'BMTC Bus', length: 11.5, width: 2.55, wheelbase: 6.2, maxSpeed: 20, accel: 2.2, brake: 7, reverse: 3, steer: 0.55, grip: 7, mass: 11000, cam: 15, horn: 'bus', engine: 'bus', stall: 1.2 },
   schoolBus: { label: 'School Bus', length: 9.5, width: 2.4, wheelbase: 5.0, maxSpeed: 19, accel: 2.4, brake: 8, reverse: 3, steer: 0.55, grip: 7, mass: 7500, cam: 13, horn: 'schoolBus', engine: 'bus', stall: 1.0 },
+  van: { label: 'Van', length: 3.675, width: 1.475, wheelbase: 2.35, maxSpeed: 34, accel: 6, brake: 13, reverse: 5, steer: 0.55, grip: 8.5, mass: 940, cam: 6.6, horn: 'carHi', engine: 'car', stall: 0.5 },
+  // siren: a light bar and siren like the Hoysala's, without being police.
+  ambulance: { label: '108 Ambulance', length: 5.45, width: 1.95, wheelbase: 3.35, maxSpeed: 32, accel: 4.8, brake: 11, reverse: 4, steer: 0.5, grip: 8.2, mass: 2900, cam: 9, horn: 'tempo', engine: 'car', stall: 0.8, siren: true },
+  ksrtc: { label: 'KSRTC Bus', length: 12.0, width: 2.6, wheelbase: 6.0, maxSpeed: 24, accel: 2.3, brake: 7, reverse: 3, steer: 0.5, grip: 7, mass: 13500, cam: 16, horn: 'air', engine: 'bus', stall: 1.2 },
+  garbage: { label: 'BBMP Garbage Truck', length: 6.2, width: 2.2, wheelbase: 3.4, maxSpeed: 17, accel: 2.4, brake: 8, reverse: 3, steer: 0.55, grip: 7.5, mass: 7500, cam: 11, horn: 'lorry', engine: 'bus', stall: 1.0 },
 };
 
 // Per-vertex [roughness, metalness, emissive].
@@ -139,6 +144,7 @@ function tapered(w, h, d, topX, topZ, shiftZ, rounded = true) {
 }
 
 const CAR_COLOURS = [0xf2f2f2, 0xf2f2f2, 0xf2f2f2, 0xc0c4c8, 0x8a8e92, 0x202224, 0xb01c22, 0x1c3a7a, 0xe0d8c8, 0x5a2a1a, 0x2a5a4a, 0xd06a1a, 0x3a3a46];
+const VAN_COLOURS = [0xf4f4f2, 0xf4f4f2, 0xf4f4f2, 0xc0c4c8, 0xc0c4c8, 0x8a8e92, 0xb01c22, 0x1c3a7a];
 const pick = (a, r) => a[Math.floor(r() * a.length)];
 
 function plate(v, z, y, yellow, w = 0.5, face = 1) {
@@ -158,7 +164,7 @@ function buildCar(type, r, opts) {
   const police = type === 'hoysala';
   const pink = police && opts.pink;
   const taxi = type === 'taxi';
-  let colour = opts.color ?? (taxi ? pick([0xf4f4f2, 0xf4f4f2, 0xf4f4f2, 0xd8d8d8], r) : pick(CAR_COLOURS, r));
+  let colour = opts.color ?? (taxi ? pick([0xf4f4f2, 0xf4f4f2, 0xf4f4f2, 0xd8d8d8], r) : pick(type === 'van' ? VAN_COLOURS : CAR_COLOURS, r));
   if (police) colour = pink ? 0xe86aa6 : 0xf6f6f4;
   const black = { colour: C(0x0e0f10), pbr: P.plastic };
   const mats = { paint: { pbr: P.paint }, glass: { colour: C(0x141a20), pbr: P.glass }, black };
@@ -172,7 +178,12 @@ function buildCar(type, r, opts) {
   const hx = hw(zf - 0.1) * 0.66;
   for (const s of [-1, 1]) {
     if (m.lights === 'round') v.add(G.cyl, P.head, 0xfff6dc, s * hx, yNose - 0.1, zf - 0.03, 0.11, 0.08, 0.11, Math.PI / 2);
-    else {
+    else if (m.lights === 'split') {
+      // Slim LED daytime-running strip at the bonnet edge, the main lamps down in the bumper.
+      v.add(G.box, P.head, 0xfff6dc, s * hx, yNose - 0.04, zf - 0.12, W * 0.26, 0.035, 0.12, 0, 0, s * -0.32);
+      v.add(G.box, P.plastic, 0x0c0c0c, s * W * 0.34, yNose - 0.27, zf - 0.05, W * 0.17, 0.13, 0.08);
+      v.add(G.box, P.head, 0xfff6dc, s * W * 0.34, yNose - 0.27, zf - 0.02, W * 0.13, 0.08, 0.04);
+    } else {
       const lh = m.lights === 'tall' ? 0.2 : m.lights === 'square' ? 0.13 : 0.1;
       const lw = m.lights === 'square' ? W * 0.2 : W * 0.25;
       v.add(G.box, P.head, 0xfff6dc, s * hx, yNose - lh / 2 - 0.03, zf - 0.11, lw, lh, 0.12, 0, 0, s * -0.32);
@@ -189,6 +200,27 @@ function buildCar(type, r, opts) {
     case 'cascade': v.add(G.box, P.plastic, 0x111111, 0, gy - 0.05, zf - 0.01, W * 0.48, 0.25, 0.06); break;
     case 'mahindra': v.add(G.box, P.plastic, 0x111111, 0, gy, zf - 0.01, W * 0.42, 0.24, 0.06); for (let k = -3; k <= 3; k++) v.add(G.box, P.chrome, 0xd0d0d0, k * W * 0.055, gy, zf + 0.025, 0.025, 0.22, 0.01); break;
     case 'tata': v.add(G.box, P.plastic, 0x0c0c0c, 0, gy, zf - 0.01, W * 0.44, 0.14, 0.06); v.add(G.box, P.chrome, 0xc0c0c0, 0, gy + 0.09, zf + 0.02, W * 0.6, 0.02, 0.01); break;
+    // Wide black grille with a chrome wing across it.
+    case 'nexa': v.add(G.box, P.plastic, 0x0c0c0c, 0, gy - 0.02, zf - 0.01, W * 0.5, 0.15, 0.06); v.add(G.box, P.chrome, 0xd0d0d0, 0, gy + 0.01, zf + 0.025, W * 0.5, 0.025, 0.01); break;
+    // Kia's tiger nose: two halves that rise towards the lamps, pinched in the middle, chrome-edged.
+    case 'tigerNose':
+      for (const s of [-1, 1]) {
+        v.add(G.box, P.plastic, 0x0c0c0c, s * W * 0.12, gy, zf - 0.01, W * 0.25, 0.12, 0.06, 0, s * 0.12);
+        v.add(G.box, P.chrome, 0xb8b8b8, s * W * 0.12, gy + 0.07, zf + 0.025, W * 0.25, 0.018, 0.01, 0, s * 0.12);
+        v.add(G.box, P.chrome, 0xb8b8b8, s * W * 0.12, gy - 0.07, zf + 0.025, W * 0.25, 0.018, 0.01, 0, s * 0.12);
+      }
+      break;
+    // Thar: seven vertical slots in the body-coloured nose.
+    case 'thar': for (let k = -3; k <= 3; k++) v.add(G.box, P.plastic, 0x0a0a0a, k * W * 0.06, gy, zf - 0.01, 0.055, 0.22, 0.06); break;
+    // XUV700: a wide black grille full of chrome verticals.
+    case 'xuv': v.add(G.box, P.plastic, 0x0c0c0c, 0, gy - 0.04, zf - 0.01, W * 0.5, 0.24, 0.06); for (let k = -5; k <= 5; k++) v.add(G.box, P.chrome, 0xd8d8d8, k * W * 0.042, gy - 0.04, zf + 0.025, 0.018, 0.2, 0.01); break;
+    // MG: a big chrome-framed grille studded with chrome.
+    case 'mg':
+      v.add(G.box, P.plastic, 0x0c0c0c, 0, gy - 0.07, zf - 0.01, W * 0.52, 0.3, 0.06);
+      for (const y of [0.15, -0.15]) v.add(G.box, P.chrome, 0xd8d8d8, 0, gy - 0.07 + y, zf + 0.025, W * 0.54, 0.025, 0.01);
+      for (const s of [-1, 1]) v.add(G.box, P.chrome, 0xd8d8d8, s * W * 0.265, gy - 0.07, zf + 0.025, 0.025, 0.3, 0.01);
+      for (let i = -3; i <= 3; i++) for (let j = -1; j <= 1; j++) v.add(G.box, P.chrome, 0xc8c8c8, i * W * 0.07, gy - 0.07 + j * 0.08, zf + 0.02, 0.04, 0.03, 0.01);
+      break;
     default: v.add(G.box, P.plastic, 0x111111, 0, gy, zf - 0.01, W * 0.3, 0.08, 0.05);
   }
   v.add(G.box, P.plastic, 0x0c0c0c, 0, 0.3, zf - 0.04, W * 0.6, 0.12, 0.08); // lower intake
@@ -202,7 +234,7 @@ function buildCar(type, r, opts) {
     // Mirrors.
     v.add(G.box, P.paint, police || m.blackPillars ? 0x111111 : colour, s * (hw(zWs - 0.12) + 0.09), m.belt + 0.08, zWs - 0.12, 0.16, 0.1, 0.12);
     // Door shut lines and handles.
-    const doors = m.style === 'hatch' && m.L < 3.6 ? [zWs - 0.05, zWs - 1.05] : [zWs - 0.05, zWs - 1.0, zWs - 1.85];
+    const doors = m.twoDoor ? [zWs - 0.05, zWs - 1.2] : m.style === 'hatch' && m.L < 3.6 ? [zWs - 0.05, zWs - 1.05] : [zWs - 0.05, zWs - 1.0, zWs - 1.85];
     for (const dz of doors) {
       if (dz < zRA + prof.archR + 0.02 && dz !== doors[0]) continue;
       v.add(G.box, P.matte, 0x111111, s * (hw(dz) + 0.004), (bottom(dz) + m.belt) / 2, dz, 0.004, m.belt - bottom(dz) - 0.06, 0.012);
@@ -215,7 +247,10 @@ function buildCar(type, r, opts) {
     }
     if (m.rails) v.add(G.box, P.chrome, 0x2a2a2a, s * (hw(0) * m.taper * 0.92), roofY + 0.04, (prof.zRoofEnd + prof.zWsTop) / 2, 0.04, 0.05, (prof.zWsTop - prof.zRoofEnd) * 0.9);
   }
-  if (m.label.includes('Bolero')) v.add(G.cyl, P.rubber, 0x161616, 0, 0.8, zr - 0.1, 0.32, 0.2, 0.32, Math.PI / 2); // spare wheel on the tailgate
+  if (m.spare) { // spare wheel on the tailgate
+    v.add(G.cyl, P.rubber, 0x161616, 0, 0.8, zr - 0.1, m.wr * 0.95, 0.2, m.wr * 0.95, Math.PI / 2);
+    v.add(G.cyl, P.chrome, 0x2a2a2a, 0, 0.8, zr - 0.2, m.wr * 0.55, 0.02, m.wr * 0.55, Math.PI / 2);
+  }
   plate(v, zf + 0.01, 0.42, taxi, 0.5, 1);
   plate(v, zr - 0.01, m.style === 'sedan' ? yTail - 0.25 : 0.55, taxi, 0.5, -1);
   if (taxi) for (const s of [-1, 1]) v.decal('cab', s * (hw(-0.4) + 0.012), (bottom(-0.4) + m.belt) / 2 + 0.05, -0.4, 1.1, 0.27, s > 0 ? 'L' : 'R');
@@ -233,7 +268,7 @@ function buildCar(type, r, opts) {
   }
   // Wheels: alloys on newer cars, steel with covers on taxis and Boleros.
   const ww = m.W > 1.75 ? 0.23 : 0.2;
-  const hub = { hub: 0.62, hubColor: taxi || m.label.includes('Bolero') ? 0x8a8e92 : 0xc8ccd0 };
+  const hub = { hub: 0.62, hubColor: taxi || key === 'bolero' || type === 'van' ? 0x8a8e92 : key === 'thar' ? 0x2a2c2e : 0xc8ccd0 };
   for (const zc of [zFA, zRA]) {
     const x = hw(zc) - ww / 2 + 0.01;
     v.wheel(x, m.wr, zc, m.wr, ww, zc === zFA, hub); v.wheel(-x, m.wr, zc, m.wr, ww, zc === zFA, hub);
@@ -291,7 +326,49 @@ function buildAuto(type, r, opts) {
   return v.finish(spec, { driverSeat: [0, 0.98, goods ? 0.75 : 0.38] });
 }
 
+// Electric scooters (Ola S1, Ather 450, TVS iQube): one smooth glossy shell with no engine
+// casing, a hub motor in the rear wheel, slim LED lamps and a dash screen.
+const E_SCOOTERS = {
+  ola: { label: 'Ola S1 Pro (electric)', colours: [0xf4f4f4, 0x111214, 0xe8443a, 0x8fd3c0, 0x2a4ea8, 0xf0a8b8] },
+  ather: { label: 'Ather 450X (electric)', colours: [0x8a9096, 0xeef0f0, 0x1a1c1e, 0x6fc2a0] },
+  iqube: { label: 'TVS iQube (electric)', colours: [0xeef0f0, 0x3a6a9a, 0x8a8e92, 0xc8a050] },
+};
+
+function buildEScooter(r, opts) {
+  const key = E_SCOOTERS[opts.model] ? opts.model : pick(['ola', 'ola', 'ather', 'iqube'], r);
+  const e = E_SCOOTERS[key];
+  // Instant electric torque, and a polite beep.
+  const spec = { ...VEHICLE_TYPES.scooter, label: e.label, maxSpeed: 25, accel: 7.6, horn: 'scooterHi' };
+  const v = new VB();
+  const colour = opts.color ?? pick(e.colours, r);
+  const trim = key === 'ather' ? 0x2a2c2e : 0x161616;
+  v.add(G.box, P.matte, 0x1a1a1a, 0, 0.3, 0.08, 0.34, 0.05, 0.6); // floorboard
+  // Rear body sweeping up to a pointed tail, a dark under-panel, a long flat seat.
+  v.add(tapered(0.4, 0.34, 0.94, 0.8, 0.78, -0.07), P.paint, colour, 0, 0.56, -0.44);
+  v.add(tapered(0.3, 0.14, 0.5, 0.8, 0.6, -0.08), P.plastic, trim, 0, 0.35, -0.36);
+  v.add(G.rbox, P.cloth, 0x141414, 0, 0.78, -0.36, 0.3, 0.08, 0.76);
+  v.add(G.box, P.tail, 0xd01010, 0, 0.66, -0.9, 0.26, 0.025, 0.03); // LED tail strip
+  plate(v, -0.9, 0.46, false, 0.22, -1);
+  v.add(G.box, P.matte, 0x3a3c3e, 0.11, 0.27, -0.44, 0.04, 0.06, 0.36); // swing arm to the hub motor
+  const s = v.wheel(0, 0.25, 0.66, 0.25, 0.1, true, { hub: 0.62, hubColor: 0x222426 });
+  // Front apron, mudguard, single-sided fork, handlebar, dash and lamp all steer.
+  v.add(tapered(0.38, 0.86, 0.2, 0.72, 1, 0.12), P.paint, colour, 0, 0.76, 0.46, 1, 1, 1, 0, 0, 0, s);
+  v.add(G.rbox, P.paint, colour, 0, 0.53, 0.68, 0.14, 0.05, 0.38, 0, 0, 0, s);
+  v.add(G.box, P.matte, 0x3a3c3e, -0.08, 0.42, 0.66, 0.035, 0.36, 0.05, 0, 0, 0, s);
+  v.add(G.cyl, P.matte, 0x111111, 0, 1.13, 0.6, 0.018, 0.64, 0.018, 0, Math.PI / 2, 0, s);
+  v.add(G.rbox, P.paint, trim, 0, 1.12, 0.6, 0.3, 0.08, 0.15, 0, 0, 0, s);
+  v.add(G.box, P.glass, 0x0a1218, 0, 1.17, 0.58, 0.18, 0.02, 0.1, -0.5, 0, 0, s); // dash screen
+  if (key === 'ola') for (const x of [-0.055, 0.055]) v.add(G.sphere, P.head, 0xfff8e0, x, 1.03, 0.66, 0.045, 0.045, 0.03, 0, 0, 0, s); // twin-pod lamp
+  else if (key === 'ather') v.add(G.box, P.head, 0xfff8e0, 0, 1.05, 0.65, 0.2, 0.05, 0.03, 0, 0, 0, s);
+  else v.add(G.cyl, P.head, 0xfff8e0, 0, 1.04, 0.65, 0.075, 0.03, 0.075, Math.PI / 2, 0, 0, s);
+  for (const x of [-0.22, 0.22]) v.add(G.box, P.glass, 0x333a40, x, 1.3, 0.58, 0.06, 0.04, 0.01, 0, 0, 0, s); // mirrors
+  v.wheel(0, 0.25, -0.62, 0.25, 0.11, false, { hub: 0.62, hubColor: 0x222426 });
+  return v.finish(spec, { color: colour, modelKey: key });
+}
+
 function buildTwoWheeler(type, r, opts) {
+  // About one scooter in five on Bengaluru's roads is electric now.
+  if (type === 'scooter' && (E_SCOOTERS[opts.model] || (opts.model == null && r() < 0.22))) return buildEScooter(r, opts);
   const spec = VEHICLE_TYPES[type];
   const v = new VB();
   if (type === 'bike') {
@@ -399,9 +476,103 @@ function buildBmtc(r, opts) {
   return v.finish(spec, { livery });
 }
 
+// KSRTC intercity coaches: red Karnataka Sarige, Airavat (a multi-axle Volvo) and Rajahamsa.
+// Big tinted windows with black pillars; the lower sides are painted in liveries.js.
+function buildKsrtc(r, opts) {
+  const spec = VEHICLE_TYPES.ksrtc;
+  const v = new VB();
+  const L = spec.length, W = spec.width, H = 3.0, base = 0.5;
+  const livery = KSRTC_LIVERIES[opts.livery] ? opts.livery : pick(['sarige', 'sarige', 'airavat', 'rajahamsa'], r);
+  const lv = KSRTC_LIVERIES[livery];
+  v.add(new RoundedBoxGeometry(W, H, L, 2, 0.22), P.paint, lv.body, 0, base + H / 2, 0);
+  // Window band (high, as coaches sit over their luggage bays) with black pillars.
+  const g0 = base + 1.3, g1 = base + 2.55, gz0 = -L / 2 + 0.7, gz1 = L / 2 - 0.25;
+  v.add(G.box, P.glass, 0x10161c, 0, (g0 + g1) / 2, (gz0 + gz1) / 2, W + 0.03, g1 - g0, gz1 - gz0);
+  for (let z = gz0; z <= gz1 - 1; z += 1.9) for (const s of [-1, 1]) v.add(G.box, P.plastic, 0x0c0e10, s * (W / 2 + 0.018), (g0 + g1) / 2, z, 0.01, g1 - g0 + 0.02, 0.12);
+  for (const s of [-1, 1]) v.add(G.box, P.paint, lv.stripe, s * (W / 2 + 0.018), g1 + 0.08, 0, 0.01, 0.06, L - 0.5); // stripe over the windows
+  // Front: a tall windscreen in a black surround, livery panel and bumper below it.
+  v.add(G.box, P.plastic, 0x0c0e10, 0, base + 1.9, L / 2 + 0.006, W - 0.1, 1.95, 0.02);
+  v.add(G.box, P.glass, 0x10161c, 0, base + 1.85, L / 2 + 0.018, W - 0.22, 1.7, 0.02);
+  v.add(G.box, P.paint, lv.front, 0, base + 0.5, L / 2 + 0.012, W - 0.06, 0.75, 0.02);
+  v.add(G.box, P.matte, 0x1a1a1a, 0, base + 0.12, L / 2 + 0.05, W, 0.3, 0.12);
+  v.decal(pick(lv.boards, r).name, 0, base + 2.62, L / 2 + 0.03, 1.9, 0.3, 'F');
+  // Rear: engine grille low down, a small back window, the roof AC pod.
+  v.add(G.box, P.plastic, 0x16181a, 0, base + 0.75, -L / 2 - 0.01, W - 0.5, 0.8, 0.02);
+  v.add(G.box, P.glass, 0x10161c, 0, base + 2.2, -L / 2 - 0.006, W - 0.5, 0.75, 0.02);
+  v.add(G.box, P.matte, 0x1a1a1a, 0, base + 0.12, -L / 2 - 0.05, W, 0.3, 0.12);
+  v.add(G.rbox, P.plastic, lv.ac, 0, base + H + 0.12, -0.5, 1.9, 0.24, 3.6);
+  for (const s of [-1, 1]) {
+    v.add(G.box, P.head, 0xfff8e0, s * (W / 2 - 0.4), base + 0.45, L / 2 + 0.03, 0.46, 0.12, 0.04);
+    v.add(G.box, P.head, 0xfff0d0, s * (W / 2 - 0.4), base + 0.3, L / 2 + 0.11, 0.14, 0.06, 0.02); // fog lamps
+    v.add(G.box, P.tail, 0xc81010, s * (W / 2 - 0.12), base + 1.0, -L / 2 - 0.02, 0.14, 0.9, 0.04);
+    v.add(G.rbox, P.matte, 0x222222, s * (W / 2 + 0.12), base + 2.5, L / 2 + 0.2, 0.06, 0.45, 0.08); // bunny-ear mirrors
+    v.add(G.box, P.matte, 0x222222, s * (W / 2 - 0.05), base + 2.85, L / 2 + 0.12, 0.04, 0.04, 0.3);
+  }
+  plate(v, L / 2 + 0.12, base + 0.12, true, 0.55, 1);
+  plate(v, -L / 2 - 0.12, base + 0.3, true, 0.55, -1);
+  v.decal(`ksrtc_${livery}_L`, W / 2 + 0.02, base + 0.65, 0, L - 0.2, 1.2, 'L');
+  v.decal(`ksrtc_${livery}_R`, -W / 2 - 0.02, base + 0.65, 0, L - 0.2, 1.2, 'R');
+  // Wheels flush with the sides in black wells; the Airavat has a tag axle behind the drive axle.
+  const wr = 0.52, ww = 0.3, axles = [3.3, -2.7, ...(livery === 'airavat' ? [-4.05] : [])];
+  for (const z of axles) for (const s of [-1, 1]) v.add(G.cyl, P.matte, 0x0c0c0c, s * (W / 2 + 0.004), wr, z, 0.62, 0.01, 0.62, 0, Math.PI / 2);
+  axles.forEach((z, k) => {
+    const w = k === 1 ? ww + 0.1 : ww, x = W / 2 - w / 2 + 0.012;
+    v.wheel(x, wr, z, wr, w, k === 0, { hub: 0.62 }); v.wheel(-x, wr, z, wr, w, k === 0, { hub: 0.62 });
+  });
+  return v.finish(spec, { livery });
+}
+
+// 108 ambulance: a white high-roof Force Traveller with red and green bands, frosted windows,
+// AMBULANCE mirror-written over the windscreen and a light bar on the roof.
+function buildAmbulance(r, opts) {
+  const spec = VEHICLE_TYPES.ambulance;
+  const v = new VB();
+  const L = spec.length, W = spec.width, H = 2.25, base = 0.38, white = opts.color ?? 0xf6f6f4;
+  const Lb = L - 0.95, zb = -L / 2 + Lb / 2, zFront = L / 2 - 0.95, roof = base + H;
+  v.add(new RoundedBoxGeometry(W, H, Lb, 2, 0.16), P.paint, white, 0, base + H / 2, zb);
+  v.add(tapered(W * 0.94, 0.66, 1.0, 0.9, 0.7, -0.14), P.paint, white, 0, base + 0.36, L / 2 - 0.52); // bonnet
+  // Bands right round the body, and the 108 branding.
+  for (const [y, h, c] of [[base + 0.72, 0.2, 0xd8202a], [base + 0.57, 0.07, 0x1f8a3c]]) {
+    v.add(G.box, P.paint, c, 0, y, zb, W + 0.02, h, Lb - 0.1);
+    v.add(G.box, P.paint, c, 0, y, -L / 2 - 0.004, W - 0.2, h, 0.02);
+  }
+  for (const s of [-1, 1]) v.decal('amb', s * (W / 2 + 0.02), base + 1.22, zb - 0.45, 2.2, 0.55, s > 0 ? 'L' : 'R');
+  v.decal('amb', 0, base + 1.25, -L / 2 - 0.02, 1.3, 0.33, 'B');
+  // Windscreen, cab door windows, frosted rear windows; red cross-hatched rear doors.
+  v.add(G.box, P.glass, 0x141a20, 0, base + 1.33, zFront + 0.01, W - 0.2, 0.8, 0.03);
+  v.decal('ambFront', 0, base + 1.98, zFront + 0.02, 1.3, 0.17, 'F');
+  for (const s of [-1, 1]) {
+    v.add(G.box, P.glass, 0x141a20, s * (W / 2 + 0.006), base + 1.37, zFront - 0.45, 0.02, 0.62, 0.75);
+    v.add(G.box, P.plastic, 0xd8dde0, s * (W / 2 + 0.006), base + 1.72, zb - 0.45, 0.02, 0.36, 1.6);
+    v.add(G.box, P.matte, 0x2a2a2a, s * (W / 2 + 0.005), base + 0.95, zFront - 0.88, 0.008, 1.1, 0.012); // cab door shut line
+    v.add(G.box, P.glass, 0x1a2228, s * 0.42, base + 1.62, -L / 2 - 0.01, 0.62, 0.55, 0.02); // rear door windows
+    v.add(G.box, P.head, 0xfff8e0, s * (W / 2 - 0.3), base + 0.42, L / 2 - 0.03, 0.3, 0.14, 0.06);
+    v.add(G.box, P.tail, 0xc81010, s * (W / 2 - 0.1), base + 0.65, -L / 2 - 0.02, 0.14, 0.32, 0.04);
+    v.add(G.box, P.tail, 0xff2020, s * (W / 2 - 0.12), roof - 0.08, -L / 2 - 0.02, 0.16, 0.1, 0.04); // rear beacons
+    v.add(G.rbox, P.matte, 0x222222, s * (W / 2 + 0.14), base + 1.25, zFront - 0.05, 0.06, 0.32, 0.12); // mirrors
+  }
+  v.add(G.box, P.matte, 0x2a2a2a, 0, base + 0.95, -L / 2 - 0.012, 0.012, 1.6, 0.01); // rear door split
+  v.add(G.box, P.plastic, 0x1a1a1a, 0, base + 0.4, L / 2 - 0.02, W * 0.4, 0.16, 0.05); // grille
+  v.add(G.box, P.matte, 0x2a2a2a, 0, base + 0.1, L / 2 + 0.02, W, 0.2, 0.12);
+  v.add(G.box, P.matte, 0x2a2a2a, 0, base + 0.1, -L / 2 - 0.04, W, 0.2, 0.1);
+  plate(v, L / 2 + 0.085, base + 0.12, false, 0.5, 1);
+  plate(v, -L / 2 - 0.1, base + 0.3, false, 0.5, -1);
+  // Light bar on the roof's front edge (the lamps themselves are added by Vehicle).
+  const lbz = zFront - 0.3;
+  v.add(G.box, P.chrome, 0x222222, 0, roof + 0.05, lbz, W * 0.78, 0.08, 0.3);
+  const wr = 0.36, ww = 0.22, wz = zFront, wz2 = zFront - spec.wheelbase;
+  for (const z of [wz, wz2]) for (const s of [-1, 1]) v.add(G.cyl, P.matte, 0x0c0c0c, s * (W / 2 + 0.004), wr, z, 0.44, 0.01, 0.44, 0, Math.PI / 2);
+  const x = W / 2 - ww / 2 - 0.02;
+  v.wheel(x, wr, wz, wr, ww, true); v.wheel(-x, wr, wz, wr, ww, true);
+  v.wheel(x, wr, wz2, wr, ww, false); v.wheel(-x, wr, wz2, wr, ww, false);
+  return v.finish(spec, { color: white, lightBar: { y: roof + 0.13, z: lbz, w: W * 0.3 } });
+}
+
 // School buses and tempo travellers.
 function buildBus(type, r, opts) {
   if (type === 'bus') return buildBmtc(r, opts);
+  if (type === 'ksrtc') return buildKsrtc(r, opts);
+  if (type === 'ambulance') return buildAmbulance(r, opts);
   const spec = VEHICLE_TYPES[type];
   const v = new VB();
   const L = spec.length, W = spec.width;
@@ -484,11 +655,54 @@ function buildTruck(type, r, opts) {
   return v.finish(spec, { color: cabCol });
 }
 
+// BBMP garbage compactor: a white cab-over cab and a green compactor body with its tipping
+// hopper at the back, hydraulic rams and a few bags that didn't quite make it in.
+function buildGarbage(r, opts) {
+  const spec = VEHICLE_TYPES.garbage;
+  const v = new VB();
+  const L = spec.length, W = spec.width, base = 0.55;
+  const cabL = 1.6, cabH = 1.8, cz = L / 2 - cabL / 2, cabCol = opts.color ?? 0xf2f2f0;
+  const green = 0x1f8a3c, dark = 0x166a2e;
+  v.add(G.rbox, P.paint, cabCol, 0, base + cabH / 2, cz, W, cabH, cabL);
+  v.add(G.box, P.glass, 0x1a2228, 0, base + cabH * 0.7, L / 2 + 0.005, W * 0.86, cabH * 0.38, 0.04, -0.06);
+  v.add(G.box, P.paint, green, 0, base + cabH * 0.36, L / 2 + 0.006, W * 0.96, 0.12, 0.03);
+  v.add(G.box, P.plastic, 0x1a1a1a, 0, base + cabH * 0.2, L / 2 + 0.01, W * 0.5, 0.2, 0.04); // grille
+  for (const s of [-1, 1]) {
+    v.add(G.box, P.glass, 0x1a2228, s * (W / 2 + 0.005), base + cabH * 0.68, cz + 0.15, 0.02, cabH * 0.34, cabL * 0.55);
+    v.add(G.box, P.paint, green, s * (W / 2 + 0.006), base + cabH * 0.36, cz, 0.02, 0.12, cabL - 0.1);
+    v.add(G.rbox, P.matte, 0x222222, s * (W / 2 + 0.15), base + cabH * 0.65, L / 2 - 0.15, 0.06, 0.38, 0.1); // mirrors
+  }
+  // Compactor body with a white band and the BBMP panel.
+  const bz0 = L / 2 - cabL - 0.1, bodyL = 3.25, bz = bz0 - bodyL / 2, bH = 1.95, by = base + 0.25;
+  v.add(G.box, P.matte, 0x2a2a2a, 0, base + 0.05, -0.2, W * 0.8, 0.22, L - 0.6); // chassis
+  v.add(new RoundedBoxGeometry(W, bH, bodyL, 2, 0.28), P.paint, green, 0, by + bH / 2, bz);
+  v.add(G.box, P.paint, 0xf2f2f0, 0, by + 0.42, bz, W + 0.02, 0.2, bodyL - 0.3);
+  for (const s of [-1, 1]) v.decal('bbmp', s * (W / 2 + 0.02), by + 1.28, bz, 2.3, 0.58, s > 0 ? 'L' : 'R');
+  // Tipping hopper: its back slopes in towards the top; the loading mouth is low at the back.
+  const hz = bz - bodyL / 2 - 0.55;
+  v.add(tapered(W * 0.97, bH + 0.1, 1.1, 1, 0.55, 0.24), P.paint, dark, 0, by + (bH + 0.1) / 2 - 0.05, hz);
+  v.add(G.box, P.matte, 0x111111, 0, by + 0.45, hz - 0.5, W * 0.8, 0.5, 0.12);
+  for (const c of [0x1a1a1a, 0x2a4a9a, 0x3a3a3a]) v.add(G.rboxS, P.plastic, c, (r() - 0.5) * 1.2, by + 0.68, hz - 0.5, 0.36, 0.28, 0.3);
+  for (const s of [-1, 1]) {
+    v.add(G.cyl, P.chrome, 0xc8c8c8, s * (W / 2 + 0.03), by + 1.0, hz + 0.25, 0.05, 1.3, 0.05, 0.6); // hydraulic rams
+    v.add(G.box, P.head, 0xfff8e0, s * (W / 2 - 0.3), base + 0.35, L / 2 + 0.02, 0.26, 0.14, 0.04);
+    v.add(G.box, P.tail, 0xc81010, s * (W / 2 - 0.15), by + 0.2, hz - 0.6, 0.14, 0.22, 0.04);
+  }
+  v.add(G.box, P.matte, 0x222222, 0, base + 0.15, L / 2 + 0.05, W, 0.3, 0.12);
+  plate(v, L / 2 + 0.115, base + 0.2, true, 0.5, 1);
+  plate(v, hz - 0.62, by + 0.05, true, 0.5, -1);
+  const wr = 0.48, ww = 0.3, wz = L / 2 - 0.9, wz2 = wz - spec.wheelbase;
+  v.wheel(W / 2 - 0.24, wr, wz, wr, ww, true); v.wheel(-W / 2 + 0.24, wr, wz, wr, ww, true);
+  v.wheel(W / 2 - 0.27, wr, wz2, wr, ww + 0.12, false); v.wheel(-W / 2 + 0.27, wr, wz2, wr, ww + 0.12, false);
+  return v.finish(spec, { color: cabCol });
+}
+
 export function buildVehicleModel(type, r = Math.random, opts = {}) {
   switch (type) {
     case 'auto': case 'goodsAuto': return buildAuto(type, r, opts);
     case 'scooter': case 'delivery': case 'bike': case 'sportBike': return buildTwoWheeler(type, r, opts);
-    case 'bus': case 'schoolBus': case 'tempo': return buildBus(type, r, opts);
+    case 'bus': case 'schoolBus': case 'tempo': case 'ksrtc': case 'ambulance': return buildBus(type, r, opts);
+    case 'garbage': return buildGarbage(r, opts);
     case 'lorry': case 'tanker': case 'miniTruck': return buildTruck(type, r, opts);
     default: return buildCar(type, r, opts);
   }

@@ -2,7 +2,9 @@
 // keeps LEFT, obeys (mostly) the signals and honks a lot. Cars and buses keep to their lanes;
 // autos and two-wheelers ignore lane markings, weave across the carriageway, squeeze through
 // gaps and now and then ride on the wrong side of the road. Everyone wades through floods.
-import { Vehicle } from './vehicle.js';
+// They also crash: a vehicle waits before crossing the path of someone already in a junction,
+// but when two do meet hard enough they dent each other and the lighter one is knocked loose.
+import { Vehicle, damageFromSpeed } from './vehicle.js';
 import { mulberry32 } from '../world/textures.js';
 import { LANE_W } from '../config.js';
 
@@ -10,8 +12,9 @@ const rng = mulberry32(4242);
 const BASE_MIX = {
   scooter: 0.2, delivery: 0.07, bike: 0.06, sportBike: 0.03, auto: 0.16, goodsAuto: 0.03, hatch: 0.1, sedan: 0.06, taxi: 0.07,
   suv: 0.05, tempo: 0.025, miniTruck: 0.03, bus: 0.055, schoolBus: 0.015, lorry: 0.015, tanker: 0.012, hoysala: 0.008,
+  van: 0.025, ksrtc: 0.012, garbage: 0.006, ambulance: 0.004,
 };
-const HEAVY = new Set(['bus', 'schoolBus', 'lorry', 'tanker', 'tempo', 'goodsAuto', 'miniTruck']);
+const HEAVY = new Set(['bus', 'schoolBus', 'lorry', 'tanker', 'tempo', 'goodsAuto', 'miniTruck', 'ksrtc', 'garbage']);
 const AUTOS = new Set(['auto', 'goodsAuto']);
 const CELL = 24;
 
@@ -121,6 +124,8 @@ export class Traffic {
       route: null, stop: null, stopped: false, hold: false, keep: false,
       // In a hurry (a hired auto with the player aboard): no dawdling, fast corners, hard acceleration.
       rush: false,
+      // The next turn, chosen before the stop line so it can wait for a clear junction.
+      plan: null, occNode: null, fromEdge: null, junctionWait: 0,
     };
     if (erratic) {
       const [lo, hi] = this.band(a);
@@ -237,8 +242,75 @@ export class Traffic {
     return opts[Math.floor(rng() * opts.length)];
   }
 
+  // Pick the next road and the curve onto it.
+  planTurn(a) {
+    const route = a.route; // (a new route set after this, by a hired auto's fare, means re-plan)
+    const e2 = this.chooseNext(a);
+    const straight = e2.dir.x * a.edge.dir.x + e2.dir.z * a.edge.dir.z > 0.85;
+    const lane2 = straight && e2.road.lanes === a.edge.road.lanes ? a.lane : this.chooseLane(e2, a.v.type, !straight);
+    const { turn, next } = this.turnPath(a.path, a.edge.dir, e2, lane2);
+    return { e2, lane2, turn, next, route, path: a.path };
+  }
+
+  leaveJunction(a) {
+    a.appNode?.app?.delete(a);
+    a.appNode = null;
+    const occ = a.occNode?.occ;
+    if (occ) { const i = occ.indexOf(a); if (i >= 0) occ.splice(i, 1); }
+    a.occNode = null;
+  }
+
+  // Can `a` start its planned turn, or would it cut across someone already in the junction?
+  junctionClear(a) {
+    const occ = a.edge.to.occ;
+    if (!occ || !occ.length) return true;
+    const mine = a.plan.turn.points, w = a.v.spec.width / 2;
+    for (let n = occ.length - 1; n >= 0; n--) {
+      const o = occ[n];
+      // (Moved on without leaving, e.g. a ride skipped ahead: no longer in this junction.)
+      if (!o.turning || o.occNode !== a.edge.to || o.v.driver !== 'ai') { occ.splice(n, 1); continue; }
+      if (o === a || o.fromEdge === a.edge) continue; // following them through: gapAhead's job
+      if (o.s > o.path.length - o.v.spec.length * 0.5) continue; // all but out
+      const pts = o.path.points, reach = w + o.v.spec.width / 2 + (a.erratic && o.erratic ? 0.2 : 0.7);
+      // Only the part of their curve still ahead of them matters.
+      for (let i = Math.max(0, Math.floor((o.s / o.path.length) * (pts.length - 1)) - 1); i < pts.length - 1; i++) {
+        for (let k = 0; k < mine.length - 1; k++) if (segSegDist(pts[i], pts[i + 1], mine[k], mine[k + 1]) < reach) return false;
+      }
+    }
+    return true;
+  }
+
+  // Someone on another approach who'll reach the junction first, on a crossing line, has the right of way.
+  approachClear(a) {
+    const app = a.edge.to.app;
+    if (!app || app.size < 2) return true;
+    const myT = (a.path.length - a.s) / Math.max(0.5, a.speed), mine = a.plan.turn.points, w = a.v.spec.width / 2;
+    for (const o of app) {
+      if (o === a || o.edge === a.edge || o.turning || !o.plan || o.v.driver !== 'ai' || o.edge.to !== a.edge.to) continue;
+      const left = o.path.length - o.s;
+      if (left > 12 || o.junctionWait > 0) continue; // far off, or itself waiting
+      const t = left / Math.max(0.5, o.speed);
+      if (t > myT || (t === myT && o.id > a.id)) continue;
+      const pts = o.plan.turn.points, reach = w + o.v.spec.width / 2 + 0.5;
+      for (let i = 0; i < pts.length - 1; i++) for (let k = 0; k < mine.length - 1; k++) if (segSegDist(pts[i], pts[i + 1], mine[k], mine[k + 1]) < reach) return false;
+    }
+    return true;
+  }
+
+  // Is there room on the road out of the junction for this vehicle?
+  exitClear(a) {
+    const next = a.plan.next, need = a.v.spec.length + 1.5;
+    const p = sample(next, Math.min(next.length, need * 0.6)), r = need * 0.6;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const l = this.grid.get(this.key(p.x + i * CELL, p.z + j * CELL));
+      if (l) for (const b of l) if (b !== a && b.speed < 2 && Math.abs(b.v.x - p.x) < r && Math.abs(b.v.z - p.z) < r && b.edge === a.plan.e2) return false;
+    }
+    return true;
+  }
+
   advance(a) {
     if (a.turning) {
+      this.leaveJunction(a);
       a.turning = false;
       a.path = a.nextPath;
       a.s = 0;
@@ -248,10 +320,15 @@ export class Traffic {
       }
       return;
     }
-    const e2 = this.chooseNext(a);
-    const straight = e2.dir.x * a.edge.dir.x + e2.dir.z * a.edge.dir.z > 0.85;
-    const lane2 = straight && e2.road.lanes === a.edge.road.lanes ? a.lane : this.chooseLane(e2, a.v.type, !straight);
-    const { turn, next } = this.turnPath(a.path, a.edge.dir, e2, lane2);
+    a.junctionWait = 0;
+    this.leaveJunction(a);
+    const plan = a.plan && a.plan.route === a.route && a.plan.path === a.path ? a.plan : this.planTurn(a);
+    const { e2, lane2, turn, next } = plan;
+    a.plan = null;
+    a.fromEdge = a.edge;
+    const node = a.edge.to;
+    (node.occ || (node.occ = [])).push(a);
+    a.occNode = node;
     a.edge = e2;
     a.lane = lane2;
     a.path = turn;
@@ -266,6 +343,8 @@ export class Traffic {
   release(a) {
     const i = this.agents.indexOf(a);
     if (i >= 0) this.agents.splice(i, 1);
+    this.leaveJunction(a);
+    a.plan = null;
     a.v.driver = null;
     const fx = Math.sin(a.v.heading), fz = Math.cos(a.v.heading);
     a.v.vx = fx * a.speed; a.v.vz = fz * a.speed;
@@ -275,6 +354,8 @@ export class Traffic {
   despawn(a) {
     const i = this.agents.indexOf(a);
     if (i >= 0) this.agents.splice(i, 1);
+    this.leaveJunction(a);
+    a.plan = null;
     this.scene.remove(a.v.group);
     a.v.siren = false;
     a.v.repair(); // back to the pool showroom-fresh
@@ -396,6 +477,107 @@ export class Traffic {
     return res;
   }
 
+  // Put an agent's vehicle back where its path says it is.
+  place(a) {
+    const p = sample(a.path, a.s);
+    a.v.x = p.x + Math.cos(p.h) * a.lat;
+    a.v.z = p.z - Math.sin(p.h) * a.lat;
+  }
+
+  // Traffic vehicles that overlap after moving. Meeting hard is a crash: both are dented and
+  // the lighter one (or both) is knocked loose, out of traffic and into the physics, to spin
+  // and slide to a stop. A gentle touch just stops whoever drove into the other, so nothing
+  // ever passes through anything (out of sight, a jam may still be broken by slipping past).
+  resolveContacts(world) {
+    this.rebuildGrid();
+    const ca = this._ca || (this._ca = []), cb = this._cb || (this._cb = []);
+    const list = this.agents.slice();
+    for (const a of list) {
+      if (a.v.driver !== 'ai') continue;
+      const A = a.v;
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const cell = this.grid.get(this.key(A.x + i * CELL, A.z + j * CELL));
+        if (!cell) continue;
+        for (const b of cell) {
+          if (b.id <= a.id || b.v.driver !== 'ai' || a.v.driver !== 'ai') continue;
+          if (a.ghost > 0 || b.ghost > 0) continue; // slipping out of a jam, out of sight
+          const Bv = b.v, reach = (A.spec.length + Bv.spec.length) / 2 + 0.5;
+          if (Math.abs(A.x - Bv.x) > reach || Math.abs(A.z - Bv.z) > reach || Math.abs(A.y - Bv.y) > 2) continue;
+          // Deepest overlap between the two bodies' collision circles.
+          A.circles(ca); Bv.circles(cb);
+          let pen = 0, nx = 0, nz = 0, cx = 0, cz = 0;
+          for (const p of ca) for (const q of cb) {
+            const dx = p.x - q.x, dz = p.z - q.z, d = Math.hypot(dx, dz), m = (p.r + q.r) * 0.92;
+            if (d < m && m - d > pen && d > 1e-4) { pen = m - d; nx = dx / d; nz = dz / d; cx = q.x + nx * q.r; cz = q.z + nz * q.r; }
+          }
+          if (pen <= 0) continue;
+          const vax = Math.sin(A.heading) * a.speed, vaz = Math.cos(A.heading) * a.speed;
+          const vbx = Math.sin(Bv.heading) * b.speed, vbz = Math.cos(Bv.heading) * b.speed;
+          const closing = -((vax - vbx) * nx + (vaz - vbz) * nz);
+          // (Out of sight they just stop: no wrecks blocking roads you haven't seen happen.)
+          if (closing > 5 && Math.hypot(cx - world.focus.x, cz - world.focus.z) < 160) this.crash(a, b, nx, nz, closing, cx, cz, world);
+          else {
+            // Whoever was driving into the other stops and gives back the overlap.
+            const intoA = -(vax * nx + vaz * nz), intoB = vbx * nx + vbz * nz;
+            const x = intoA > intoB + 0.05 ? a : intoB > intoA + 0.05 ? b : a.id > b.id ? a : b;
+            x.s = Math.max(0, x.s - pen);
+            x.speed = 0;
+            this.place(x);
+          }
+        }
+      }
+    }
+  }
+
+  crash(a, b, nx, nz, closing, cx, cz, world) {
+    const A = a.v, Bv = b.v, ia = 1 / A.mass, ib = 1 / Bv.mass;
+    if (this.debugCrashes) this.debugCrashes.push({ a: A.type, b: Bv.type, closing: +closing.toFixed(1), dot: +(Math.sin(A.heading) * Math.sin(Bv.heading) + Math.cos(A.heading) * Math.cos(Bv.heading)).toFixed(2), ta: a.turning, tb: b.turning, ea: a.erratic, eb: b.erratic, ga: a.ghost > 0, gb: b.ghost > 0, sa: +a.speed.toFixed(1), sb: +b.speed.toFixed(1), wa: a.wrongNow, wb: b.wrongNow, stA: a.stunned > 0, stB: b.stunned > 0, ba: a.lastBlocker === b, bb: b.lastBlocker === a });
+    const j = (1.25 * closing) / (ia + ib);
+    const share = (m1, m2) => Math.min(1.6, (2 * m2) / (m1 + m2));
+    A.takeDamage(damageFromSpeed(closing * share(A.mass, Bv.mass) * 0.75), cx, cz, world);
+    Bv.takeDamage(damageFromSpeed(closing * share(Bv.mass, A.mass) * 0.75), cx, cz, world);
+    const near = Math.max(0, 1 - Math.hypot(cx - world.focus.x, cz - world.focus.z) / 140);
+    if (near > 0) {
+      world.audio?.crunch?.(Math.min(1, closing / 18) * near);
+      if (closing > 6) world.particles?.burst?.('spark', cx, 0.7, cz, Math.min(14, Math.round(closing)), 4, 0.8);
+    }
+    for (const [x, other, sgn, dv] of [[a, b, 1, j * ia], [b, a, -1, j * ib]]) {
+      const v = x.v;
+      if (v.driver !== 'ai') continue;
+      const knocked = v.engineDead || dv > 2.5 || (v.spec.twoWheeler && dv > 1.2);
+      // Never throw out a hired auto or a bus with the player aboard: it just stops dead.
+      if (!knocked || x.keep) {
+        x.stunned = 2 + rng() * 2.5;
+        x.speed = Math.max(0, x.speed - dv) * 0.3;
+        continue;
+      }
+      this.release(x);
+      v.applyImpulse(nx * j * sgn, nz * j * sgn, cx - v.x, cz - v.z);
+      v.temp = true; // tidied away once the player is far off
+      world.free?.push(v);
+      if (v.rider && v.spec.twoWheeler && world.streetLife) {
+        const opts = { outfit: v.rider.outfit, helmet: true };
+        v.removeRider();
+        const p = world.streetLife.spawnFleeing(v.x, v.z, other.v.x, other.v.z, opts);
+        world.streetLife.knock(p, nx * sgn * Math.min(9, 3 + dv), nz * sgn * Math.min(9, 3 + dv), world.audio);
+      }
+    }
+    // The survivors lean on their horns.
+    if (near > 0) for (const x of [a, b]) if (x.v.driver === 'ai' && rng() < 0.7) { x.honkCd = 0.4 + rng(); world.audio?.horn(x.v.spec.horn, x.v.x, x.v.z, world.camera, x.v.hornPitch); }
+  }
+
+  // A crashed vehicle that's no longer needed goes back to the pool.
+  recycle(v) {
+    this.scene.remove(v.group);
+    v.temp = false;
+    v.siren = false;
+    v.vx = v.vz = v.angVel = 0;
+    v.repair();
+    if (!v.rider) v.addRider(rng);
+    const list = this.pool.get(v.type) || [];
+    if (list.length < 30) { list.push(v); this.pool.set(v.type, list); }
+  }
+
   update(dt, world) {
     const { obstacles, audio, camera, focus } = world;
     this.builtThisFrame = 0;
@@ -412,7 +594,8 @@ export class Traffic {
       const distP = Math.hypot(v.x - focus.x, v.z - focus.z);
       if (distP > this.radius + 70 && !a.keep) { this.despawn(a); continue; }
       const two = v.spec.twoWheeler;
-      const look = 6 + a.speed * 1.6 + v.spec.length / 2;
+      const look = 6 + a.speed * 1.6 + (a.speed * a.speed) / (2 * v.spec.brake * 0.6) + v.spec.length / 2;
+      const fx0Pre = Math.sin(v.heading), fz0Pre = Math.cos(v.heading);
 
       let { gap, blocker } = this.gapAhead(a, a.lat, look, obstacles, a.ghost > 0 ? (a.hardGhost ? 2 : 1) : 0);
       let surge = 1;
@@ -475,17 +658,56 @@ export class Traffic {
         const d = (lc.x - v.x) * Math.sin(v.heading) + (lc.z - v.z) * Math.cos(v.heading);
         if (d > 10.5 && d < look + 20) { target = Math.min(target, Math.max(0, (d - 11.5) * 1.2)); a.waitingSignal = true; } // already past the gate: clear the tracks
       }
+      // Junctions: choose the turn before the stop line, and wait there while it would cut across
+      // someone already in the junction (after a long wait, nose in anyway: this is Bengaluru).
+      if (!a.turning && !(a.edge.flyover && a.lane === 0)) {
+        const left = a.path.length - a.s;
+        if (left < 14 + a.speed * 1.5) {
+          if (!a.plan || a.plan.route !== a.route || a.plan.path !== a.path) a.plan = this.planTurn(a);
+          const node = a.edge.to;
+          if (a.appNode !== node) { a.appNode?.app?.delete(a); (node.app || (node.app = new Set())).add(a); a.appNode = node; }
+          // Wait while it would cut across someone in the junction, or while the road out is
+          // full (don't block the box).
+          if (a.junctionWait < 10 && (!this.junctionClear(a) || !this.exitClear(a) || (left < 10 && !this.approachClear(a)))) {
+            a.junctionWait += dt;
+            target = Math.min(target, Math.max(0, (left - 0.8) * 1.2));
+            a.waitingSignal = true;
+          }
+        }
+      }
       if (a.ghost > 0 && (a.ghost -= dt) <= 0) a.hardGhost = false;
       if (gap < Infinity) {
-        const safe = (two ? 1.0 : a.erratic ? 1.4 : 2.0) + a.speed * (a.erratic ? 0.4 : 0.55);
-        if (gap < safe) target = Math.min(target, Math.max(0, (gap - (two ? 0.4 : 1.0)) * 1.5));
+        // Never faster than you can stop in the gap (braking at 60 % of what the brakes can do),
+        // and behind a moving vehicle keep a time gap: two-wheelers ride closer than buses.
+        const minGap = two ? 0.6 : a.erratic ? 0.9 : 1.6;
+        const bv = blocker?.v, lead = bv && blocker.speed > 0.3 ? Math.max(0, blocker.speed * (Math.sin(bv.heading) * fx0Pre + Math.cos(bv.heading) * fz0Pre)) : 0;
+        const stopV = Math.sqrt(lead * lead + 2 * v.spec.brake * 0.6 * Math.max(0, gap - minGap));
+        const headway = two ? 0.35 : a.erratic ? 0.5 : 0.9;
+        target = Math.min(target, stopV, lead + Math.max(0, gap - minGap - a.speed * headway) * 0.8 + (gap > minGap + a.speed * headway ? 1 : 0));
         // Somebody's coming at you on your side of the road: lean on the horn.
         if (blocker?.wrongNow && gap < 25 && distP < 150 && (a.honkCd -= dt * 4) <= 0) {
           a.honkCd = 1 + rng() * 2;
           audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
         }
       }
+      // Stuck behind something that isn't going anywhere (a wreck, a stalled or parked vehicle):
+      // cars and buses edge round it within their side of the road.
+      if (!a.erratic && !a.turning && a.stuck > 3 && blocker && !blocker.waitingSignal && (!blocker.v || blocker.v.driver !== 'ai' || blocker.stunned > 0)) {
+        const [lo, hi] = this.band(a);
+        let best = a.latTarget, bestGap = gap;
+        for (let k = 0; k <= 6; k++) {
+          const cand = lo + ((hi - lo) * k) / 6, r = this.gapAhead(a, cand, look, obstacles);
+          if (r.gap > bestGap + 2) { bestGap = r.gap; best = cand; }
+        }
+        a.latTarget = best;
+      }
       if (blocker && blocker.waitingSignal) a.waitingSignal = true;
+      a.lastBlocker = blocker;
+      // Two vehicles nose to nose, each waiting for the other: the newer one backs off a few metres.
+      if (blocker?.lastBlocker === a && a.stuck > 4 && blocker.id < a.id && (a.backed || 0) < 6 && a.s > 0.5) {
+        const back = Math.min(a.s, 1.2 * dt);
+        a.s -= back; a.backed = (a.backed || 0) + back;
+      } else if (a.speed > 1) a.backed = 0;
       if (a.stunned > 0) { a.stunned -= dt; target = 0; }
       // Flood water: everyone slows down and wades through (and eases off before reaching it).
       const fx0 = Math.sin(v.heading), fz0 = Math.cos(v.heading);
@@ -521,9 +743,11 @@ export class Traffic {
         // parked in the way): a queue behind it waits its turn instead of driving into each other.
         const queued = blocker?.v && (Math.sin(blocker.v.heading) * fx0 + Math.cos(blocker.v.heading) * fz0 > 0.7 || blocker.ghost > 0);
         const mayPass = !a.waitingSignal && !(blocker && (blocker.isPlayer || blocker.isCop));
-        if (a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && mayPass && !queued) { a.ghost = 2.5; a.stuck = 0; }
+        // (Only out of the player's sight: in view, vehicles never pass through each other.)
+        const unseen = distP > 140;
+        if (unseen && a.stuck > (blocker?.wrongNow || a.wrongNow ? 2.5 : 5) && mayPass && !queued) { a.ghost = 2.5; a.stuck = 0; }
         // Still jammed after a long wait (vehicles locked into each other): slip out regardless.
-        else if (a.stuck > 15 && mayPass) { a.ghost = 2.5; a.hardGhost = true; a.stuck = 0; }
+        else if (unseen && a.stuck > 15 && mayPass) { a.ghost = 2.5; a.hardGhost = true; a.stuck = 0; }
         if (a.stuck > 45 && distP > 120 && !a.keep) { this.despawn(a); continue; }
       } else a.stuck = Math.max(0, a.stuck - dt);
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
@@ -565,6 +789,7 @@ export class Traffic {
       v.group.visible = !far;
       if (!far || ai % 4 === 0) v.syncVisual(dt, world);
     }
+    this.resolveContacts(world);
     // Top up the population around the player.
     const want = Math.round(this.target * (world.trafficScale ?? 1));
     let budget = this.agents.length < want * 0.5 ? 12 : 3;
@@ -587,6 +812,18 @@ function sample(path, s) {
   const seg = cum[k] - cum[k - 1] || 1;
   const t = (s - cum[k - 1]) / seg;
   return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, h: Math.atan2(b.x - a.x, b.z - a.z) };
+}
+
+// Shortest distance between segments pq and rs.
+function segSegDist(p, q, r, t) {
+  const d = (ax, az, bx, bz, x, z) => {
+    const abx = bx - ax, abz = bz - az, l2 = abx * abx + abz * abz || 1;
+    const k = Math.max(0, Math.min(1, ((x - ax) * abx + (z - az) * abz) / l2));
+    return Math.hypot(ax + abx * k - x, az + abz * k - z);
+  };
+  const o = (ax, az, bx, bz, cx, cz) => Math.sign((bx - ax) * (cz - az) - (bz - az) * (cx - ax));
+  if (o(p.x, p.z, q.x, q.z, r.x, r.z) * o(p.x, p.z, q.x, q.z, t.x, t.z) < 0 && o(r.x, r.z, t.x, t.z, p.x, p.z) * o(r.x, r.z, t.x, t.z, q.x, q.z) < 0) return 0;
+  return Math.min(d(p.x, p.z, q.x, q.z, r.x, r.z), d(p.x, p.z, q.x, q.z, t.x, t.z), d(r.x, r.z, t.x, t.z, p.x, p.z), d(r.x, r.z, t.x, t.z, q.x, q.z));
 }
 
 export { makePath, sample };

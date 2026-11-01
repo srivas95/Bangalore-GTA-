@@ -11,7 +11,10 @@ const G = (pts) => pts.map(([a, b]) => geo(a, b));
 // Distances in metres as they'd be at 1:5 (the scale the map was first drawn at), for sizes below.
 const S5 = 5 / SCALE;
 const llRect = (latN, lonW, latS, lonE) => { const [x0, z0] = geo(latN, lonW), [x1, z1] = geo(latS, lonE); return { minX: x0, maxX: x1, minZ: z0, maxZ: z1 }; };
-export const WORLD = llRect(13.2095, 77.4792, 12.8574, 77.7693);
+// Reaches a little west and south of the city for NICE Road, BIEC and Electronic City.
+export const WORLD = llRect(13.2095, 77.4495, 12.842, 77.7693);
+// The world as first drawn: the street grid is laid out from here, so the extension didn't move it.
+export const GRID_WORLD = llRect(13.2095, 77.4792, 12.8574, 77.7693);
 // The central business district (MG Road to Majestic): denser parking, taller frontages.
 export const CBD = { x: geo(12.9767, 77.5851)[0], z: 0, r: 650 * S5 };
 // Local street grid spacing in the city and out in the countryside (game metres).
@@ -24,11 +27,12 @@ export const URBAN = [
   [13.0129, 77.6634, 12.9315, 77.7693], // KR Puram, Mahadevapura, Marathahalli, Whitefield
   [13.1241, 77.5704, 13.0775, 77.621], // Yelahanka
   [13.0775, 77.5704, 13.0545, 77.6265], // Kodigehalli, Jakkur, Sahakara Nagar
+  [12.8574, 77.645, 12.842, 77.685], // Electronic City
 ].map(([n, w, so, e]) => { const r = llRect(n, w, so, e); return rectPoly(r.minX, r.minZ, r.maxX, r.maxZ); });
 
 // Arterials. lanes: per direction. median: width (m). metro: carries a viaduct.
 export const ARTERIALS = [
-  { name: 'Tumkur Road', lanes: 3, median: 4, pts: G([[13.0218, 77.553], [13.0285, 77.5404], [13.033, 77.5332], [13.0365, 77.5262], [13.0395, 77.5196], [13.0435, 77.5126], [13.048, 77.5], [13.054, 77.482]]) },
+  { name: 'Tumkur Road', lanes: 3, median: 4, pts: G([[13.0218, 77.553], [13.0285, 77.5404], [13.033, 77.5332], [13.0365, 77.5262], [13.0395, 77.5196], [13.0435, 77.5126], [13.048, 77.5], [13.054, 77.482], [13.0585, 77.4705], [13.0635, 77.445]]) },
   { name: 'West of Chord Road', lanes: 2, median: 3, pts: G([[13.0218, 77.553], [13.0147, 77.5539], [13.0083, 77.5488], [12.9995, 77.5497]]) },
   { name: 'Dr. Rajkumar Road', lanes: 2, median: 3, pts: G([[12.9995, 77.5497], [12.9985, 77.5568], [12.9967, 77.5636], [12.9905, 77.5707]]) },
   { name: 'Sampige Road', lanes: 2, median: 0, pts: G([[12.9905, 77.5707], [13.004, 77.5712], [13.0165, 77.5716]]) },
@@ -36,10 +40,10 @@ export const ARTERIALS = [
   { name: 'Avenue Road', lanes: 1, median: 0, pts: G([[12.9768, 77.5748], [12.9611, 77.5748]]) },
   { name: 'K.R. Road', lanes: 2, median: 3, pts: G([[12.9611, 77.5748], [12.9505, 77.5737], [12.9465, 77.58]]) },
   { name: 'R.V. Road', lanes: 2, median: 3, pts: G([[12.9465, 77.58], [12.9382, 77.58], [12.9295, 77.5804], [12.9214, 77.5803]]) },
-  { name: 'Kanakapura Road', lanes: 2, median: 3, pts: G([[12.9214, 77.5803], [12.915, 77.5735], [12.9071, 77.5735], [12.896, 77.57], [12.889, 77.5625], [12.8845, 77.5525], [12.8775, 77.5445], [12.871, 77.5385], [12.8615, 77.53], [12.856, 77.523]]) },
-  { name: 'Mysore Road', lanes: 3, median: 4, pts: G([[12.9611, 77.5748], [12.9578, 77.563], [12.9518, 77.5372], [12.9467, 77.5302], [12.9418, 77.5245], [12.938, 77.5154], [12.9354, 77.5003], [12.923, 77.4926], [12.9145, 77.4876], [12.9078, 77.487], [12.902, 77.483]]) },
+  { name: 'Kanakapura Road', lanes: 2, median: 3, pts: G([[12.9214, 77.5803], [12.915, 77.5735], [12.9071, 77.5735], [12.896, 77.57], [12.889, 77.5625], [12.8845, 77.5525], [12.8775, 77.5445], [12.871, 77.5385], [12.8615, 77.53], [12.856, 77.523], [12.845, 77.512], [12.835, 77.505]]) },
+  { name: 'Mysore Road', lanes: 3, median: 4, pts: G([[12.9611, 77.5748], [12.9578, 77.563], [12.9518, 77.5372], [12.9467, 77.5302], [12.9418, 77.5245], [12.938, 77.5154], [12.9354, 77.5003], [12.923, 77.4926], [12.9145, 77.4876], [12.9078, 77.487], [12.902, 77.483], [12.896, 77.474], [12.887, 77.445]]) },
   { name: 'Chord Road', lanes: 2, median: 3, pts: G([[12.9518, 77.5372], [12.962, 77.5336], [12.9706, 77.5372], [12.985, 77.5425], [12.9995, 77.5497]]) },
-  { name: 'Magadi Road', lanes: 2, median: 3, pts: G([[12.968, 77.4842], [12.9696, 77.515], [12.9706, 77.5372], [12.9742, 77.5453], [12.9757, 77.5552], [12.976, 77.5658], [12.9768, 77.5716]]) },
+  { name: 'Magadi Road', lanes: 2, median: 3, pts: G([[12.97, 77.445], [12.968, 77.4842], [12.9696, 77.515], [12.9706, 77.5372], [12.9742, 77.5453], [12.9757, 77.5552], [12.976, 77.5658], [12.9768, 77.5716]]) },
   { name: 'Seshadri Road', lanes: 2, median: 0, pts: G([[12.9768, 77.5716], [12.9768, 77.5748], [12.977, 77.58], [12.9775, 77.588]]) },
   { name: 'Palace Road', lanes: 2, median: 3, pts: G([[12.9775, 77.588], [12.985, 77.5872], [12.996, 77.5842], [13.0145, 77.5838]]) },
   { name: 'Bellary Road', lanes: 3, median: 4, pts: G([[13.0145, 77.5838], [13.025, 77.59], [13.0358, 77.597], [13.047, 77.5962], [13.057, 77.5952]]) },
@@ -52,12 +56,12 @@ export const ARTERIALS = [
   { name: 'ITPL Main Road', lanes: 2, median: 3, pts: G([[12.9905, 77.7115], [12.988, 77.7195], [12.984, 77.7265], [12.9835, 77.7345], [12.985, 77.742], [12.987, 77.748], [12.9905, 77.754], [12.9935, 77.759], [12.996, 77.7625], [12.998, 77.775]]) },
   { name: 'Whitefield Main Road', lanes: 2, median: 3, pts: G([[12.9565, 77.7012], [12.967, 77.7155], [12.9698, 77.73], [12.9705, 77.75], [12.9835, 77.7575], [12.996, 77.7625]]) },
   { name: 'Varthur Road', lanes: 1, median: 0, pts: G([[12.9565, 77.7012], [12.952, 77.718], [12.945, 77.735], [12.94, 77.7475], [12.935, 77.775]]) },
-  { name: 'Airport Road (NH 44)', lanes: 3, median: 6, pts: G([[13.057, 77.5952], [13.0605, 77.5935], [13.08, 77.5945], [13.1007, 77.5963], [13.125, 77.601], [13.149, 77.611], [13.1665, 77.627], [13.183, 77.644], [13.195, 77.657], [13.205, 77.67], [13.2005, 77.6825], [13.1832, 77.6825], [13.1832, 77.7]]) },
+  { name: 'Airport Road (NH 44)', lanes: 3, median: 6, pts: G([[13.057, 77.5952], [13.0605, 77.5935], [13.08, 77.5945], [13.1007, 77.5963], [13.124, 77.5935], [13.147, 77.5935], [13.1665, 77.627], [13.183, 77.644], [13.195, 77.657], [13.205, 77.67], [13.2005, 77.6825], [13.1832, 77.6825], [13.1832, 77.7]]) },
   { name: 'Hennur Bagalur Road', lanes: 1, median: 0, pts: G([[13.039, 77.62], [13.045, 77.638], [13.064, 77.645], [13.09, 77.652], [13.115, 77.66], [13.138, 77.668], [13.16, 77.685], [13.1832, 77.7]]) },
   { name: 'Doddaballapur Road', lanes: 1, median: 0, pts: G([[13.1007, 77.5963], [13.104, 77.575], [13.11, 77.55], [13.118, 77.52], [13.125, 77.49]]) },
-  { name: 'Hosur Road', lanes: 3, median: 4, pts: G([[12.964, 77.595], [12.9575, 77.6015], [12.943, 77.611], [12.93, 77.6195], [12.9177, 77.6238], [12.905, 77.633], [12.891, 77.6445], [12.879, 77.6555]]) },
+  { name: 'Hosur Road', lanes: 3, median: 4, pts: G([[12.964, 77.595], [12.9575, 77.6015], [12.943, 77.611], [12.93, 77.6195], [12.9177, 77.6238], [12.905, 77.633], [12.891, 77.6445], [12.879, 77.6555], [12.866, 77.6605], [12.851, 77.663], [12.838, 77.6675]]) },
   { name: 'Lalbagh Road', lanes: 2, median: 0, pts: G([[12.9611, 77.5748], [12.958, 77.584], [12.9505, 77.5898]]) },
-  { name: 'Bannerghatta Road', lanes: 2, median: 3, pts: G([[12.9505, 77.5898], [12.938, 77.6005], [12.9177, 77.5996], [12.896, 77.5985], [12.86, 77.597]]) },
+  { name: 'Bannerghatta Road', lanes: 2, median: 3, pts: G([[12.9505, 77.5898], [12.938, 77.6005], [12.9177, 77.5996], [12.896, 77.5985], [12.86, 77.597], [12.848, 77.5965], [12.838, 77.597]]) },
   { name: 'Old Airport Road', lanes: 3, median: 4, pts: G([[12.961, 77.6387], [12.9585, 77.655], [12.957, 77.6625], [12.9568, 77.68], [12.9565, 77.7012]]) },
   { name: '100 Feet Road', lanes: 2, median: 3, pts: G([[12.9784, 77.6408], [12.969, 77.641], [12.961, 77.6387]]) },
   { name: 'Inner Ring Road', lanes: 3, median: 4, pts: G([[12.961, 77.6387], [12.95, 77.634], [12.9365, 77.626], [12.93, 77.6195]]) },
@@ -70,6 +74,11 @@ export const ARTERIALS = [
   { name: 'Brigade Road', lanes: 1, median: 0, pts: G([[12.9756, 77.6066], [12.9655, 77.6066]]) },
   { name: 'Residency Road', lanes: 2, median: 0, pts: G([[12.9705, 77.5982], [12.9705, 77.617]]) },
   { name: 'Richmond Road', lanes: 2, median: 0, pts: G([[12.9655, 77.5952], [12.9655, 77.617]]) },
+  // NICE Road (the Nandi Infrastructure Corridor peripheral expressway): Tumkur Road at Madavara,
+  // south past Magadi Road and Mysore Road at Kengeri, then east across Kanakapura Road and
+  // Bannerghatta Road to Hosur Road at Electronic City.
+  { name: 'NICE Road', lanes: 3, median: 6, pts: G([[13.0585, 77.4705], [13.045, 77.4655], [13.025, 77.461], [13.005, 77.4575], [12.985, 77.4555], [12.955, 77.461], [12.925, 77.476],
+    [12.898, 77.498], [12.882, 77.511], [12.872, 77.523], [12.866, 77.536], [12.862, 77.55], [12.8585, 77.57], [12.857, 77.585], [12.8555, 77.61], [12.853, 77.63], [12.8515, 77.648], [12.851, 77.663]]) },
 ];
 
 // Named junctions (snapped to the nearest graph node).
@@ -83,6 +92,8 @@ export const JUNCTION_NAMES = [
   ['Jayadeva Junction', 12.9177, 77.5996], ['Dairy Circle', 12.938, 77.6005], ['Indiranagar 100 Ft Junction', 12.9784, 77.6408],
   ['Vijayanagar Junction', 12.9706, 77.5372], ['K.R. Puram Junction', 12.9985, 77.676], ['Marathahalli Bridge', 12.9565, 77.7012],
   ['Hoodi Junction', 12.9905, 77.7115], ['Yelahanka Junction', 13.1007, 77.5963], ['Trumpet Interchange', 13.205, 77.67], ['Kadugodi Junction', 12.996, 77.7625], ['Rajajinagar Junction', 12.9995, 77.5497], ['Deepanjali Nagar Junction', 12.9518, 77.5372],
+  ['Madavara NICE Junction', 13.0585, 77.4705], ['NICE Magadi Road Junction', 12.9693, 77.4584], ['NICE Mysore Road Junction', 12.9112, 77.4873],
+  ['NICE Kanakapura Road Junction', 12.8675, 77.534], ['Gottigere NICE Junction', 12.8563, 77.5968], ['Electronic City Junction', 12.851, 77.663],
 ];
 
 // Namma Metro: station [en, kn, lat, lon, underground].
@@ -154,7 +165,7 @@ const box = (lat, lon, w, h) => { const [x, z] = geo(lat, lon); w *= S5; h *= S5
 export const PARKS = [
   { name: 'Cubbon Park', poly: G([[12.979, 77.5884], [12.979, 77.5985], [12.9731, 77.6001], [12.9699, 77.5971], [12.9699, 77.5888]]), landmarks: ['library', 'museum', 'bandstand', 'balBhavan', 'statue'] },
   { name: 'Lalbagh Botanical Garden', poly: G([[12.9555, 77.5807], [12.9555, 77.5897], [12.9478, 77.5911], [12.9451, 77.5865], [12.946, 77.5807]]), landmarks: ['glassHouse'] },
-  { name: 'Bangalore Palace Grounds', poly: box(12.9985, 77.5925, 240, 180) },
+  { name: 'Bangalore Palace Grounds', poly: box(12.9985, 77.5925, 240, 180), landmarks: ['bangalorePalace'] },
   { name: 'Bangalore University', poly: box(12.946, 77.505, 300, 200) },
 ];
 export const LAKES = [
@@ -196,6 +207,7 @@ export const DISTRICTS = [
   D('Kadugodi', 12.997, 77.762, 'mixed'), D('Varthur', 12.94, 77.745, 'residential'), D('Kundalahalli', 12.966, 77.72, 'mixed'),
   D('Yelahanka', 13.1007, 77.5963, 'mixed'), D('Yelahanka New Town', 13.102, 77.58, 'residential'), D('Kodigehalli', 13.06, 77.585, 'residential'),
   D('Jakkur', 13.07, 77.61, 'residential'), D('Sahakara Nagar', 13.06, 77.595, 'residential'), D('Thanisandra', 13.06, 77.635, 'residential'),
+  D('Electronic City', 12.849, 77.668, 'towers'),
 ];
 
 // Countryside around the city: blocks outside URBAN take the nearest of these names.
@@ -203,10 +215,13 @@ export const RURAL_DISTRICTS = [
   ['Bettahalasur', 13.15, 77.61], ['Devanahalli', 13.19, 77.67], ['Bagalur', 13.135, 77.665], ['Jala Hobli', 13.17, 77.6],
   ['Rajanukunte', 13.13, 77.55], ['Budigere Cross', 13.08, 77.7], ['Hoskote Road', 13.02, 77.73], ['Kannamangala', 12.95, 77.77],
   ['Sarjapur Outskirts', 12.89, 77.72], ['Kadusonnappanahalli', 13.11, 77.7], ['Chikkajala', 13.165, 77.63], ['Hesaraghatta Road', 13.08, 77.53],
+  ['Madavara', 13.06, 77.462], ['Kadabagere', 12.985, 77.452], ['Kumbalgodu', 12.89, 77.455], ['Anjanapura', 12.848, 77.55], ['Gottigere', 12.848, 77.6],
 ].map(([name, lat, lon]) => { const [x, z] = geo(lat, lon); return { name, x, z, zone: 'rural' }; });
 
 // Kempegowda International Airport: the street grid stays out of it.
 export const AIRPORT = { name: 'Kempegowda International Airport', poly: rectPoly(...geo(13.214, 77.684), ...geo(13.184, 77.73)) };
+// Air Force Station Yelahanka (home of Aero India), east of the airport road: also fenced off.
+export const AIRBASE = { name: 'Air Force Station Yelahanka', poly: rectPoly(...geo(13.1435, 77.597), ...geo(13.1285, 77.628)) };
 
 // Specific blocks (by a point inside) with a landmark or a special zone.
 const B = (lat, lon, props) => { const [x, z] = geo(lat, lon); return { at: [x, z], ...props }; };
@@ -224,6 +239,16 @@ export const SPECIAL_BLOCKS = [
   B(12.9775, 77.5735, { zone: 'landmark', landmark: 'busStand', district: 'Majestic' }),
   B(13.199, 77.708, { zone: 'landmark', landmark: 'airport', district: 'Kempegowda International Airport' }),
   B(12.9866, 77.7366, { zone: 'towers', landmark: 'itpl', district: 'ITPL' }),
+  B(13.136, 77.6125, { zone: 'landmark', landmark: 'airForceStation', district: 'Air Force Station Yelahanka' }),
+  B(12.9425, 77.5681, { zone: 'landmark', landmark: 'bullTemple', district: 'Basavanagudi' }),
+  B(12.9593, 77.5737, { zone: 'landmark', landmark: 'tipuPalace', district: 'K.R. Market' }),
+  B(12.9636, 77.5853, { zone: 'landmark', landmark: 'townHall', district: 'Town Hall' }),
+  B(12.9697, 77.5933, { zone: 'landmark', landmark: 'kanteerava', district: 'Kanteerava Stadium' }),
+  B(13.0468, 77.621, { zone: 'landmark', landmark: 'manyata', district: 'Manyata Tech Park' }),
+  B(12.9594, 77.6489, { zone: 'landmark', landmark: 'kempfortShiva', district: 'Murugeshpalya' }),
+  B(13.0219, 77.5671, { zone: 'landmark', landmark: 'iisc', district: 'IISc' }),
+  B(12.9838, 77.615, { zone: 'landmark', landmark: 'gurudwara', district: 'Halasuru' }),
+  B(13.0614, 77.4747, { zone: 'landmark', landmark: 'biec', district: 'Madavara' }),
 ];
 
 // Where you respawn.
@@ -263,6 +288,10 @@ export const ROAD_UNDERPASSES = [
 export const FLYOVER_SITES = [
   { name: 'Silk Board Flyover', road: 'Hosur Road', at: geo(12.9177, 77.6238), half: 120 * Math.min(1.6, S5), height: 6.5 },
   { name: 'Hebbal Flyover', road: 'Bellary Road', at: geo(13.0358, 77.597), half: 110 * Math.min(1.6, S5), height: 6.5 },
+];
+// Toll plaza canopies across an expressway, on the edge of `road` nearest `near`.
+export const TOLL_PLAZAS = [
+  { name: 'NICE Road Toll Plaza', road: 'NICE Road', near: geo(12.94, 77.4685) },
 ];
 
 export const SPAWN = geo(12.9772, 77.5728); // Majestic bus stand

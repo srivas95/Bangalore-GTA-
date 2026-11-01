@@ -7,7 +7,8 @@
 // belt: beltline (bottom of the side windows). hoodLen: nose to windscreen base. ws/rear:
 // windscreen and rear-glass rake lengths. boot: boot length (sedans). taper: roof width
 // relative to the beltline. pillars: positions (fraction from the windscreen top to the rear
-// glass) of the B (and C/D) pillars. Lights/grille are styled per car.
+// glass) of the B (and C/D) pillars. Lights/grille are styled per car. roofBlack: contrast roof;
+// spare: wheel on the tailgate; twoDoor: long front doors and no rear ones.
 export const CAR_MODELS = {
   alto: { label: 'Maruti Suzuki Alto', L: 3.53, W: 1.49, H: 1.52, WB: 2.38, wr: 0.27, hood: 0.86, belt: 0.95, hoodLen: 0.78, ws: 0.62, rear: 0.22, taper: 0.84, style: 'hatch', pillars: [0.52], lights: 'swept', grille: 'slim' },
   wagonr: { label: 'Maruti Suzuki WagonR', L: 3.66, W: 1.62, H: 1.68, WB: 2.44, wr: 0.28, hood: 0.92, belt: 1.0, hoodLen: 0.72, ws: 0.48, rear: 0.12, taper: 0.9, style: 'hatch', pillars: [0.5], lights: 'tall', grille: 'slim' },
@@ -22,15 +23,32 @@ export const CAR_MODELS = {
   creta: { label: 'Hyundai Creta', L: 4.3, W: 1.79, H: 1.635, WB: 2.61, wr: 0.35, hood: 1.02, belt: 1.1, hoodLen: 1.0, ws: 0.7, rear: 0.28, taper: 0.84, style: 'suv', pillars: [0.48, 0.86], lights: 'swept', grille: 'cascade', blackPillars: true, cladding: true, rails: true },
   nexon: { label: 'Tata Nexon', L: 3.995, W: 1.804, H: 1.62, WB: 2.5, wr: 0.34, hood: 1.0, belt: 1.08, hoodLen: 0.95, ws: 0.66, rear: 0.36, taper: 0.82, style: 'suv', pillars: [0.5], lights: 'swept', grille: 'tata', blackPillars: true, cladding: true },
   scorpio: { label: 'Mahindra Scorpio', L: 4.456, W: 1.82, H: 1.995, WB: 2.68, wr: 0.37, hood: 1.15, belt: 1.25, hoodLen: 1.05, ws: 0.55, rear: 0.1, taper: 0.9, style: 'boxy', pillars: [0.4, 0.78], lights: 'tall', grille: 'mahindra', cladding: true, rails: true },
-  bolero: { label: 'Mahindra Bolero', L: 3.995, W: 1.745, H: 1.88, WB: 2.68, wr: 0.36, hood: 1.12, belt: 1.22, hoodLen: 0.98, ws: 0.4, rear: 0.06, taper: 0.94, style: 'boxy', pillars: [0.42, 0.8], lights: 'round', grille: 'mahindra', cladding: true },
+  bolero: { label: 'Mahindra Bolero', L: 3.995, W: 1.745, H: 1.88, WB: 2.68, wr: 0.36, hood: 1.12, belt: 1.22, hoodLen: 0.98, ws: 0.4, rear: 0.06, taper: 0.94, style: 'boxy', pillars: [0.42, 0.8], lights: 'round', grille: 'mahindra', cladding: true, spare: true },
+  baleno: { label: 'Maruti Suzuki Baleno', L: 3.99, W: 1.745, H: 1.5, WB: 2.52, wr: 0.31, hood: 0.88, belt: 0.97, hoodLen: 0.92, ws: 0.78, rear: 0.34, taper: 0.8, style: 'hatch', pillars: [0.5], lights: 'swept', grille: 'nexa', blackPillars: true },
+  i20: { label: 'Hyundai i20', L: 3.995, W: 1.775, H: 1.505, WB: 2.58, wr: 0.31, hood: 0.88, belt: 0.99, hoodLen: 0.95, ws: 0.8, rear: 0.36, taper: 0.79, style: 'hatch', pillars: [0.5], lights: 'swept', grille: 'cascade', blackPillars: true },
+  tiago: { label: 'Tata Tiago', L: 3.765, W: 1.677, H: 1.535, WB: 2.4, wr: 0.29, hood: 0.88, belt: 0.98, hoodLen: 0.86, ws: 0.7, rear: 0.28, taper: 0.82, style: 'hatch', pillars: [0.5], lights: 'swept', grille: 'tata', blackPillars: true },
+  punch: { label: 'Tata Punch', L: 3.827, W: 1.742, H: 1.615, WB: 2.445, wr: 0.32, hood: 0.98, belt: 1.06, hoodLen: 0.9, ws: 0.62, rear: 0.24, taper: 0.86, style: 'suv', pillars: [0.5], lights: 'split', grille: 'tata', blackPillars: true, cladding: true, rails: true, roofBlack: true },
+  brezza: { label: 'Maruti Suzuki Brezza', L: 3.995, W: 1.79, H: 1.685, WB: 2.5, wr: 0.33, hood: 1.02, belt: 1.1, hoodLen: 0.95, ws: 0.62, rear: 0.2, taper: 0.88, style: 'suv', pillars: [0.48, 0.86], lights: 'swept', grille: 'chromeBar', blackPillars: true, cladding: true, rails: true },
+  venue: { label: 'Hyundai Venue', L: 3.995, W: 1.77, H: 1.617, WB: 2.5, wr: 0.33, hood: 1.0, belt: 1.08, hoodLen: 0.95, ws: 0.66, rear: 0.3, taper: 0.84, style: 'suv', pillars: [0.5], lights: 'split', grille: 'cascade', blackPillars: true, cladding: true, rails: true },
+  seltos: { label: 'Kia Seltos', L: 4.365, W: 1.8, H: 1.645, WB: 2.61, wr: 0.34, hood: 1.02, belt: 1.1, hoodLen: 1.05, ws: 0.72, rear: 0.3, taper: 0.83, style: 'suv', pillars: [0.48, 0.86], lights: 'swept', grille: 'tigerNose', blackPillars: true, cladding: true, rails: true },
+  carens: { label: 'Kia Carens', L: 4.54, W: 1.8, H: 1.708, WB: 2.78, wr: 0.33, hood: 0.98, belt: 1.06, hoodLen: 1.0, ws: 0.82, rear: 0.24, taper: 0.84, style: 'mpv', pillars: [0.4, 0.78], lights: 'split', grille: 'tigerNose', blackPillars: true, cladding: true, rails: true },
+  thar: { label: 'Mahindra Thar', L: 3.985, W: 1.82, H: 1.844, WB: 2.45, wr: 0.39, hood: 1.18, belt: 1.26, hoodLen: 1.1, ws: 0.4, rear: 0.06, taper: 0.95, style: 'boxy', pillars: [0.55], lights: 'round', grille: 'thar', cladding: true, roofBlack: true, spare: true, twoDoor: true },
+  fortuner: { label: 'Toyota Fortuner', L: 4.795, W: 1.855, H: 1.835, WB: 2.745, wr: 0.385, hood: 1.12, belt: 1.2, hoodLen: 1.15, ws: 0.72, rear: 0.24, taper: 0.86, style: 'suv', pillars: [0.42, 0.8], lights: 'swept', grille: 'toyotaBig', blackPillars: true, cladding: true, rails: true },
+  xuv700: { label: 'Mahindra XUV700', L: 4.695, W: 1.89, H: 1.755, WB: 2.75, wr: 0.37, hood: 1.06, belt: 1.14, hoodLen: 1.1, ws: 0.74, rear: 0.3, taper: 0.84, style: 'suv', pillars: [0.44, 0.82], lights: 'swept', grille: 'xuv', blackPillars: true, cladding: true, rails: true },
+  hector: { label: 'MG Hector', L: 4.655, W: 1.835, H: 1.76, WB: 2.75, wr: 0.35, hood: 1.08, belt: 1.15, hoodLen: 1.08, ws: 0.72, rear: 0.26, taper: 0.85, style: 'suv', pillars: [0.44, 0.82], lights: 'split', grille: 'mg', blackPillars: true, cladding: true, rails: true },
+  // Vans: a short nose ahead of a tall box, the front wheels under the front seats.
+  eeco: { label: 'Maruti Suzuki Eeco', L: 3.675, W: 1.475, H: 1.825, WB: 2.35, wr: 0.27, hood: 0.96, belt: 1.04, hoodLen: 0.52, ws: 0.6, rear: 0.06, taper: 0.92, style: 'boxy', pillars: [0.3, 0.68], lights: 'tall', grille: 'slim' },
+  omni: { label: 'Maruti Suzuki Omni', L: 3.37, W: 1.41, H: 1.64, WB: 1.84, wr: 0.25, hood: 0.92, belt: 0.98, hoodLen: 0.3, ws: 0.5, rear: 0.06, taper: 0.93, style: 'boxy', pillars: [0.28, 0.66], lights: 'square', grille: 'slim' },
 };
 
 // Which real cars appear as each vehicle type, with weights.
 export const TYPE_MODELS = {
-  hatch: [['swift', 3], ['alto', 3], ['wagonr', 2.5], ['i10', 2]],
+  hatch: [['swift', 3], ['alto', 2.5], ['wagonr', 2.5], ['baleno', 2.5], ['i10', 2], ['tiago', 1.5], ['i20', 1.5]],
   sedan: [['dzire', 2.5], ['city', 2], ['verna', 1.5], ['etios', 1]],
-  taxi: [['etios', 3], ['dzire', 3], ['innova', 1.5], ['ertiga', 1]],
-  suv: [['creta', 3], ['nexon', 2], ['scorpio', 2], ['bolero', 1.5], ['innova', 1.5]],
+  taxi: [['etios', 3], ['dzire', 3], ['ertiga', 1.5], ['innova', 1.5], ['carens', 0.5]],
+  suv: [['creta', 3], ['brezza', 2.5], ['nexon', 2], ['scorpio', 2], ['punch', 2], ['venue', 2], ['seltos', 2], ['bolero', 1.5], ['innova', 1.5],
+    ['xuv700', 1.2], ['carens', 1], ['fortuner', 1], ['hector', 1], ['thar', 0.8]],
+  van: [['eeco', 3], ['omni', 1]],
   hoysala: [['ertiga', 1]],
 };
 
@@ -196,6 +214,8 @@ export function buildCarShell(b, m, colour, mats) {
       if (inPillar) col = pillarCol;
       if (windscreen || rearGlass) col = m.blackPillars ? mats.black.colour : colour;
     } else if (kind === 'corner' && (windscreen || rearGlass)) col = m.blackPillars ? mats.black.colour : colour;
+    // Contrast roofs: the roof skin (not the pillars) in black.
+    if (m.roofBlack && !glass && (kind === 'roof' || kind === 'corner') && !windscreen && !rearGlass) col = mats.black.colour;
     if (glass) { b.pbr = mats.glass.pbr; quad(a, bb, c, d, na, nb, nc, nd, mats.glass.colour); }
     else { b.pbr = mats.paint.pbr; quad(a, bb, c, d, na, nb, nc, nd, col); }
   });

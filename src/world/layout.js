@@ -14,8 +14,8 @@ export class Layout {
     let seed = 1203;
     this.rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     this.world = MD.WORLD;
-    const avoid = [...MD.PARKS.map((p) => p.poly), ...MD.LAKES.map((l) => l.poly), MD.AIRPORT.poly];
-    const net = buildRoadNet({ world: this.world, arterials: MD.ARTERIALS, avoid, rng: this.rng, spacing: MD.STREET_SPACING, urban: MD.URBAN, ruralSpacing: MD.RURAL_SPACING });
+    const avoid = [...MD.PARKS.map((p) => p.poly), ...MD.LAKES.map((l) => l.poly), MD.AIRPORT.poly, MD.AIRBASE.poly];
+    const net = buildRoadNet({ world: this.world, gridWorld: MD.GRID_WORLD, arterials: MD.ARTERIALS, avoid, rng: this.rng, spacing: MD.STREET_SPACING, urban: MD.URBAN, ruralSpacing: MD.RURAL_SPACING });
     this.net = net;
     this.roads = net.roads.filter((r) => !r.boundary);
     this.buildGraph(net);
@@ -159,18 +159,23 @@ export class Layout {
   // Landmarks go in the block at their real location, or the nearest one big enough to hold them.
   assignSpecials() {
     const NEED = { vidhanaSoudha: [104, 84], highCourt: [80, 40], stadium: [60, 60], iskcon: [74, 60], wtc: [66, 46], ibcPlatinumCity: [84, 96],
-      forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60], airport: [600, 380], itpl: [90, 90] };
+      forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60], airport: [600, 380], itpl: [90, 90],
+      bullTemple: [50, 50], tipuPalace: [50, 36], townHall: [60, 44], kanteerava: [96, 70], manyata: [120, 100], kempfortShiva: [44, 44], iisc: [96, 56],
+      gurudwara: [40, 40], biec: [170, 110] };
+    // Fenced sites the street grid stays out of: the landmark takes the whole site.
+    const SITES = { airport: MD.AIRPORT, airForceStation: MD.AIRBASE };
     const fits = (b, s) => { const [nw, nd] = NEED[s.landmark] || [30, 30]; return !b.special && b.zone !== 'park' && b.zone !== 'lake' && b.inner.maxX - b.inner.minX >= nw && b.inner.maxZ - b.inner.minZ >= nd; };
-    const put = (b, s) => { const { at, ...rest } = s; Object.assign(b, rest, { special: true }); };
+    // siteAt: the real location, for a landmark in a big (rural) block to stand at rather than mid-block.
+    const put = (b, s) => { const { at, ...rest } = s; Object.assign(b, rest, { special: true, siteAt: at }); };
     // First the ones whose own block can hold them, then the rest go to the nearest that can.
     const rest = [];
     for (const s of MD.SPECIAL_BLOCKS) {
-      if (s.landmark === 'airport') {
-        // The airport takes its whole fenced site, whatever shape the block around it is.
+      if (SITES[s.landmark]) {
+        // An airfield takes its whole fenced site, whatever shape the block around it is.
         const b = this.blocks.find((q) => pointInPoly(s.at[0], s.at[1], q.poly));
         if (!b) continue;
         put(b, s);
-        const [[x0, z0], , [x1, z1]] = MD.AIRPORT.poly;
+        const [[x0, z0], , [x1, z1]] = SITES[s.landmark].poly;
         b.inner = { minX: x0 + 20, maxX: x1 - 20, minZ: Math.max(this.world.minZ + 20, z0 + 20), maxZ: z1 - 20 };
         b.airportSite = true;
         continue;

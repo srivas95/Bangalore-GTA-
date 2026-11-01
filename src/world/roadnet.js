@@ -48,14 +48,20 @@ function intersect(a, b, c, d) {
 // ---------- the street grid ----------
 function makeGrid(cfg, arterials, rural = false) {
   const { world, avoid, rng } = cfg;
+  // Lines are laid out from gridWorld (the world as first drawn) and carry on evenly spaced
+  // beyond it, so growing the world doesn't move every street in the city.
+  const gw = cfg.gridWorld || world;
   const urban = cfg.urban || null;
   const inUrban = (x, z) => !urban || urban.some((p) => pointInPoly(x, z, p));
   const spacing = rural ? cfg.ruralSpacing || 650 : cfg.spacing || 150;
   const lines = [];
   const axisLines = (axis) => {
-    const [lo, hi] = axis === 'x' ? [world.minX, world.maxX] : [world.minZ, world.maxZ];
-    let k = 0;
-    for (let p = lo + spacing * 0.55; p < hi - 40; p += spacing * (0.88 + rng() * 0.24)) lines.push({ axis, pos: p, k: k++ });
+    const [lo, hi] = axis === 'x' ? [gw.minX, gw.maxX] : [gw.minZ, gw.maxZ];
+    const [wlo, whi] = axis === 'x' ? [world.minX, world.maxX] : [world.minZ, world.maxZ];
+    let k = 0, p = lo + spacing * 0.55;
+    for (; p < hi - 40; p += spacing * (0.88 + rng() * 0.24)) lines.push({ axis, pos: p, k: k++ });
+    for (; p < whi - 40; p += spacing) lines.push({ axis, pos: p, k: k++ });
+    for (let q = lo + spacing * 0.55 - spacing; q > wlo + 40; q -= spacing) lines.push({ axis, pos: q, k: k++ });
   };
   axisLines('x'); axisLines('z');
   const arts = [];
@@ -77,6 +83,7 @@ function makeGrid(cfg, arterials, rural = false) {
   for (const L of lines) {
     const [dirX, dirZ] = L.axis === 'x' ? [0, 1] : [1, 0];
     const [lo, hi] = L.axis === 'x' ? [world.minZ, world.maxZ] : [world.minX, world.maxX];
+    const glo = L.axis === 'x' ? gw.minZ : gw.minX;
     let start = null;
     const flush = (end) => {
       if (start !== null && end - start > (rural ? 200 : 70)) {
@@ -86,7 +93,7 @@ function makeGrid(cfg, arterials, rural = false) {
       }
       start = null;
     };
-    for (let t = lo; t <= hi; t += 6) {
+    for (let t = glo - Math.floor((glo - lo) / 6) * 6; t <= hi; t += 6) { // same 6 m steps as from gridWorld
       const [x, z] = L.axis === 'x' ? [L.pos, t] : [t, L.pos];
       if (blocked(x, z, dirX, dirZ)) flush(t - 6); else if (start === null) start = t;
     }
