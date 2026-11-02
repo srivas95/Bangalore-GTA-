@@ -23,13 +23,13 @@ const TOUGHNESS = { bus: 0.3, schoolBus: 0.35, lorry: 0.3, tanker: 0.3, tempo: 0
 //   hb        rear grip left with the handbrake pulled
 //   alpha     slip angle (rad) of peak grip: smaller = sharper response
 const HANDLING = {
-  hatch: { traction: 1.72, loss: 0.8, bias: 0.465, drive: 'F', turnMass: 0.9, brakeBias: 0.62 },
-  sedan: { traction: 1.72, loss: 0.8, bias: 0.46, drive: 'F', brakeBias: 0.6 },
-  taxi: { traction: 1.68, loss: 0.8, bias: 0.46, drive: 'F', brakeBias: 0.6 },
-  hoysala: { traction: 1.8, loss: 0.82, bias: 0.46, drive: 'F', turnMass: 0.95, brakeBias: 0.6 },
+  hatch: { traction: 1.72, loss: 0.8, bias: 0.465, drive: 'F', cg: 0.3, turnMass: 0.9, brakeBias: 0.62 },
+  sedan: { traction: 1.72, loss: 0.8, bias: 0.46, drive: 'F', cg: 0.3, brakeBias: 0.6 },
+  taxi: { traction: 1.68, loss: 0.8, bias: 0.46, drive: 'F', cg: 0.3, brakeBias: 0.6 },
+  hoysala: { traction: 1.8, loss: 0.82, bias: 0.46, drive: 'F', cg: 0.3, turnMass: 0.95, brakeBias: 0.6 },
   // Scorpio / Bolero-style: rear drive, softer and taller, will hang the tail out on the throttle.
-  suv: { traction: 1.58, loss: 0.76, bias: 0.47, drive: 'R', turnMass: 1.15, cg: 0.75, brakeBias: 0.58 },
-  auto: { traction: 1.2, loss: 0.8, bias: 0.44, drive: 'R', turnMass: 0.85, cg: 0.75, hb: 0.5, fall: 0.03 },
+  suv: { traction: 1.58, loss: 0.8, bias: 0.5, drive: 'R', turnMass: 1.15, cg: 0.5, brakeBias: 0.58 },
+  auto: { traction: 1.2, loss: 0.8, bias: 0.44, drive: 'R', turnMass: 0.85, cg: 0.55, hb: 0.5, fall: 0.03 },
   goodsAuto: { traction: 1.15, loss: 0.8, bias: 0.44, drive: 'R', turnMass: 0.95, cg: 0.85, hb: 0.5, fall: 0.03 },
   tempo: { traction: 1.25, loss: 0.76, bias: 0.45, drive: 'R', turnMass: 1.3, drag: 1.4, cg: 1.0, fall: 0.02 },
   miniTruck: { traction: 1.28, loss: 0.78, bias: 0.45, drive: 'R', turnMass: 1.15, drag: 1.3, cg: 0.9, fall: 0.025 },
@@ -50,9 +50,9 @@ export function handlingFor(type, s) {
     : heavy ? { traction: 1.05 * (s.grip || 7) / 7, loss: 0.74, drive: 'R', turnMass: 1.5, drag: 1.7, brakeBias: 0.55, fall: 0.015, cg: 1.3, hb: 0.6, alpha: 0.1 }
     : van ? { traction: 1.3 * (s.grip || 8) / 8, loss: 0.76, drive: 'R', turnMass: 1.25, drag: 1.3, fall: 0.02, cg: 1.0, hb: 0.5 }
     : three ? { traction: 1.2 * (s.grip || 8) / 8, loss: 0.8, bias: 0.44, drive: 'R', turnMass: 0.9, cg: 0.75, hb: 0.5, fall: 0.03 }
-    : big ? { traction: 1.58 * (s.grip || 8.5) / 8.5, loss: 0.76, bias: 0.47, drive: 'R', turnMass: 1.15, cg: 0.75 }
-    : { traction: 1.72 * (s.grip || 9) / 9, loss: 0.8, drive: 'F' };
-  const h = { bias: 0.45, drag: 1, turnMass: 1, brakeBias: 0.6, fall: 0.022, cg: 0.55, hb: 0.45, alpha: 0.085, lock: (s.steer || 0.55) * 180 / Math.PI, ...base, ...HANDLING[type], ...s.handling };
+    : big ? { traction: 1.58 * (s.grip || 8.5) / 8.5, loss: 0.78, bias: 0.47, drive: 'R', turnMass: 1.15, cg: 0.5 }
+    : { traction: 1.72 * (s.grip || 9) / 9, loss: 0.8, drive: 'F', cg: 0.3 };
+  const h = { bias: 0.45, drag: 1, turnMass: 1, brakeBias: 0.6, fall: 0.022, cg: 0.4, hb: 0.45, alpha: 0.085, lock: (s.steer || 0.55) * 180 / Math.PI, ...base, ...HANDLING[type], ...s.handling };
   h.lockRad = (h.lock * Math.PI) / 180;
   h.frontDrive = h.drive === 'F' ? 1 : h.drive === 'R' ? 0 : 0.45;
   return h;
@@ -227,7 +227,7 @@ export class Vehicle {
     const mu = h.traction * (1 - wet * 0.2) * (depth > 0.1 ? 0.75 : 1);
     const muF = mu * 2 * h.bias, muR = mu * 2 * (1 - h.bias);
     // Load transfer from last step's longitudinal acceleration.
-    const dN = Math.max(-0.35, Math.min(0.35, (this.ax * h.cg) / (g * L))) * m * g;
+    const dN = Math.max(-0.25, Math.min(0.25, (this.ax * h.cg) / (g * L))) * m * g;
     const Nf = Math.max(0.1 * m * g, (m * g * b) / L - dN), Nr = Math.max(0.1 * m * g, (m * g * a) / L + dN);
     const sp = Math.hypot(u, v);
     const low = Math.min(1, sp / 3); // below walking pace, tyres just roll
@@ -239,7 +239,7 @@ export class Vehicle {
       // Steering assist: the front tyres turn no further than just short of their grip peak,
       // measured from the way the front axle is actually travelling. Full lock at speed then
       // corners at the limit instead of ploughing on, and countersteer is never held back.
-      const travel = Math.atan2(v + a * r, u), cap = h.alpha * 1.1, w = Math.min(1, (u - 4) / 4);
+      const travel = Math.atan2(v + a * r, u), cap = h.alpha * 0.85, w = Math.min(1, (u - 4) / 4);
       let t = target;
       if (t > 0) t = Math.min(t, Math.max(0, travel + cap));
       else if (t < 0) t = Math.max(t, Math.min(0, travel - cap));
@@ -266,18 +266,25 @@ export class Vehicle {
     if (!input) Fbrake += m * 7; // nobody at the wheel: parked, in gear
     if (this.stalled || dead) Fdrive = 0;
     const sgn = Math.sign(u) || 1, stop = Math.min(1, Math.abs(u) / 0.4);
-    const peakF = muF * Nf, peakR = muR * Nr, LONG = 1.2; // tyres grip a little harder end-on
-    // The engine alone never spins the wheels (a launch is all go, no smoke); add cornering
-    // force on top, though, and a rear-driven car's tail steps out.
-    const dF = Fdrive * h.frontDrive, dR = Fdrive * (1 - h.frontDrive);
-    let Fxf = Math.sign(dF) * Math.min(Math.abs(dF), peakF * LONG) - Fbrake * h.brakeBias * sgn * stop;
-    let Fxr = Math.sign(dR) * Math.min(Math.abs(dR), peakR * LONG) - Fbrake * (1 - h.brakeBias) * sgn * stop;
+    const peakF = muF * Nf, peakR = muR * Nr;
+    // The engine alone never spins the wheels (a launch is all go, no smoke), but add cornering
+    // force on top and a rear-driven car's tail steps out. Once a driven axle is spinning up the
+    // power eases off it, so holding the throttle kicks the tail out without keeping it there.
+    const dF = Fdrive * h.frontDrive * (1 - 0.5 * this.slideF), dR = Fdrive * (1 - h.frontDrive) * (1 - 0.5 * this.slideR);
+    // Brakes split by brake bias, but the rear never takes more than it can hold and still
+    // steer (like EBD): the rest goes to the front, so a stop mid-corner runs wide, not round.
+    const Br = Math.min(Fbrake * (1 - h.brakeBias), peakR * 0.5), Bf = Fbrake - Br;
+    let Fxf = Math.sign(dF) * Math.min(Math.abs(dF), peakF * 1.1) - Bf * sgn * stop;
+    let Fxr = Math.sign(dR) * Math.min(Math.abs(dR), peakR * 1.1) - Br * sgn * stop;
+    // Tyres grip harder end-on than sideways (an arcade bonus, most of all for short stops).
+    const lng = (Fx) => Math.abs(Fx) / (Fx * sgn < 0 ? 1.25 : 1.1);
 
     // Tyres: grip rises with slip angle to its peak at alpha, then holds.
     const curve = (al) => { const x = Math.min(1, Math.abs(al) / h.alpha); return Math.sign(al) * x * (1.5 - 0.5 * x * x); };
     // Sliding: past the peak (slip, or engine/brake force beyond the grip) a tyre lets go and
     // slides at traction-loss grip; it bites again once its slip falls back under the peak.
     const slide = (cur, demand) => {
+      if (two) return 0; // bikes lean instead
       const goal = demand > 1.25 ? 1 : demand < 0.9 ? 0 : cur;
       return cur + (goal - cur) * Math.min(1, dt * (goal > cur ? 12 : 5));
     };
@@ -286,7 +293,7 @@ export class Vehicle {
     const cd = Math.cos(d), sd = Math.sin(d);
     const wLong = vfx * cd + vfy * sd, wLat = -vfx * sd + vfy * cd;
     const aF = Math.atan2(wLat, Math.abs(wLong) + 0.5);
-    this.slideF = slide(this.slideF, Math.hypot(Fxf / (peakF * LONG), (Math.abs(aF) / h.alpha) * low));
+    this.slideF = slide(this.slideF, Math.hypot(Math.max(lng(Fxf), Math.abs(dF) / 1.1) / peakF, (Math.abs(aF) / h.alpha) * low));
     const capF = peakF * (1 - this.slideF * (1 - h.loss));
     let Ffl = -capF * curve(aF) * low;
     // Rear axle.
@@ -301,12 +308,12 @@ export class Vehicle {
       Fxr = -capR * (u / vm); Frl = -capR * (vry / vm);
     } else {
       if (hb) Fxr -= m * 5 * sgn * stop; // two-wheelers: rear brake
-      this.slideR = slide(this.slideR, Math.hypot(Fxr / (peakR * LONG), (Math.abs(aR) / h.alpha) * low));
+      this.slideR = slide(this.slideR, Math.hypot(Math.max(lng(Fxr), Math.abs(dR) / 1.1) / peakR, (Math.abs(aR) / h.alpha) * low));
       capR = peakR * (1 - this.slideR * (1 - h.loss)) * (hb ? 0.85 : 1);
       Frl = -capR * curve(aR) * low;
     }
     // Friction circle per axle: hard braking or wheelspin steals cornering grip.
-    const circle = (Fx, Fy, Fmax) => { const t = Math.hypot(Fx / LONG, Fy); return t > Fmax ? Fmax / t : 1; };
+    const circle = (Fx, Fy, Fmax) => { const t = Math.hypot(lng(Fx), Fy); return t > Fmax ? Fmax / t : 1; };
     const kf = circle(Fxf, Ffl, capF), kr = circle(Fxr, Frl, capR * 1.001);
     Fxf *= kf; Ffl *= kf; Fxr *= kr; Frl *= kr;
     // Body-frame forces.
@@ -333,10 +340,14 @@ export class Vehicle {
       // hanging out past a drift angle, stop it swinging further. A slide stays a slide, not a
       // spin, unless you're deliberately on the handbrake. AI drivers get a firmer hand.
       const ai = this.driver && this.driver !== 'player';
-      const rMax = (mu * g * 1.1) / Math.max(2, sp) + (hb ? 2.5 : ai ? 0.08 : 0.5);
+      const rGrip = Math.min((mu * g * 1.1) / Math.max(2, sp), (sp * Math.tan(h.lockRad) * 1.2) / L);
+      const rMax = rGrip + (hb ? 2.5 : ai ? 0.08 : 0.5);
       if (Math.abs(r) > rMax) r -= (Math.abs(r) - rMax) * Math.sign(r) * Math.min(1, dt * (ai ? 12 : 3));
-      const over = Math.abs(aR) - (ai ? 0.15 : 0.45);
-      if (!hb && over > 0 && aR * r < 0 && sp > 3) r -= Math.sign(r) * Math.min(Math.abs(r), over * (ai ? 30 : 12) * dt);
+      const over = Math.abs(aR) - (ai ? 0.15 : 0.4);
+      if (!hb && over > 0 && aR * r < 0 && sp > 3) r -= Math.sign(r) * Math.min(Math.abs(r), over * 40 * dt);
+      // While the tail is out, the car settles towards the way its front wheels point, so
+      // straightening the wheel (or countersteering) catches a slide.
+      if (!hb && this.slideR > 0.3) r += ((u * Math.tan(d)) / L - r) * Math.min(1, dt * this.slideR * (ai ? 6 : 2.5));
     }
     if (low < 1) { // near standstill blend to pure rolling so cars don't drift at 2 km/h
       const rk = (u * Math.tan(d)) / L;
@@ -347,7 +358,7 @@ export class Vehicle {
     if (!thr && Math.abs(u) < 0.25 && sp < 0.3) { u = 0; v = 0; r *= 0.5; }
     this.ax = ax; this.ay = ay;
     // Tyre noise and smoke: rear slip angle, or either axle letting go.
-    this.slip = two ? Math.abs(aR) : Math.max(Math.abs(aR) * low, (0.2 * this.slideF + 0.2 * this.slideR) * Math.min(1, sp / 6));
+    this.slip = two ? Math.abs(aR) : Math.max(Math.abs(aR) * low, (0.17 * this.slideF + 0.25 * this.slideR) * Math.min(1, sp / 6));
     this.vx = fx * u + lx * v;
     this.vz = fz * u + lz * v;
     this.angVel = r;

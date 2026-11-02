@@ -160,8 +160,8 @@ export class Layout {
   assignSpecials() {
     const NEED = { vidhanaSoudha: [104, 84], highCourt: [80, 40], stadium: [60, 60], iskcon: [74, 60], wtc: [66, 46], ibcPlatinumCity: [84, 96],
       forumMall: [80, 80], silkBoardOffice: [70, 34], cathedral: [46, 26], skyTower: [36, 36], busStand: [100, 60], airport: [600, 380], itpl: [90, 90],
-      bullTemple: [50, 50], tipuPalace: [50, 36], townHall: [60, 44], kanteerava: [96, 70], manyata: [120, 100], kempfortShiva: [44, 44], iisc: [96, 56],
-      gurudwara: [40, 40], biec: [170, 110] };
+      bullTemple: [50, 50], tipuPalace: [50, 36], townHall: [60, 44], kanteerava: [160, 104], manyata: [150, 110], kempfortShiva: [44, 44], iisc: [96, 70],
+      gurudwara: [56, 40], biec: [200, 170] };
     // Fenced sites the street grid stays out of: the landmark takes the whole site.
     const SITES = { airport: MD.AIRPORT, airForceStation: MD.AIRBASE };
     const fits = (b, s) => { const [nw, nd] = NEED[s.landmark] || [30, 30]; return !b.special && b.zone !== 'park' && b.zone !== 'lake' && b.inner.maxX - b.inner.minX >= nw && b.inner.maxZ - b.inner.minZ >= nd; };

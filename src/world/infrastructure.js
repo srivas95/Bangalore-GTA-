@@ -1,6 +1,6 @@
 // Roads on the real network: carriageway strips per edge (mitred at gentle bends), junction
 // pads with zebra crossings, raised medians, underpasses (with floodable water), the Silk Board
-// and Hebbal flyovers, and dead-end barricades at the edge of the map.
+// and Hebbal flyovers, the NICE Road toll plaza, and dead-end barricades at the edge of the map.
 import * as THREE from 'three';
 import { makeFrame } from './meshBuilder.js';
 import { put } from './landmarks.js';
@@ -11,6 +11,7 @@ import { buildRailway } from './railway.js';
 import { DETAIL } from './detail.js';
 import { withAO } from './ao.js';
 import { groundSurface } from './surface.js';
+import { TOLL_PLAZAS } from './mapdata.js';
 
 const SHRUB = new THREE.IcosahedronGeometry(1, 0);
 const CYL = new THREE.CylinderGeometry(1, 1, 1, 12);
@@ -265,6 +266,36 @@ export function buildInfrastructure(ctx) {
       concrete.box(0, f.height - 1.3, 0, Math.hypot(q[0] - p[0], q[1] - p[1]) + 0.3, 2.35, 0.3, 0xbab4aa);
       B.xf = null;
     }
+  }
+
+  // ---------- Toll plazas: a canopy over the carriageway, booths on the median and the verges ----------
+  for (const tp of TOLL_PLAZAS) {
+    let e = null, bd = 400;
+    for (const q of layout.undirected) {
+      if (q.r.name !== tp.road || q.len < 90) continue;
+      const d = Math.hypot((q.a.x + q.b.x) / 2 - tp.near[0], (q.a.z + q.b.z) / 2 - tp.near[1]);
+      if (d < bd) { bd = d; e = q; }
+    }
+    if (!e) continue;
+    const r = e.r, hw = r.width / 2, H = 6.4;
+    const ux = (e.b.x - e.a.x) / e.len, uz = (e.b.z - e.a.z) / e.len;
+    const f = frameAlong((e.a.x + e.b.x) / 2, (e.a.z + e.b.z) / 2, ux, uz);
+    const col = colliders.framed(f), glow = B.get('glow');
+    B.xf = f;
+    concrete.box(0, H, 0, r.width + 10, 1.1, 14, 0xf2f2f2, { bottom: true });
+    for (const s of [-1, 1]) concrete.box(0, H + 0.15, s * 7.02, r.width + 10, 0.8, 0.06, 0xc8202a, { top: false });
+    for (const x of [-(hw + 2.5), 0, hw + 2.5]) {
+      for (const s of [-1, 1]) { put(concrete, CYL, x, H / 2, s * 5, 0xd8d8d8, 0, 0.4, H, 0.4); col.addCentered(x, s * 5, 0.9, 0.9, H, 'pole'); }
+      // Booth with a window on each side, between the columns.
+      concrete.box(x, 0.15, 0, 1.8, 2.6, 3.2, 0xe8e4dc);
+      concrete.box(x, 1.3, 0, 1.84, 0.9, 2.2, 0x2a3a4a);
+      concrete.box(x, 2.75, 0, 2.2, 0.2, 3.8, 0xc8202a);
+      col.addCentered(x, 0, 1.8, 3.2, 3, 'building');
+    }
+    // A green arrow over every lane, and the name across the front of the canopy each way.
+    for (let k = 0; k < r.lanes; k++) for (const s of [-1, 1]) glow.box(-s * layout.laneOffset(r, k), H - 0.35, s * 7.05, 0.7, 0.45, 0.06, 0x30e060, { top: false });
+    for (const s of [-1, 1]) ctx.sign({ key: 'toll_' + tp.name, text: ['ನೈಸ್ ರಸ್ತೆ ಸುಂಕ ಕೇಂದ್ರ', tp.name.toUpperCase()], bg: '#c8202a', fg: '#ffffff', x: 0, y: H + 0.55, z: s * 7.1, w: Math.min(r.width, 22), h: 0.75, face: s < 0 ? 'n' : 's' });
+    B.xf = null;
   }
 
   // ---------- Dead ends at the edge of the map ----------
