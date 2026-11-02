@@ -679,6 +679,8 @@ export class Rides {
     const d = Math.hypot(edge.from.x + edge.dir.x * s - v.x, edge.from.z + edge.dir.z * s - v.z) * 1.3;
     before();
     const lane = a.lane < edge.road.lanes ? a.lane : edge.road.lanes - 1;
+    this.traffic.leaveJunction(a); // (or it would still be holding up the junction it was in)
+    a.plan = null;
     a.edge = edge; a.lane = lane; a.path = this.traffic.edgePath(edge, lane); a.turning = false;
     a.s = Math.max(0, s - 1); a.speed = 0; a.route = [];
     const q = a.path.points, k = Math.min(1, a.s / a.path.length);
