@@ -207,7 +207,7 @@ export const DISTRICTS = [
   D('Kadugodi', 12.997, 77.762, 'mixed'), D('Varthur', 12.94, 77.745, 'residential'), D('Kundalahalli', 12.966, 77.72, 'mixed'),
   D('Yelahanka', 13.1007, 77.5963, 'mixed'), D('Yelahanka New Town', 13.102, 77.58, 'residential'), D('Kodigehalli', 13.06, 77.585, 'residential'),
   D('Jakkur', 13.07, 77.61, 'residential'), D('Sahakara Nagar', 13.06, 77.595, 'residential'), D('Thanisandra', 13.06, 77.635, 'residential'),
-  D('Electronic City', 12.849, 77.668, 'towers'),
+  D('Electronic City', 12.849, 77.668, 'mixed'),
 ];
 
 // Countryside around the city: blocks outside URBAN take the nearest of these names.

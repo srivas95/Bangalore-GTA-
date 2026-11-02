@@ -735,7 +735,7 @@ function bullTemple(ctx, block) {
   // Bugle Rock: boulders round the back of the temple.
   const rocks = [[-20, -14, 7, 4], [-12, -20, 8, 5], [0, -22, 9, 5.5], [13, -19, 7, 4.5], [21, -12, 6, 3.5], [-24, -2, 5, 3], [24, 0, 4.5, 2.6], [-6, -27, 6, 3.6], [8, -28, 5, 3]];
   rocks.forEach(([dx, dz, r, h], k) => {
-    put(stone, G.sphere, cx + dx, 0.15, cz + dz, k % 2 ? 0x8e887c : 0xa09a8c, k, r, h, r * 0.8);
+    put(stone, G.sphere, cx + dx, 0.15, cz + dz, k % 2 ? 0x6e6a62 : 0x7e7970, k, r, h, r * 0.8);
     colliders.addCentered(cx + dx, cz + dz, r * 1.4, r * 1.2, h, 'building');
   });
   // Granite platform with steps up from the street.
@@ -906,21 +906,21 @@ function kanteerava(ctx, block) {
   const { cx, cz } = centre(block);
   ctx.plaza(block, 0xd0cabc);
   const stone = B.get('stone'), metal = B.get('metal'), glow = B.get('glow');
-  const L = 60, r = 25, R = 33, y = 0.18, white = 0xf2f2f2;
+  const L = 60, r = 25, R = 33, y = 0.26, white = 0xf2f2f2; // clear of the plaza's depth offset
   const conc = 0xb8b2a8, seat = 0x2a5a9a, seat2 = 0xc8c0b4;
   put(stone, ovalGeo(L, R, R + 3), cx, y, cz, 0xa8a49c);
   put(stone, ovalGeo(L, r, R), cx, y, cz, 0xb5523a);
   put(stone, ovalGeo(L, 0, r), cx, y, cz, 0x4f9a42);
-  for (let k = 0; k <= 8; k++) put(stone, ovalGeo(L, r + k - 0.06, r + k + 0.06), cx, y + 0.02, cz, white);
+  for (let k = 0; k <= 8; k++) put(stone, ovalGeo(L, r + k - 0.06, r + k + 0.06), cx, y + 0.04, cz, white);
   // The football pitch in the middle.
   for (const s of [-1, 1]) {
-    stone.box(cx + s * 34, y + 0.01, cz, 0.15, 0.02, 44, white, { sides: false });
-    stone.box(cx, y + 0.01, cz + s * 22, 68, 0.02, 0.15, white, { sides: false });
+    stone.box(cx + s * 34, y + 0.03, cz, 0.15, 0.02, 44, white, { sides: false });
+    stone.box(cx, y + 0.03, cz + s * 22, 68, 0.02, 0.15, white, { sides: false });
     stone.box(cx + s * 34.6, y, cz, 0.2, 2.4, 7.3, 0xf4f4f4, { top: false });
     stone.box(cx + s * 34.6, y + 2.4, cz, 0.2, 0.15, 7.3, 0xf4f4f4);
   }
-  stone.box(cx, y + 0.01, cz, 0.15, 0.02, 44, white, { sides: false });
-  put(stone, new THREE.RingGeometry(6.8, 7, 32).rotateX(-Math.PI / 2), cx, y + 0.02, cz, white);
+  stone.box(cx, y + 0.03, cz, 0.15, 0.02, 44, white, { sides: false });
+  put(stone, new THREE.RingGeometry(6.8, 7, 32).rotateX(-Math.PI / 2), cx, y + 0.04, cz, white);
   // Covered grandstand along the north straight.
   const r0 = R + 3, gateW = 10;
   for (let k = 0; k < 6; k++) stone.box(cx, 0.15, cz - (r0 + k * 2 + 1), L + 10, 1.2 + k * 1.6, 2, k % 2 ? seat : conc);
@@ -1296,7 +1296,7 @@ function airForceStation(ctx, block) {
   const glow = B.get('glow'), sheet = B.get('sheet'), plaster = B.get('plaster'), metal = B.get('metal');
   const y = 0.17, mx = (i.minX + i.maxX) / 2;
   const auv = (x, z) => [x / 8, -z / 8];
-  const mark = (x, z, w, d, c = 0xf2f2f2) => stone.box(x, y, z, w, 0.02, d, c, { sides: false });
+  const mark = (x, z, w, d, c = 0xf2f2f2) => stone.box(x, y + 0.06, z, w, 0.02, d, c, { sides: false }); // clear of the asphalt's depth offset
   // Runway along the north of the site.
   const rz = i.minZ + 110, rw = 45, rx0 = i.minX + 50, rx1 = i.maxX - 50;
   asphalt.rect(rx0, rx1, rz - rw / 2, rz + rw / 2, y, 0x484846, auv);

@@ -520,13 +520,26 @@ export class Traffic {
             // Whoever was driving into the other stops and gives back the overlap.
             const intoA = -(vax * nx + vaz * nz), intoB = vbx * nx + vbz * nz;
             const x = intoA > intoB + 0.05 ? a : intoB > intoA + 0.05 ? b : a.id > b.id ? a : b;
-            x.s = Math.max(0, x.s - pen);
-            x.speed = 0;
-            this.place(x);
+            this.pushBack(x, x === a ? nx : -nx, x === a ? nz : -nz, pen);
           }
         }
       }
     }
+  }
+
+  // Move an agent `pen` metres out of an overlap, in direction (nx, nz), within its own path:
+  // sideways across the road where it can (a weaver that slid into someone slides back), and
+  // back along its path for the rest. It stops there, and stops drifting sideways.
+  pushBack(a, nx, nz, pen) {
+    const h = sample(a.path, a.s).h, f = nx * Math.sin(h) + nz * Math.cos(h), l = nx * Math.cos(h) - nz * Math.sin(h);
+    const [lo, hi] = a.turning ? [-1.5, 1.5] : [Math.min(this.band(a)[0], this.wrongBand(a)[0]), this.band(a)[1]];
+    const lat = Math.max(Math.min(lo, a.lat), Math.min(Math.max(hi, a.lat), a.lat + l * pen));
+    const back = Math.max(0, -f) * pen + Math.max(0, Math.abs(l) * pen - Math.abs(lat - a.lat));
+    a.lat = a.latTarget = lat;
+    a.latVel = 0;
+    a.s = Math.max(0, a.s - back);
+    a.speed = 0;
+    this.place(a);
   }
 
   crash(a, b, nx, nz, closing, cx, cz, world) {
