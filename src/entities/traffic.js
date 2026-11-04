@@ -440,9 +440,11 @@ export class Traffic {
         if (Math.abs(bv.y - v.y) > 2.5) continue;
         const dot = Math.sin(bv.heading) * fx + Math.cos(bv.heading) * fz;
         if (ghost === 2 || (ghost && dot < 0.7)) continue;
-        // Oncoming traffic only matters when someone is on the wrong side.
+        // Oncoming traffic only matters when someone is on the wrong side, or inside a junction,
+        // where two turning lines can meet nose to nose (unseen, they'd shove into each other
+        // there for ever and hold up every approach).
         const oncoming = dot < -0.7;
-        if (oncoming && !a.wrongNow && !b.wrongNow) continue;
+        if (oncoming && !a.wrongNow && !b.wrongNow && !a.turning && !b.turning) continue;
         const closing = oncoming ? b.speed : 0;
         const dx = bv.x - ox, dz = bv.z - oz;
         const ahead = dx * fx + dz * fz;
