@@ -7,8 +7,8 @@ conversations. Start by reading it, then `README.md` (what the game has) and `do
 
 - **Repo:** `srivas95/Bangalore-GTA-`. **Working branch:** `claude/clever-carson-z0m3zn` (all work
   below is pushed there; nothing is merged into `main` yet and no PR has been opened).
-- **Version:** 0.10.0 (`package.json`, `apps/desktop`, `apps/mobile`, Android `versionCode 12`,
-  service-worker cache `namma-bengaluru-v8` in `public/sw.js`). Bump all of these together.
+- **Version:** 0.11.0 (`package.json`, `apps/desktop`, `apps/mobile`, Android `versionCode 13`,
+  service-worker cache `namma-bengaluru-v9` in `public/sw.js`). Bump all of these together.
 - **CI:** `.github/workflows/build-apps.yml` ("Build apps") builds the web bundle, a Windows exe
   (Electron) and an Android APK (Capacitor) on every push to `main`, `master` or `claude/**`.
   Commits that touch only `docs/**` or `*.md` don't trigger it. The last code commit (`9bf66b4`) is green.
