@@ -322,7 +322,7 @@ export class Traffic {
       }
       return;
     }
-    a.forced = a.junctionWait >= 10; // gave up waiting: noses in at a crawl
+    a.forced = a.junctionWait >= 10 && !!a.plan && !this.junctionClear(a); // gave up waiting: noses in at a crawl
     a.junctionWait = 0;
     this.leaveJunction(a);
     const plan = a.plan && a.plan.route === a.route && a.plan.path === a.path ? a.plan : this.planTurn(a);
@@ -692,7 +692,11 @@ export class Traffic {
           // always while the road out is full: a vehicle that forces its way into a box it can't
           // leave holds up every turn through it, the next ones force their way in too, and the
           // whole junction locks solid.
-          if (!this.exitClear(a) || (a.junctionWait < 10 && (!this.junctionClear(a) || (left < 10 && !this.approachClear(a))))) {
+          // (Nosing in is one at a time, into a junction that isn't already full: a box with several
+          // forced in at once becomes a ring of vehicles each waiting for the next.)
+          const occ = node.occ || [];
+          const mayForce = a.junctionWait >= 10 && occ.length < 4 && !occ.some((o) => o.forced && o.turning && o.occNode === node);
+          if (!this.exitClear(a) || (!mayForce && (!this.junctionClear(a) || (left < 10 && !this.approachClear(a))))) {
             a.junctionWait += dt;
             target = Math.min(target, Math.max(0, (left - 0.8) * 1.2));
             a.waitingSignal = true;
