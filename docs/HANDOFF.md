@@ -137,6 +137,19 @@ settings) selects the phone detail level.
    station in Yelahanka and 10 other landmarks"; "add more vehicle models"; "AI vehicles are still
    driving through each other, and not crashing". All five done (details in README and the commits).
 
+6. **v0.11.0 (latest request):** use the uploaded "Bus Simulator India - Traffic Cars" pack;
+   fix traffic standing still at junctions; Poly Haven props, characters and textures; always
+   start with ₹1000; more vehicle models; then story phase 3 and live weather from Open-Meteo.
+   - The pack's 31 vehicles drive in traffic, which adds six new types.
+   - Junctions: wrecks are pushed off the road; parked vehicles use their real footprint;
+     nobody enters a junction with a full exit; forcing in is limited; rings of waiting
+     vehicles break up; head-on meetings inside junctions are seen; cows get shooed.
+   - Poly Haven: 7 props and 3 textures. It has no character models.
+   - ₹1000 every game (the save no longer restores money; the start screen said ₹500).
+   - Eight more real cars.
+   - Story: Acts II and III (10 missions). Act III is played as Vinay.
+   - Live weather from Open-Meteo.
+
 ## 7. Testing (headless)
 
 The game is tested in headless Chromium with software WebGL (SwiftShader), driven through
@@ -163,17 +176,27 @@ The game is tested in headless Chromium with software WebGL (SwiftShader), drive
 | `landmark-shots.mjs`, `vehicle-shots.mjs` | Close-ups of every landmark / every car model and type |
 | `load-probe.mjs`, `load-cpu-profile.mjs` | Load time, heap, geometry counts; CPU profile of the load |
 
-Latest results (v0.10.0, rush hour, one game minute): deep overlaps 77 → 1 (Majestic) and 142 → 0
+Latest results (v0.11.0): 2 game minutes at rush hour, share of nearby traffic stopped for
+something other than a red light (baseline 0.10.0 -> 0.11.0): Majestic 48% -> 19%, second spot
+50% -> 31% (it still drifts up to 40-55% late in the run). All 10 new story missions pass in a
+headless playthrough (scratch script that completes each step by type).
+**Memory in the test container:** the cgroup kills headless Chromium at about 5.6-6 GB RSS, and
+stepping thousands of frames in ONE `page.evaluate` (no event-loop turns) builds up memory that real
+frames free; step in chunks of 30 with `await new Promise((r) => setTimeout(r, 0))` between them, use
+`?detail=lite`, and a small viewport. In this container, the Open-Meteo request is reset by the
+agent proxy when it carries an Origin header (works in real browsers; the game falls back to its own
+monsoon).
+
+Earlier results (v0.10.0, rush hour, one game minute): deep overlaps 77 → 1 (Majestic) and 142 → 0
 (second spot); crashes 5 and 0; average speed 8.9 → 6.7 and 7.8 → 5.3 m/s; vehicles stuck over 10 s
 38 and 12 (was 1). Bus ride works; 4/4 auto hails work. Handling bench: hatchback 1.55 g at full
 lock, 0–100 km/h 5.3 s, 26.7 m from 100 km/h.
 
 ## 8. Open issues and next steps
 
-1. **Traffic flow** is 25–35 % slower than before the collision work and jams build at busy junctions
-   (jam reasons in `traffic.mjs` output: mostly vehicles queued behind a turning vehicle, and
-   vehicles waiting for the junction). Tune junction waiting, exits and gap acceptance without
-   bringing back pass-through.
+1. **Traffic flow:** junction gridlock is much reduced in 0.11.0, but at the busiest unsignalled
+   junctions queues still grow over a couple of minutes (second test spot). A real fix may need
+   junction right-of-way rules (who goes first by approach), not only waiting checks.
 2. **SUV/MPV windscreen glitch** (older bug): on lofted SUVs and MPVs (Innova, Bolero, Fortuner...)
    the windscreen reads as a dark raised flap from low front-3/4 views. In `carBodies.js` (loft).
 3. **Landmarks:** some sit in big, mostly empty blocks (Bull Temple, Town Hall, Kanteerava, whose
