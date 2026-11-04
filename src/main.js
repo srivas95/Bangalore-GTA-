@@ -18,6 +18,7 @@ import { Traffic } from './entities/traffic.js';
 import { loadPackVehicles } from './entities/packVehicles.js';
 import { loadProps, PropField } from './world/props.js';
 import { loadPhotos } from './world/textures.js';
+import { LiveWeather, describe } from './systems/liveWeather.js';
 import { StreetLife } from './entities/pedestrians.js';
 import { Player } from './entities/player.js';
 import { Vehicle, damageFromSpeed } from './entities/vehicle.js';
@@ -119,6 +120,7 @@ async function init() {
   traffic.prewarm(150, 16.5);
   const streetLife = new StreetLife(scene, layout, colliders, signals);
   const env = new Environment(scene, renderer, camera, layout, city);
+  const liveWeather = new LiveWeather(env, settings);
   // Baked ground shading next to buildings, walls, trees and under the metro viaducts.
   {
     const strips = [];
@@ -293,6 +295,7 @@ async function init() {
   world.metroTrains = metro.trains;
   world.railTrains = city.rail.trains;
   const story = new Story(scene, hud, audio, missions, world);
+  world.story = story;
   world.saveGame = () => story.save();
   const garages = new Garages(scene, layout, colliders, hud, audio, missions, world, city.pois);
   world.garages = garages;
@@ -481,6 +484,7 @@ async function init() {
   settings.onReset = () => { story.reset(); missions.money = START_MONEY; hud.setMoney(START_MONEY, true); world.garages?.reset?.(); };
   document.getElementById('open-settings').addEventListener('click', () => settings.toggle(true));
   settings.onChange((s) => {
+    if (s.liveWeather === false) liveWeather.release(); else { liveWeather.paused = false; liveWeather.t = 0; }
     baseRatio = Math.min(devicePixelRatio, 1.5) * s.resScale;
     dynRes = s.dynamicRes !== false;
     if (!dynRes) dynScale = 1;
@@ -593,7 +597,7 @@ async function init() {
 
     if (input.hit('KeyM')) hud.toggleMap();
     if (input.hit('KeyR')) { radioOn = !radioOn; hud.say(radioOn ? 'Radio on' : 'Radio off', 1.2); }
-    if (input.hit('KeyK')) { env.setRain(!env.raining); hud.say(env.raining ? 'Dark clouds roll in over Bengaluru…' : 'The rain eases off.', 2.5); }
+    if (input.hit('KeyK')) { liveWeather.paused = true; liveWeather.release(); env.setRain(!env.raining); hud.say(env.raining ? 'Dark clouds roll in over Bengaluru…' : 'The rain eases off.', 2.5); }
     if (input.hit('KeyT') && !metroRide.active && !rides.active) { env.timeScale = env.timeScale > 1 ? 1 : 30; hud.say(env.timeScale > 1 ? 'Time ×30' : 'Time normal', 1.5); }
     if (input.hit('KeyO')) togglePerf();
 
@@ -717,7 +721,8 @@ async function init() {
     });
     { const w = WEAPONS[player.weapon]; hud.setWeapon(w.name, player.clip[player.weapon] ?? 0, player.ammo[player.weapon] ?? 0, player.reloadT > 0, player.aiming, w.kind === 'gun'); }
     world.rigPitch = rig.pitch;
-    hud.setClock(env.clockString(), env.rain > 0.6 ? '⛈ Monsoon' : env.rain > 0.1 ? '🌧 Rain' : env.night > 0.5 ? '🌙 Clear' : '☀ Clear');
+    liveWeather.update(dt);
+    hud.setClock(env.clockString(), liveWeather.on ? describe(liveWeather.now) + ' · live' : env.rain > 0.6 ? '⛈ Monsoon' : env.rain > 0.1 ? '🌧 Rain' : env.night > 0.5 ? '🌙 Clear' : '☀ Clear');
     input.endFrame();
   };
   // Push all the static city geometry to the GPU once, from above, so the CPU-side copies can be

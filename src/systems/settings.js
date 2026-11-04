@@ -16,7 +16,7 @@ export const isTouchDevice = () => typeof window !== 'undefined' && (matchMedia?
 
 const defaults = () => ({
   quality: isTouchDevice() ? 'low' : 'high', ...PRESETS[isTouchDevice() ? 'low' : 'high'],
-  sensitivity: 1, invertY: false, volume: 0.8, touch: 'auto', detail: 'auto', dynamicRes: true,
+  sensitivity: 1, invertY: false, volume: 0.8, touch: 'auto', detail: 'auto', dynamicRes: true, liveWeather: true,
 });
 
 export class Settings {
@@ -81,6 +81,7 @@ export class Settings {
       ${row('Pedestrians', slider('peds', 0.2, 1.2, 0.05))}
       ${row('Look sensitivity', slider('sensitivity', 0.3, 2.5, 0.05))}
       ${row('Invert look up/down', check('invertY'))}
+      ${row('Live weather (Bengaluru, from Open-Meteo)', check('liveWeather'))}
       ${row('Volume', slider('volume', 0, 1, 0.05))}
       ${row('World detail <small>(after restart)</small>', `<select data-k="detail"><option value="auto">Auto</option><option value="full">Full</option><option value="lite">Lite (phones)</option><option value="min">Minimum</option></select>`)}
       ${row('Touch controls', `<select data-k="touch"><option value="auto">Auto</option><option value="on">On</option><option value="off">Off</option></select>`)}

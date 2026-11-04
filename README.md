@@ -231,6 +231,11 @@ and signing.
 
 ### Day/night and monsoon
 
+- **Live weather.** The sky follows Bengaluru's real weather from [Open-Meteo](https://open-meteo.com)
+  (rain, cloud cover and thunderstorms, with the temperature on the HUD), checked every 10 minutes.
+  Turn it off in Settings, or press **K** to make your own rain; offline it falls back to the
+  game's own monsoon.
+
 - **Day/night.** A 24-minute day brings lit windows, sodium street-lamp pools, and glowing headlights,
   tail lights and signals.
 - **Monsoon.** Rain showers come on their own, with lightning, wet roads and flooded underpasses.
@@ -294,8 +299,14 @@ and signing.
 - **Story** ([docs/STORY.md](docs/STORY.md)). Raghu, a delivery rider from the coast, rises through
   the Majestic underworld. The full arc runs through rise, empire, exile in Dubai and a
   "reformed" return.
-  - **Act I is playable:** five missions, from a parcel run for the market rowdy Kotte Kumar to
-    the ambush on Magadi Road.
+  - **Acts I to III are playable**, 15 missions in all:
+    - **Act I (Majestic):** from a parcel run for the market rowdy Kotte Kumar to the ambush on
+      Magadi Road.
+    - **Act II (Empire):** land grabs for an MLA-to-be, a godown war with Seenu, laundering
+      through Lakshmi Akka's darshinis, an informer, and a dawn run to the airport ahead of a
+      warrant.
+    - **Act III (Exile):** you play Vinay, the delivery rider Raghu calls from Dubai. You hold
+      Majestic, hijack the MLA's cash, and get Raghu's lawyer to court through Seenu's ambush.
   - Mission givers are pink markers on the map.
   - Every game starts with **₹1,000** in your pocket.
   - Story progress is **saved** in the browser.

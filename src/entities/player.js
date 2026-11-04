@@ -49,6 +49,20 @@ export class Player {
     if (select) this.select(key);
   }
 
+  // Become someone else (the story's Act III is played as Vinay): a new body in the old one's
+  // place, still holding whatever was in hand and sitting in whatever we were sitting in.
+  setLook(opts) {
+    const old = this.human, h = createHuman(opts);
+    h.group.position.copy(old.group.position);
+    h.group.rotation.copy(old.group.rotation);
+    h.group.visible = old.group.visible;
+    const parent = old.group.parent;
+    if (parent) { parent.add(h.group); parent.remove(old.group); }
+    this.human = h;
+    if (this.vehicle) poseSit(h);
+    if (this.weapon) this.select(this.weapon);
+  }
+
   select(key) {
     if (!this.weapons.has(key)) return;
     this.weapon = key;

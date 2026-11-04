@@ -186,7 +186,7 @@ export class Environment {
     this.weatherTimer -= dt;
     if (this.weatherTimer <= 0) this.setRain(!this.raining);
     this.rain += Math.sign(this.rainTarget - this.rain) * Math.min(Math.abs(this.rainTarget - this.rain), dt / 12);
-    this.clouds = Math.min(0.55, Math.max(0.1, this.clouds + (Math.sin(this.time * 0.013) * 0.5 + 0.2 - this.clouds) * dt * 0.01));
+    if (!this.cloudsLocked) this.clouds = Math.min(0.55, Math.max(0.1, this.clouds + (Math.sin(this.time * 0.013) * 0.5 + 0.2 - this.clouds) * dt * 0.01));
 
     const elev = this.updateSky(dt);
     // City lights come on through dusk: half by sunset plus a few minutes, fully by -8 degrees.

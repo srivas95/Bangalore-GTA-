@@ -57,29 +57,38 @@ ambush at a half-built site off Magadi Road. Raghu walks out of it, and Majestic
 When Act I ends, Raghu owns the Majestic collections. Money comes in passively, and
 rival crews start turning up in the markets.
 
-## Act II: Empire (planned)
+## Act II: Empire (playable now)
 
-- **Land.** Help Hanu Anna clear "encroachments" on the city's edge: Kengeri, Peenya,
-  the lake beds. You choose between persuading people, paying them off or burning them out,
-  and the choices change how neighbourhoods treat you.
-- **War with Seenu.** A street war across K.R. Market, Mysore Road and the Nayandahalli
-  junction, fought with chases, ambushes and a raid on his godowns.
-- **Lakshmi Akka's ledger.** Laundering through darshinis, a cinema and a fleet of taxis.
-  This is the first business-management layer.
-- **ACP Shalini Rao** appears. Her missions pressure Raghu: tails, raids and informers in
-  his crew.
-- **The act ends** with Hanu Anna, now an MLA, cutting Raghu loose. With a warrant out,
-  Raghu leaves the country from the airport road before dawn.
+Hanu Anna, a corporator on his way to becoming an MLA, needs muscle for his land deals.
+Raghu's war with Seenu spreads to the godowns at Nayandahalli. Lakshmi Akka starts washing
+his money through her darshinis, and ACP Shalini Rao finds an informer in his crew. The
+act ends with Hanu Anna, now an MLA, cutting Raghu loose. With a warrant out, Raghu has to
+reach the airport before the 6 a.m. flight to Dubai.
 
-## Act III: Exile (planned)
+| # | Mission | Where | What happens |
+|---|---|---|---|
+| 6 | **The Lake Bed** | Kengeri | Clear a rival builder's boys off a dry lake bed for Hanu Anna, then lose the police. |
+| 7 | **Nayandahalli Nights** | Nayandahalli junction | Hit Seenu's godowns at night and take out the guards. Three stars. |
+| 8 | **Lakshmi Akka's Ledger** | VV Puram, Jayanagar, Malleswaram, Basavanagudi | Collect the takings from three darshinis to be laundered. Shalini Rao is mentioned. |
+| 9 | **The Informer** | Kasturba Road | Reach the tea stall before Murali meets Shalini Rao's man, then run his cab down. |
+| 10 | **Airport Road Before Dawn** | Rajajinagar to KIA | A warrant and four stars. Lose the police and make the flight to Dubai. |
 
-- In Dubai (cutscenes, phone calls and a small playable area), Faizal Bhai shelters Raghu.
-- Back home, the player controls **Vinay**, carrying out Raghu's orders by phone.
-  The missions are extortion calls, protecting the business, and a Majestic that is
-  slipping away.
-- Seenu and Hanu Anna move on Raghu's people, and Shalini Rao closes in on Vinay.
-- **The act ends** with Raghu negotiating his return: a deal, a surrender and a trial that
-  goes nowhere.
+## Act III: Exile (playable now)
+
+Raghu is in Dubai under Faizal Bhai's roof. He gives orders by phone. **The player is
+Vinay**, a young delivery rider who idolises him. With Raghu gone, Seenu takes Majestic's
+shops, threatens Lakshmi Akka's darshinis and sells Raghu's people out to Hanu Anna, while
+Shalini Rao closes in. Vinay hijacks the MLA's election cash so Raghu can bargain his way
+home. The act ends at the City Civil Court: Vinay gets Raghu's lawyer there through Seenu's
+ambush, and Raghu surrenders to a trial that goes nowhere.
+
+| # | Mission | Where | What happens |
+|---|---|---|---|
+| 11 | **A Call from Dubai** | Gandhinagar and Avenue Road | Play as Vinay from here on. Remind the shops who they pay, and beat Seenu's collectors. |
+| 12 | **Coffee and Kerosene** | VV Puram | Against the clock, stop Seenu's arsonists before they torch Lakshmi Akka's darshini. |
+| 13 | **Shalini's Shadow** | Gandhinagar | Shake off a Crime Branch tail (three stars) and reach Chikka's garage. |
+| 14 | **The MLA's Cash** | Peenya to Gandhinagar | Take Hanu Anna's cash lorry from his gunmen and deliver it to Chikka, in one piece. |
+| 15 | **The Deal** | KIA to the City Civil Court | Collect Raghu's lawyer from the airport and get her to court in time. Then fight off Seenu himself. Raghu comes home. |
 
 ## Act IV: Return (planned)
 
@@ -96,8 +105,8 @@ rival crews start turning up in the markets.
 - **Story missions** (`src/systems/story.js`). Missions are scripts of steps: go to a
   place, talk, fight a crew, lose the police, collect, steal and deliver a vehicle, or
   survive. Each has a giver marker on the map and a reward.
-- **Saving.** Finished missions and money are saved to `localStorage` and restored when
-  you load the game.
+- **Saving.** Finished missions are saved to `localStorage` and restored when you load the
+  game. Every game starts with ₹1000.
 - **Gangs** (`src/entities/gangs.js`). Missions spawn named crews with weapons, and crews
   alert together.
 - **Gigs** (delivery and auto fares) keep running between missions and pause during one.
