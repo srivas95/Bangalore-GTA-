@@ -26,6 +26,14 @@ const G = {
   box: new THREE.BoxGeometry(1, 1, 1),
 };
 
+// Paint on the ground (runway, pitch and parking markings), with a stronger depth offset than the
+// asphalt, plaza and grass under it, which are themselves pulled towards the camera.
+function paint(ctx) {
+  if (!ctx.mats.paint) ctx.mats.paint = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const b = ctx.B.get('paint');
+  return (x, y, z, w, d, c = 0xf2f2f2) => b.rect(x - w / 2, x + w / 2, z - d / 2, z + d / 2, y, c);
+}
+
 function centre(block) {
   const b = block.inner;
   return { cx: (b.minX + b.maxX) / 2, cz: (b.minZ + b.maxZ) / 2, w: b.maxX - b.minX, d: b.maxZ - b.minZ };
@@ -495,12 +503,13 @@ function airport(ctx, block) {
   // Runway along the north of the site, taxiway and apron south of it.
   const rz = i.minZ + 70, rw = 45, rx0 = i.minX + 30, rx1 = i.maxX - 30;
   asphalt.rect(rx0, rx1, rz - rw / 2, rz + rw / 2, y, 0x4a4a4a, (x, z) => [x / 8, -z / 8]);
-  for (let x = rx0 + 60; x < rx1 - 60; x += 30) stone.box(x, y, rz, 15, 0.02, 0.9, 0xf2f2f2, { sides: false });
-  for (const end of [rx0 + 8, rx1 - 8]) for (let k = -4; k <= 4; k++) if (k) stone.box(end, y, rz + k * 4.4, 18, 0.02, 1.8, 0xf2f2f2, { sides: false });
-  for (const sd of [-1, 1]) stone.box((rx0 + rx1) / 2, y, rz + sd * (rw / 2 - 1), rx1 - rx0, 0.02, 0.5, 0xf2f2f2, { sides: false });
+  const mark = paint(ctx);
+  for (let x = rx0 + 60; x < rx1 - 60; x += 30) mark(x, y + 0.02, rz, 15, 0.9);
+  for (const end of [rx0 + 8, rx1 - 8]) for (let k = -4; k <= 4; k++) if (k) mark(end, y + 0.02, rz + k * 4.4, 18, 1.8);
+  for (const sd of [-1, 1]) mark((rx0 + rx1) / 2, y + 0.02, rz + sd * (rw / 2 - 1), rx1 - rx0, 0.5);
   const tz = rz + 80;
   asphalt.rect(rx0 + 40, rx1 - 40, tz - 12, tz + 12, y, 0x555555, (x, z) => [x / 8, -z / 8]);
-  for (let x = rx0 + 40; x < rx1 - 40; x += 6) stone.box(x, y, tz, 3, 0.02, 0.3, 0xf2c200, { sides: false });
+  for (let x = rx0 + 40; x < rx1 - 40; x += 6) mark(x, y + 0.02, tz, 3, 0.3, 0xf2c200);
   for (const x of [rx0 + 60, (rx0 + rx1) / 2, rx1 - 60]) asphalt.rect(x - 12, x + 12, rz + rw / 2, tz - 12, y, 0x555555, (px, pz) => [px / 8, -pz / 8]);
   const az0 = tz + 20, az1 = i.maxZ - 120;
   plaza.rect(i.minX + 120, i.maxX - 120, az0, az1, y, 0xc8c4bc, (x, z) => [x / 6, -z / 6]);
@@ -904,9 +913,9 @@ function ovalGeo(L, r0, r1) {
 function kanteerava(ctx, block) {
   const { B, colliders, signs } = ctx;
   const { cx, cz } = centre(block);
-  ctx.plaza(block, 0xd0cabc);
+  // No plaza fill: its depth offset would win over the track. The block's paving shows instead.
   const stone = B.get('stone'), metal = B.get('metal'), glow = B.get('glow');
-  const L = 60, r = 25, R = 33, y = 0.26, white = 0xf2f2f2; // clear of the plaza's depth offset
+  const L = 60, r = 25, R = 33, y = 0.22, white = 0xf2f2f2;
   const conc = 0xb8b2a8, seat = 0x2a5a9a, seat2 = 0xc8c0b4;
   put(stone, ovalGeo(L, R, R + 3), cx, y, cz, 0xa8a49c);
   put(stone, ovalGeo(L, r, R), cx, y, cz, 0xb5523a);
@@ -914,12 +923,12 @@ function kanteerava(ctx, block) {
   for (let k = 0; k <= 8; k++) put(stone, ovalGeo(L, r + k - 0.06, r + k + 0.06), cx, y + 0.04, cz, white);
   // The football pitch in the middle.
   for (const s of [-1, 1]) {
-    stone.box(cx + s * 34, y + 0.03, cz, 0.15, 0.02, 44, white, { sides: false });
-    stone.box(cx, y + 0.03, cz + s * 22, 68, 0.02, 0.15, white, { sides: false });
+    stone.box(cx + s * 34, y + 0.02, cz, 0.15, 0.02, 44, white, { sides: false });
+    stone.box(cx, y + 0.02, cz + s * 22, 68, 0.02, 0.15, white, { sides: false });
     stone.box(cx + s * 34.6, y, cz, 0.2, 2.4, 7.3, 0xf4f4f4, { top: false });
     stone.box(cx + s * 34.6, y + 2.4, cz, 0.2, 0.15, 7.3, 0xf4f4f4);
   }
-  stone.box(cx, y + 0.03, cz, 0.15, 0.02, 44, white, { sides: false });
+  stone.box(cx, y + 0.02, cz, 0.15, 0.02, 44, white, { sides: false });
   put(stone, new THREE.RingGeometry(6.8, 7, 32).rotateX(-Math.PI / 2), cx, y + 0.04, cz, white);
   // Covered grandstand along the north straight.
   const r0 = R + 3, gateW = 10;
@@ -1153,9 +1162,9 @@ function biec(ctx, block) {
   const { B, colliders, signs } = ctx;
   ctx.lawn(block, 0x9aa060);
   const { cx, cz } = siteCentre(block, 190, 160);
-  const stone = B.get('stone'), sheet = B.get('sheet'), glass = B.get('glass'), metal = B.get('metal');
+  const stone = B.get('stone'), sheet = B.get('sheet'), glass = B.get('glass'), metal = B.get('metal'), mark = paint(ctx);
   B.get('plaza').rect(cx - 95, cx + 95, cz - 62, cz + 78, 0.17, 0xd4cfc4, (x, z) => [x / 5, -z / 5]);
-  for (let x = cx - 86; x <= cx + 86; x += 3) for (const z of [cz + 52, cz + 68]) stone.box(x, 0.18, z, 0.15, 0.01, 5, 0xf2f2f2, { sides: false });
+  for (let x = cx - 86; x <= cx + 86; x += 3) for (const z of [cz + 52, cz + 68]) mark(x, 0.19, z, 0.15, 5);
   for (const k of [-1, 0, 1]) {
     const hx = cx + k * 58, hz = cz - 20;
     stone.box(hx, 0.15, hz, 54, 11, 80, 0xeef0f2);
@@ -1296,7 +1305,7 @@ function airForceStation(ctx, block) {
   const glow = B.get('glow'), sheet = B.get('sheet'), plaster = B.get('plaster'), metal = B.get('metal');
   const y = 0.17, mx = (i.minX + i.maxX) / 2;
   const auv = (x, z) => [x / 8, -z / 8];
-  const mark = (x, z, w, d, c = 0xf2f2f2) => stone.box(x, y + 0.06, z, w, 0.02, d, c, { sides: false }); // clear of the asphalt's depth offset
+  const paintOn = paint(ctx), mark = (x, z, w, d, c) => paintOn(x, y + 0.02, z, w, d, c);
   // Runway along the north of the site.
   const rz = i.minZ + 110, rw = 45, rx0 = i.minX + 50, rx1 = i.maxX - 50;
   asphalt.rect(rx0, rx1, rz - rw / 2, rz + rw / 2, y, 0x484846, auv);

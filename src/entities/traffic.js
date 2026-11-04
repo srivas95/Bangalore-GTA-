@@ -125,7 +125,7 @@ export class Traffic {
       // In a hurry (a hired auto with the player aboard): no dawdling, fast corners, hard acceleration.
       rush: false,
       // The next turn, chosen before the stop line so it can wait for a clear junction.
-      plan: null, occNode: null, fromEdge: null, junctionWait: 0,
+      plan: null, occNode: null, fromEdge: null, junctionWait: 0, forced: false,
     };
     if (erratic) {
       const [lo, hi] = this.band(a);
@@ -320,6 +320,7 @@ export class Traffic {
       }
       return;
     }
+    a.forced = a.junctionWait >= 10; // gave up waiting: noses in at a crawl
     a.junctionWait = 0;
     this.leaveJunction(a);
     const plan = a.plan && a.plan.route === a.route && a.plan.path === a.path ? a.plan : this.planTurn(a);
@@ -544,7 +545,6 @@ export class Traffic {
 
   crash(a, b, nx, nz, closing, cx, cz, world) {
     const A = a.v, Bv = b.v, ia = 1 / A.mass, ib = 1 / Bv.mass;
-    if (this.debugCrashes) this.debugCrashes.push({ a: A.type, b: Bv.type, closing: +closing.toFixed(1), dot: +(Math.sin(A.heading) * Math.sin(Bv.heading) + Math.cos(A.heading) * Math.cos(Bv.heading)).toFixed(2), ta: a.turning, tb: b.turning, ea: a.erratic, eb: b.erratic, ga: a.ghost > 0, gb: b.ghost > 0, sa: +a.speed.toFixed(1), sb: +b.speed.toFixed(1), wa: a.wrongNow, wb: b.wrongNow, stA: a.stunned > 0, stB: b.stunned > 0, ba: a.lastBlocker === b, bb: b.lastBlocker === a });
     const j = (1.25 * closing) / (ia + ib);
     const share = (m1, m2) => Math.min(1.6, (2 * m2) / (m1 + m2));
     A.takeDamage(damageFromSpeed(closing * share(A.mass, Bv.mass) * 0.75), cx, cz, world);
@@ -650,6 +650,8 @@ export class Traffic {
 
       let target = a.rush ? (a.turning ? Math.min(a.cruise, 10) : a.cruise * Math.max(1, surge)) * rainSlow
         : (a.turning ? Math.min(a.cruise, 6.5) : a.cruise * surge) * rainSlow;
+      // Forcing a way into a busy junction: slowly enough that anyone it meets just stops.
+      if (a.turning && a.forced) target = Math.min(target, 2.5);
       a.waitingSignal = false;
       // Signals.
       if (!a.turning && a.edge.to.signal && !(a.edge.flyover && a.lane === 0)) {
@@ -766,10 +768,12 @@ export class Traffic {
       if (a.speed > 3 && distP < 160 && rng() < dt * 0.03) audio?.horn(v.spec.horn, v.x, v.z, camera, v.hornPitch);
 
       a.s += a.speed * dt;
-      while (a.s >= a.path.length) {
+      // (Capped: a degenerate zero-length curve must never spin here forever.)
+      for (let n = 0; a.s >= a.path.length && n < 4; n++) {
         a.s -= a.path.length;
         this.advance(a);
       }
+      a.s = Math.min(a.s, a.path.length);
       const p = sample(a.path, a.s);
       // Sideways moves: weavers dart across, everyone else drifts gently.
       const latSpeed = two ? 2.6 : a.erratic ? 1.8 : 1.2;
@@ -788,9 +792,7 @@ export class Traffic {
       const prevX = v.x, prevZ = v.z;
       v.x = p.x + Math.cos(p.h) * a.lat;
       v.z = p.z - Math.sin(p.h) * a.lat;
-      let dh = nh - v.heading;
-      while (dh > Math.PI) dh -= Math.PI * 2;
-      while (dh < -Math.PI) dh += Math.PI * 2;
+      const dh = Math.atan2(Math.sin(nh - v.heading), Math.cos(nh - v.heading));
       v.yawRate = dt > 0 ? (dh / dt) * 0.5 : 0;
       v.ay = dt > 0 ? (dh / dt) * a.speed * 0.6 : 0; // drives the body-roll spring
       v.ax = dt > 0 ? (a.speed - (a.lastSpeed ?? a.speed)) / dt : 0;
