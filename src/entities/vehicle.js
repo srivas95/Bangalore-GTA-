@@ -7,7 +7,7 @@ let nextId = 1;
 
 // Damage points for a hit at a given closing speed (m/s): a 50 km/h wall costs ~45 of 100.
 export const damageFromSpeed = (s) => (s > 3 ? Math.pow(s - 3, 1.5) * 1.15 : 0);
-const TOUGHNESS = { bus: 0.3, schoolBus: 0.35, ksrtc: 0.3, garbage: 0.3, lorry: 0.3, tanker: 0.3, tempo: 0.6, ambulance: 0.6, miniTruck: 0.7, suv: 0.8, hoysala: 0.8 };
+const TOUGHNESS = { bus: 0.3, schoolBus: 0.35, ksrtc: 0.3, cityBus: 0.32, fireTruck: 0.3, policeVan: 0.75, garbage: 0.3, lorry: 0.3, tanker: 0.3, tempo: 0.6, ambulance: 0.6, miniTruck: 0.7, suv: 0.8, hoysala: 0.8 };
 
 // Handling, modelled on the ideas behind GTA San Andreas' handling setup (turn mass, drag,
 // traction, traction loss and bias, drive type, brake bias, steering lock). The values are our
@@ -69,11 +69,11 @@ const baseUpdateMatrixWorld = THREE.Object3D.prototype.updateMatrixWorld;
 function skipWhenHidden(force) { if (this.visible) baseUpdateMatrixWorld.call(this, force); }
 
 export class Vehicle {
-  constructor(type, { x = 0, z = 0, heading = 0, rng = Math.random, color, livery, model, rider = false, pink = false } = {}) {
+  constructor(type, { x = 0, z = 0, heading = 0, rng = Math.random, color, livery, model, pack, rider = false, pink = false } = {}) {
     this.id = nextId++;
     this.type = type;
     this.spec = VEHICLE_TYPES[type];
-    this.model = buildVehicleModel(type, rng, { color, livery, pink, model });
+    this.model = buildVehicleModel(type, rng, { color, livery, pink, model, pack });
     if (this.model.spec && this.model.spec !== this.spec) this.spec = this.model.spec; // real car dimensions
     this.group = this.model.group;
     this.group.userData.vehicle = this;

@@ -148,7 +148,7 @@ export class StreetLife {
       group.position.set(x, 0, z);
       group.rotation.y = Math.atan2(ux, uz);
       this.scene.add(group);
-      this.cows.push({ group, x, z, y: 0, h: group.rotation.y, r: 1.0, timer: rand(2, 10), moving: false, isCow: true });
+      this.cows.push({ group, x, z, y: 0, h: group.rotation.y, r: 0.8, timer: rand(2, 10), moving: false, isCow: true });
       return;
     }
   }
@@ -547,7 +547,9 @@ export class StreetLife {
       }
       if (c.moving) {
         const nx = c.x + Math.sin(c.h) * 0.4 * dt, nz = c.z + Math.cos(c.h) * 0.4 * dt;
-        if (this.layout.roadAt(nx, nz) && !this.layout.underpassAt(nx, nz)) { c.x = nx; c.z = nz; } else c.h += Math.PI;
+        // They amble along the edge of the carriageway, short of the junctions, so traffic can get round them.
+        const h = this.layout.edgeAt(nx, nz), w = h ? h.e.r.width / 2 : 0;
+        if (h && h.d <= w + 0.5 && h.d >= w - 1.8 && h.t > 0.12 && h.t < 0.88 && !this.layout.underpassAt(nx, nz)) { c.x = nx; c.z = nz; } else c.h += Math.PI;
         c.group.position.set(c.x, 0, c.z);
         c.group.rotation.y = c.h;
       }

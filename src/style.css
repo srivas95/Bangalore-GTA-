@@ -119,6 +119,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color:
 /* Pause screen buttons and settings */
 .start-row { display: flex; gap: 10px; margin-top: 14px; }
 .start-row button { flex: 1; }
+.credits { margin-top: 10px; font-size: 10.5px; line-height: 1.35; opacity: 0.6; }
 button.ghost { background: transparent !important; border: 1px solid #666 !important; color: #ddd !important; }
 #settings { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(440px, 94vw); max-height: 92vh; overflow-y: auto; display: none; padding: 18px 22px; background: rgba(14, 14, 18, 0.97); border: 1px solid #333; border-top: 4px solid var(--gold); z-index: 20; font-family: system-ui, sans-serif; }
 #settings.show { display: block; }

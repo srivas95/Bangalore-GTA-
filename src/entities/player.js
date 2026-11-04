@@ -410,7 +410,7 @@ export class Player {
     if (v.driver === 'ai' || v.driver === 'police') {
       if (v.driver === 'police') world.police?.vehicleStolen(v);
       else { const agent = world.traffic.findAgent(v); if (agent) world.traffic.release(agent); }
-      if (v.type !== 'bus' && v.type !== 'schoolBus' && v.type !== 'ksrtc') {
+      if (v.type !== 'bus' && v.type !== 'schoolBus' && v.type !== 'ksrtc' && v.type !== 'cityBus') {
         const opts = v.rider ? { outfit: v.rider.outfit, female: v.rider.female } : {};
         v.removeRider();
         world.streetLife.spawnFleeing(v.x - Math.cos(v.heading) * 1.5, v.z + Math.sin(v.heading) * 1.5, this.x, this.z, opts);

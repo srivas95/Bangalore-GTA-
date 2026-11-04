@@ -1,6 +1,6 @@
 // Story missions. A mission is a script of steps (go somewhere, talk, fight a crew, lose the
 // police, collect, steal and deliver a vehicle...). Mission givers wait at marked places on the
-// map; walk into the marker to start. Progress and money are saved to localStorage.
+// map; walk into the marker to start. Progress is saved to localStorage (each game starts with ₹1000).
 // The story is fiction: see docs/STORY.md.
 import { Marker } from './missions.js';
 import { geo, SCALE } from '../world/mapdata.js';
@@ -283,13 +283,13 @@ export class Story {
       const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
       if (!s) return;
       this.done = s.done || [];
-      if (typeof s.money === 'number') { this.gigs.money = s.money; this.hud.setMoney(s.money, true); }
+      // Story progress carries over; money doesn't: every game starts with START_MONEY in your pocket.
       if (this.done.length) setTimeout(() => this.hud.say(`Save loaded: ${this.done.length} story mission${this.done.length > 1 ? 's' : ''} done.`, 3), 4000);
     } catch { /* private window or blocked storage: play without saving */ }
   }
 
   save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ done: this.done, money: this.gigs.money, t: Date.now() })); } catch { /* ignore */ }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ done: this.done, t: Date.now() })); } catch { /* ignore */ }
   }
 
   reset() {

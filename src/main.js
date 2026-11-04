@@ -15,6 +15,7 @@ import { Signals } from './systems/signals.js';
 import { Police } from './systems/police.js';
 import { Environment } from './systems/environment.js';
 import { Traffic } from './entities/traffic.js';
+import { loadPackVehicles } from './entities/packVehicles.js';
 import { StreetLife } from './entities/pedestrians.js';
 import { Player } from './entities/player.js';
 import { Vehicle, damageFromSpeed } from './entities/vehicle.js';
@@ -62,6 +63,8 @@ THREE.ShaderChunk.envmap_physical_pars_fragment = THREE.ShaderChunk.envmap_physi
 			return mix( vec3( dot( irr, vec3( 0.2126, 0.7152, 0.0722 ) ) ), irr, 0.3 );`);
 
 async function init() {
+  // The traffic-cars pack (vehicle models) loads while the fonts do; it's needed before traffic.
+  const packLoad = loadPackVehicles();
   // Wait for the Kannada font so the canvas-painted signs render the script.
   try {
     await Promise.race([Promise.all(['26px "Noto Sans Kannada"', '40px "Oswald"', '800 40px "Baloo Tamma 2"', '40px "Anton"', '40px "Yellowtail"'].map((f) => document.fonts.load(f, 'ಕನ್ನಡ Aa'))),
@@ -105,6 +108,7 @@ async function init() {
   const city = buildCity(scene, layout, colliders, renderer);
   const metro = buildMetro(scene, layout, colliders);
   const signals = new Signals(scene, layout);
+  await packLoad;
   const traffic = new Traffic(scene, layout, signals);
   traffic.prewarm(150, 16.5);
   const streetLife = new StreetLife(scene, layout, colliders, signals);
@@ -183,6 +187,36 @@ async function init() {
     scene.add(v.group);
     free.push(v);
     return v;
+  };
+  // A wreck left lying in the road is pushed to the side by passers-by once it has come to rest,
+  // so one crash doesn't stop a junction for as long as you're around. Straight out from the
+  // road's centre line to just past the kerb, at a walking pace. True while it's being moved.
+  const clearWreck = (v, dt) => {
+    if (v.cleared || v.driver || v.y > 1) return false;
+    if (!v.clearTo) {
+      if (v.speed > 0.3) { v.restT = 0; return false; }
+      if ((v.restT = (v.restT || 0) + dt) < 6) return false;
+      if (!layout.roadAt(v.x, v.z)) { v.cleared = true; return false; } // not on a carriageway
+      // The nearest spot clear of every carriageway (in a junction, one road's kerb can be
+      // another road's lane), with room for the vehicle and nothing built there.
+      const half = v.spec.width / 2 + 0.4;
+      let best = null;
+      for (let d = 2; d <= 16 && !best; d += 1) {
+        for (let k = 0; k < 16; k++) {
+          const a = (k / 16) * Math.PI * 2, x = v.x + Math.cos(a) * d, z = v.z + Math.sin(a) * d;
+          if (layout.roadAt(x, z) || layout.roadAt(x + Math.cos(a) * -half, z + Math.sin(a) * -half) || colliders.pointBlocked(x, z, 1)) continue;
+          best = { x, z }; break;
+        }
+      }
+      if (!best) { v.cleared = true; return false; }
+      v.clearTo = best;
+    }
+    const dx = v.clearTo.x - v.x, dz = v.clearTo.z - v.z, d = Math.hypot(dx, dz), step = Math.min(d, 2 * dt);
+    if (d < 0.05) { v.clearTo = null; v.cleared = true; return false; }
+    v.x += (dx / d) * step; v.z += (dz / d) * step;
+    v.vx = v.vz = v.angVel = 0;
+    v.syncVisual(dt, world);
+    return true;
   };
   // Footpath parking: a spot `t` (0..1) along edge k of a block, 2 m in from the kerb.
   const kerbSpot = (b, k, t, inset = 2.2) => {
@@ -604,6 +638,7 @@ async function init() {
     }
     for (const v of free) {
       if (v === player.vehicle) continue;
+      if (v.temp && clearWreck(v, dt)) continue;
       if (v.speed > 0.05 || Math.abs(v.angVel) > 0.02) v.update(dt, null, world);
       else if (v.health < 45 || v.fireT > 0 || v.wrecked) v.effects(dt, world); // keep smoking and burning
       v.group.visible = Math.abs(v.x - world.focus.x) < 300 && Math.abs(v.z - world.focus.z) < 300;
@@ -618,9 +653,15 @@ async function init() {
     resolveVehicleContacts(world.dynamic, traffic, world, player, free);
 
     world.obstacles.length = 0;
-    if (player.vehicle) world.obstacles.push({ x: player.vehicle.x, z: player.vehicle.z, y: player.vehicle.y, r: player.vehicle.spec.length / 2, isPlayer: true });
+    // Vehicles are given to traffic as their body circles (width across, spread along the length),
+    // not one circle as wide as the car is long: a car parked on the footpath by a corner used to
+    // reach 2 m into the road and stop everything turning past it.
+    const vehObstacles = (v, isPlayer, isCop) => {
+      for (const c of v.circles(v._obsC || (v._obsC = []))) { c.y = v.y; c.isPlayer = isPlayer; c.isCop = isCop; c.parked = !isPlayer && !isCop; world.obstacles.push(c); }
+    };
+    if (player.vehicle) vehObstacles(player.vehicle, true, false);
     else if (player.y < 0.05 && !rides.carrying) world.obstacles.push(player);
-    for (const v of world.dynamic) if (v !== player.vehicle) world.obstacles.push({ x: v.x, z: v.z, y: v.y, r: v.spec.length / 2, isCop: v.driver === 'police' });
+    for (const v of world.dynamic) if (v !== player.vehicle) vehObstacles(v, false, v.driver === 'police');
     for (const c of police.cops) world.obstacles.push(c);
     streetLife.collectObstacles(world.obstacles);
 
@@ -742,7 +783,7 @@ function resolveVehicleContacts(dynamic, traffic, world, player, free) {
             // Traffic is on rails until something knocks it hard enough to lose control.
             const agent = traffic.findAgent(b);
             const dvB = j * ib;
-            const heavy = ['bus', 'lorry', 'tanker', 'schoolBus'].includes(b.type);
+            const heavy = ['bus', 'lorry', 'tanker', 'schoolBus', 'ksrtc', 'cityBus', 'fireTruck', 'garbage'].includes(b.type);
             // (A much heavier hitter always shoves it: otherwise it acts as a wall, hit again every frame.)
             const loses = agent && !heavy && (dvB > 4 || (b.spec.twoWheeler && dvB > 2) || (a.mass > 2.5 * b.mass && -vn > 1.5));
             a.x += nx * pen * (loses ? ia / (ia + ib) : 1); a.z += nz * pen * (loses ? ia / (ia + ib) : 1);

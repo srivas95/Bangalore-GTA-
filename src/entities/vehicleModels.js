@@ -8,6 +8,7 @@ import { put } from '../world/landmarks.js';
 import { textTexture } from '../world/textures.js';
 import { decalAtlas, decalUV, BUS_LIVERIES, pickBusLivery, KSRTC_LIVERIES } from './liveries.js';
 import { CAR_MODELS, TYPE_MODELS, buildCarShell } from './carBodies.js';
+import { packTemplates, buildPackModel, PACK_SHARE } from './packVehicles.js';
 
 // horn: profile key in systems/audio.js. stall: water depth (m) that floods the engine.
 export const VEHICLE_TYPES = {
@@ -32,6 +33,13 @@ export const VEHICLE_TYPES = {
   // siren: a light bar and siren like the Hoysala's, without being police.
   ambulance: { label: '108 Ambulance', length: 5.45, width: 1.95, wheelbase: 3.35, maxSpeed: 32, accel: 4.8, brake: 11, reverse: 4, steer: 0.5, grip: 8.2, mass: 2900, cam: 9, horn: 'tempo', engine: 'car', stall: 0.8, siren: true },
   ksrtc: { label: 'KSRTC Bus', length: 12.0, width: 2.6, wheelbase: 6.0, maxSpeed: 24, accel: 2.3, brake: 7, reverse: 3, steer: 0.5, grip: 7, mass: 13500, cam: 16, horn: 'air', engine: 'bus', stall: 1.2 },
+  // From the traffic-cars pack (packVehicles.js); procedural stand-ins if it isn't loaded.
+  luxury: { label: 'Luxury Sedan', length: 5.0, width: 1.95, wheelbase: 3.0, maxSpeed: 52, accel: 9, brake: 15, reverse: 6, steer: 0.52, grip: 9.5, mass: 1800, cam: 7.2, horn: 'car2', engine: 'car', stall: 0.55 },
+  cityBus: { label: 'Private Bus', length: 8.6, width: 2.6, wheelbase: 4.6, maxSpeed: 22, accel: 2.6, brake: 8, reverse: 3, steer: 0.55, grip: 7, mass: 8000, cam: 13, horn: 'bus', engine: 'bus', stall: 1.1 },
+  fireTruck: { label: 'Fire Engine', length: 7.0, width: 2.5, wheelbase: 4.0, maxSpeed: 25, accel: 2.8, brake: 8, reverse: 3, steer: 0.5, grip: 7.5, mass: 9000, cam: 12, horn: 'air', engine: 'bus', stall: 1.1, siren: true },
+  policeVan: { label: 'Police Van', length: 4.1, width: 2.0, wheelbase: 2.6, maxSpeed: 38, accel: 6, brake: 13, reverse: 5, steer: 0.52, grip: 8.5, mass: 2100, cam: 7.5, horn: 'police', engine: 'car', stall: 0.7, siren: true },
+  evMini: { label: 'Electric Microcar', length: 2.9, width: 1.6, wheelbase: 2.0, maxSpeed: 28, accel: 7, brake: 13, reverse: 5, steer: 0.6, grip: 8.8, mass: 900, cam: 6, horn: 'carHi', engine: 'car', stall: 0.45 },
+  evCar: { label: 'Electric Car', length: 4.1, width: 2.0, wheelbase: 2.6, maxSpeed: 42, accel: 8.5, brake: 14, reverse: 6, steer: 0.54, grip: 9, mass: 1500, cam: 7, horn: 'carHi', engine: 'car', stall: 0.5 },
   garbage: { label: 'BBMP Garbage Truck', length: 6.2, width: 2.2, wheelbase: 3.4, maxSpeed: 17, accel: 2.4, brake: 8, reverse: 3, steer: 0.55, grip: 7.5, mass: 7500, cam: 11, horn: 'lorry', engine: 'bus', stall: 1.0 },
 };
 
@@ -156,10 +164,10 @@ function plate(v, z, y, yellow, w = 0.5, face = 1) {
 const C = (hex) => new THREE.Color(hex);
 const pickWeighted = (list, r) => { let t = list.reduce((s, [, w]) => s + w, 0) * r(); for (const [k, w] of list) if ((t -= w) <= 0) return k; return list[0][0]; };
 
-function buildCar(type, r, opts) {
+function buildCar(type, r, opts, base = VEHICLE_TYPES[type]) {
   const key = opts.model ?? pickWeighted(TYPE_MODELS[type] || TYPE_MODELS.sedan, r);
   const m = CAR_MODELS[key];
-  const spec = { ...VEHICLE_TYPES[type], length: m.L, width: m.W, wheelbase: m.WB, label: type === 'hoysala' ? 'Hoysala (Maruti Suzuki Ertiga)' : type === 'taxi' ? `${m.label} (cab)` : m.label };
+  const spec = { ...base, length: m.L, width: m.W, wheelbase: m.WB, label: base !== VEHICLE_TYPES[type] ? base.label : type === 'hoysala' ? 'Hoysala (Maruti Suzuki Ertiga)' : type === 'taxi' ? `${m.label} (cab)` : m.label };
   const v = new VB();
   const police = type === 'hoysala';
   const pink = police && opts.pink;
@@ -699,7 +707,20 @@ function buildGarbage(r, opts) {
 }
 
 export function buildVehicleModel(type, r = Math.random, opts = {}) {
+  // The traffic-cars pack: a share of each type it covers (all of the ones only it has), unless
+  // a particular model, colour or livery was asked for.
+  const pack = packTemplates(type);
+  if (opts.pack) { const t = pack.find((q) => q.name === opts.pack); if (t) return buildPackModel(t, VEHICLE_TYPES[type]); }
+  if (pack.length && !opts.model && opts.color == null && !opts.livery && !opts.pink && (!(type in PACK_SHARE) || r() < PACK_SHARE[type])) {
+    return buildPackModel(pack[Math.floor(r() * pack.length)], VEHICLE_TYPES[type]);
+  }
   switch (type) {
+    case 'luxury': return buildCar('sedan', r, opts, VEHICLE_TYPES.luxury);
+    case 'evCar': return buildCar('hatch', r, opts, VEHICLE_TYPES.evCar);
+    case 'policeVan': return buildCar('suv', r, opts, VEHICLE_TYPES.policeVan);
+    case 'evMini': return buildCar('hatch', r, opts, VEHICLE_TYPES.evMini);
+    case 'cityBus': return buildBus('bus', r, opts);
+    case 'fireTruck': return buildTruck('lorry', r, opts);
     case 'auto': case 'goodsAuto': return buildAuto(type, r, opts);
     case 'scooter': case 'delivery': case 'bike': case 'sportBike': return buildTwoWheeler(type, r, opts);
     case 'bus': case 'schoolBus': case 'tempo': case 'ksrtc': case 'ambulance': return buildBus(type, r, opts);

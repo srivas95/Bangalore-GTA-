@@ -13,8 +13,10 @@ const BASE_MIX = {
   scooter: 0.2, delivery: 0.07, bike: 0.06, sportBike: 0.03, auto: 0.16, goodsAuto: 0.03, hatch: 0.1, sedan: 0.06, taxi: 0.07,
   suv: 0.05, tempo: 0.025, miniTruck: 0.03, bus: 0.055, schoolBus: 0.015, lorry: 0.015, tanker: 0.012, hoysala: 0.008,
   van: 0.025, ksrtc: 0.012, garbage: 0.006, ambulance: 0.004,
+  // (From the traffic-cars pack.)
+  luxury: 0.012, cityBus: 0.02, evCar: 0.012, evMini: 0.01, policeVan: 0.004, fireTruck: 0.003,
 };
-const HEAVY = new Set(['bus', 'schoolBus', 'lorry', 'tanker', 'tempo', 'goodsAuto', 'miniTruck', 'ksrtc', 'garbage']);
+const HEAVY = new Set(['bus', 'schoolBus', 'lorry', 'tanker', 'tempo', 'goodsAuto', 'miniTruck', 'ksrtc', 'garbage', 'cityBus', 'fireTruck']);
 const AUTOS = new Set(['auto', 'goodsAuto']);
 const CELL = 24;
 
@@ -518,9 +520,14 @@ export class Traffic {
           // (Out of sight they just stop: no wrecks blocking roads you haven't seen happen.)
           if (closing > 5 && Math.hypot(cx - world.focus.x, cz - world.focus.z) < 160) this.crash(a, b, nx, nz, closing, cx, cz, world);
           else {
-            // Whoever was driving into the other stops and gives back the overlap.
+            // Whoever has the other in front of them gives back the overlap (a bus's tail swinging
+            // round in a turn must not be pushed back into the car queued behind it, every frame,
+            // for ever); nose to nose, it's whoever was driving into the other.
+            const fa = (Bv.x - A.x) * Math.sin(A.heading) + (Bv.z - A.z) * Math.cos(A.heading);
+            const fb = (A.x - Bv.x) * Math.sin(Bv.heading) + (A.z - Bv.z) * Math.cos(Bv.heading);
             const intoA = -(vax * nx + vaz * nz), intoB = vbx * nx + vbz * nz;
-            const x = intoA > intoB + 0.05 ? a : intoB > intoA + 0.05 ? b : a.id > b.id ? a : b;
+            const x = fa > 0.5 && fb <= 0.5 ? a : fb > 0.5 && fa <= 0.5 ? b
+              : intoA > intoB + 0.05 ? a : intoB > intoA + 0.05 ? b : a.id > b.id ? a : b;
             this.pushBack(x, x === a ? nx : -nx, x === a ? nz : -nz, pen);
           }
         }
@@ -582,7 +589,7 @@ export class Traffic {
   // A crashed vehicle that's no longer needed goes back to the pool.
   recycle(v) {
     this.scene.remove(v.group);
-    v.temp = false;
+    v.temp = false; v.cleared = false; v.clearTo = null; v.restT = 0;
     v.siren = false;
     v.vx = v.vz = v.angVel = 0;
     v.repair();
@@ -706,16 +713,22 @@ export class Traffic {
         }
       }
       // Stuck behind something that isn't going anywhere (a wreck, a stalled or parked vehicle):
-      // cars and buses edge round it within their side of the road.
-      if (!a.erratic && !a.turning && a.stuck > 3 && blocker && !blocker.waitingSignal && (!blocker.v || blocker.v.driver !== 'ai' || blocker.stunned > 0)) {
-        const [lo, hi] = this.band(a);
+      // cars and buses edge round it within their side of the road, or within the junction.
+      if ((!a.erratic || a.turning) && a.stuck > (a.turning ? 1.5 : 3) && blocker && !blocker.waitingSignal && (!blocker.v || blocker.v.driver !== 'ai' || blocker.stunned > 0)) {
+        // (On an undivided road, over the centre line if need be: a cow at the kerb of a narrow
+        // street leaves no room on your own side. Once over, oncoming traffic counts in gapAhead.)
+        const r0 = a.edge.road, wide = !r0.median && !a.edge.flyover;
+        const [lo, hi] = a.turning ? [-1.8, 1.8] : [wide ? Math.min(this.band(a)[0], this.wrongBand(a)[0]) : this.band(a)[0], this.band(a)[1]];
         let best = a.latTarget, bestGap = gap;
         for (let k = 0; k <= 6; k++) {
           const cand = lo + ((hi - lo) * k) / 6, r = this.gapAhead(a, cand, look, obstacles);
           if (r.gap > bestGap + 2) { bestGap = r.gap; best = cand; }
         }
+        if (best !== a.latTarget) a.bypassT = 6;
         a.latTarget = best;
       }
+      // Past it: back into lane (unless it's still there).
+      if (a.bypassT > 0 && (a.bypassT -= dt) <= 0 && !a.erratic && !a.turning) a.latTarget = 0;
       if (blocker && blocker.waitingSignal) a.waitingSignal = true;
       a.lastBlocker = blocker;
       // Two vehicles nose to nose, each waiting for the other: the newer one backs off a few metres.
