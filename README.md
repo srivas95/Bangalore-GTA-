@@ -68,14 +68,16 @@ and signing.
 
 ### The map: real Bengaluru
 
-- It's built from **real geography** at 1/5 scale around Majestic: about 6.3 km × 7.8 km of game world,
-  from Kengeri in the south-west to **Whitefield** in the east and **Kempegowda International Airport**
-  in the north.
+- It's built from **real geography** at 1/3 scale around Majestic: about 11.6 km × 13.5 km of game
+  world, from Kengeri and **NICE Road** in the south-west to **Whitefield** in the east,
+  Electronic City in the south and **Kempegowda International Airport** in the north.
 - The city proper gets a dense street grid. Yelahanka, Whitefield and K.R. Puram are built up too,
   and the countryside in between has fields, farmhouses and village roads.
 - **About 36 arterials** follow their real alignments: Tumkur Road, Mysore Road, Bellary Road,
   Hosur Road, Old Madras Road, the whole Outer Ring Road loop, MG Road, Chord Road, the **airport
   road (NH 44)**, the Hennur–Bagalur road, ITPL Main Road, Whitefield Main Road and more.
+  **NICE Road** (3 lanes each way, with a toll plaza at Kadabagere) sweeps round the south-west
+  from Tumkur Road at Madavara to Hosur Road at Electronic City.
   A street grid fills the neighbourhoods between them.
 - Blocks are real polygons, and buildings sit on lots that face their road.
 - About **60 neighbourhoods**, each with its own character: markets in Chickpete and K.R. Market,
@@ -90,8 +92,12 @@ and signing.
   Peenya, Taj Yeshwantpur, Vaishnavi Sapphire, Yeshwanthpur Junction, the Forum, Central Silk
   Board, the Lalbagh Glass House, the State Central Library, the **Kempegowda Bus Station**
   at Majestic (buses in the bays, crowds on the platforms, departure boards) facing the
-  clock-towered KSR Bengaluru City station, **ITPL** in Whitefield, and the **airport** with both terminals, the control tower,
-  parked jets and departures taking off every minute and a half.
+  clock-towered KSR Bengaluru City station, **ITPL** in Whitefield, Bangalore Palace, the Bull
+  Temple, Tipu Sultan's Summer Palace, Town Hall, Sree Kanteerava Stadium, Manyata Tech Park, the
+  Kempfort Shiva, IISc, Ulsoor Gurudwara, BIEC, and the **airport** with both terminals, the
+  control tower, parked jets and departures taking off every minute and a half.
+- **Air Force Station Yelahanka**: the runway, hangars, control tower, Surya Kiran Hawks and Tejas
+  on the apron, a MiG-21 at the gate, and the Surya Kiran team circling overhead.
 - **Flyovers.** The Silk Board and Hebbal flyovers carry the inner lanes over the junction. The
   Hebbal one follows Bellary Road round the bend.
 - **Underpasses.** Underpasses run wherever a road crosses the railway, plus the K.R. Circle and
@@ -145,19 +151,26 @@ and signing.
 
 ### Vehicles and driving
 
-- **Tyre physics.** Driving uses a bicycle model with slip angles, load transfer and handbrake
-  turns, plus a stability assist that keeps it fun. Two-wheelers lean. Cars have arcade-level
-  cornering grip (about 1.5 g in a hatchback), so you can take a junction at speed.
+- **Handling in the style of GTA San Andreas** (our own model and values, using the same kind of
+  per-vehicle handling settings): grip, grip while sliding, front/rear grip split, front-, rear- or
+  four-wheel drive, turn mass, brakes and steering lock for each type. Cars corner hard (about
+  1.55 g in a hatchback), slide when pushed past the limit and can be caught; a handbrake tap takes
+  a junction, a longer pull spins you round. Rear-drive SUVs step out under power, front-drive cars
+  push wide. Two-wheelers lean.
 - **Real car models**, each with its own proportions:
   - Maruti Alto, WagonR, Swift and Dzire
   - Hyundai i10, Verna and Creta
   - Toyota Etios and Innova
   - Honda City, Maruti Ertiga, Tata Nexon, Mahindra Scorpio and Bolero
+  - Maruti Baleno, Brezza, Eeco and Omni; Hyundai i20 and Venue; Tata Tiago and Punch
+  - Kia Seltos and Carens, Mahindra Thar and XUV700, Toyota Fortuner, MG Hector
 - **Taxis** are Etios, Dzire, Innova and Ertiga. The **Hoysala** is a Maruti Ertiga in the current
   Bengaluru City Police livery. There's also a Pink Hoysala.
 - **More types:** scooters, a Royal Bullet, autos, goods autos, and **BMTC buses** in five real
-  liveries with LED route boards. Tempo travellers, mini trucks, lorries ("Horn OK Please"), water
-  tankers and school buses round it out.
+  liveries with LED route boards. KSRTC Sarige, Airavat and Rajahamsa coaches, '108' ambulances
+  (with a siren you can switch on), BBMP garbage trucks, Eeco and Omni vans, and electric scooters
+  (Ola S1, Ather, iQube). Tempo travellers, mini trucks, lorries ("Horn OK Please"), water tankers
+  and school buses round it out.
 - **Damage:**
   - Crashes dent the body, and the engine smokes as it weakens.
   - Past a point the engine dies and the vehicle won't move.
@@ -177,6 +190,9 @@ and signing.
   - About 170 vehicles are streamed around you, rising 1.3× at rush hour. Lorries come out at night.
   - Cars and buses keep their lanes.
   - Autos and two-wheelers weave, squeeze through gaps and sometimes ride against the traffic.
+  - Nobody drives through anybody: vehicles wait before cutting across someone in a junction or
+    into a full exit, and brake in time for the vehicle ahead. When two do meet hard, it's a crash:
+    dents and sparks, riders thrown off, the lighter vehicle knocked spinning, horns all round.
 - **People.** Footpath walkers, crowds at signals that cross on the walk phase (or jaywalk),
   chai stalls and cows.
 - **Weapons**, grounded in the region:
