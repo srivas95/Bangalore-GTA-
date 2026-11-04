@@ -545,7 +545,20 @@ export class StreetLife {
         c.timer = c.moving ? rand(3, 8) : rand(5, 15);
         if (rng() < 0.3) audio?.moo(c.x, c.z, world.camera);
       }
-      if (c.moving) {
+      if (c.shoo) {
+        // Honked at: off the carriageway onto the footpath, at a cow's idea of a hurry.
+        const h = this.layout.edgeAt(c.x, c.z);
+        if (!h || h.d > h.e.r.width / 2 + 1.2) { c.shoo = false; c.moving = false; c.timer = rand(20, 40); }
+        else {
+          const px = h.e.a.x + (h.e.b.x - h.e.a.x) * h.t, pz = h.e.a.z + (h.e.b.z - h.e.a.z) * h.t;
+          let ox = c.x - px, oz = c.z - pz, l = Math.hypot(ox, oz);
+          if (l < 0.1) { ox = -(h.e.b.z - h.e.a.z); oz = h.e.b.x - h.e.a.x; l = Math.hypot(ox, oz); }
+          c.x += (ox / l) * 0.9 * dt; c.z += (oz / l) * 0.9 * dt;
+          c.h += Math.atan2(Math.sin(Math.atan2(ox, oz) - c.h), Math.cos(Math.atan2(ox, oz) - c.h)) * Math.min(1, dt * 3);
+          c.group.position.set(c.x, this.layout.groundHeight(c.x, c.z), c.z);
+          c.group.rotation.y = c.h;
+        }
+      } else if (c.moving) {
         const nx = c.x + Math.sin(c.h) * 0.4 * dt, nz = c.z + Math.cos(c.h) * 0.4 * dt;
         // They amble along the edge of the carriageway, short of the junctions, so traffic can get round them.
         const h = this.layout.edgeAt(nx, nz), w = h ? h.e.r.width / 2 : 0;

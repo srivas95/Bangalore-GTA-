@@ -92,7 +92,8 @@ function bake(veh, mats, whites) {
   const geos = [];
   const box = new THREE.Box3();
   for (const p of parts) {
-    let g = p.o.geometry.index ? p.o.geometry.toNonIndexed() : p.o.geometry.clone();
+    const g = p.o.geometry.clone();
+    if (!g.index) g.setIndex([...Array(g.attributes.position.count).keys()]);
     for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
     g.applyMatrix4(p.o.matrixWorld);
     if (!g.attributes.normal) g.computeVertexNormals();
@@ -140,7 +141,7 @@ function bake(veh, mats, whites) {
   });
   for (const { g, wheel } of geos) {
     g.applyMatrix4(F);
-    const n = g.attributes.position.count, si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+    const n = g.attributes.position.count, si = new Uint8Array(n * 4), sw = new Float32Array(n * 4);
     const b = wheel ? bonesOf.get(wheel) : 0;
     for (let i = 0; i < n; i++) { si[i * 4] = b; sw[i * 4] = 1; }
     g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
@@ -172,7 +173,12 @@ export function buildPackModel(t, spec) {
     wheels.push({ steer, spin, r: w.r });
   }
   for (let i = 0; i < bones.length; i++) if (!bones[i]) bones[i] = new THREE.Bone(); // (never: every index is a wheel)
-  const mesh = new THREE.SkinnedMesh(t.geometry.clone(), t.material);
+  // Its own positions and colours (dents and scorching change them); everything else shared, so
+  // a hundred of them cost one copy of the normals, texture coordinates and bone weights.
+  const geo = new THREE.BufferGeometry();
+  for (const [k, a] of Object.entries(t.geometry.attributes)) geo.setAttribute(k, k === 'position' || k === 'color' ? a.clone() : a);
+  geo.setIndex(t.geometry.index);
+  const mesh = new THREE.SkinnedMesh(geo, t.material);
   mesh.add(root);
   mesh.updateMatrixWorld(true);
   mesh.bind(new THREE.Skeleton(bones));

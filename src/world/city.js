@@ -38,6 +38,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   const B = new BuilderSet({ chunk: CHUNK, release: true });
   const trees = [];
   const lamps = [];
+  const props = []; // street furniture placements (props.js)
   let runId = 0; // kerb run of each lamp, so cables only join poles on the same kerb
   const tanks = [];
   const signs = [];
@@ -224,6 +225,7 @@ export function buildCity(scene, layout, colliders, renderer) {
     if (block.island) { if (block.innerPoly) lawn(block, 0xa8b878); continue; }
     avenueTrees(block);
     streetLamps(block);
+    streetProps(block);
     block.placed = [];
     buildZone(block);
   }
@@ -873,6 +875,39 @@ export function buildCity(scene, layout, colliders, renderer) {
     });
   }
 
+  // Street furniture and clutter on the footpaths (props.js draws it): plastic chairs and rubbish
+  // outside shops, benches by parks, utility boxes everywhere, barrels and tyres by the factories.
+  function streetProps(block) {
+    const z = block.zone;
+    if (z === 'rural' || z === 'lake' || z === 'landmark') return;
+    const shops = z === 'market' || z === 'commercial' || !z || z === 'mixed';
+    const mix = z === 'park' ? [['painted_wooden_bench', 5], ['planter_pot_clay', 1], ['trashbag', 1]]
+      : z === 'industrial' ? [['barrel_03', 4], ['old_tyre', 4], ['utility_box_01', 2], ['trashbag', 2]]
+      : shops ? [['plastic_monobloc_chair_01', 4], ['trashbag', 3], ['utility_box_01', 2], ['planter_pot_clay', 2], ['barrel_03', 1]]
+      : [['planter_pot_clay', 3], ['utility_box_01', 3], ['trashbag', 2], ['old_tyre', 1]];
+    const total = mix.reduce((t, [, w]) => t + w, 0);
+    const spacing = z === 'park' ? 34 : shops ? 30 : 48;
+    kerbRuns(block, 3.0, (k) => {
+      for (let s = 10 + rand(0, 12); s < k.len - 10; s += spacing + rand(-8, 12)) {
+        let r = rand(0, total), kind = mix[0][0];
+        for (const [n, w] of mix) if ((r -= w) <= 0) { kind = n; break; }
+        const [x, zz] = k.at(s);
+        if (nearRail(x, zz, 6) || colliders.pointBlocked(x, zz, 1)) continue;
+        // Facing the road; chairs come in twos and threes, tyres and barrels in heaps.
+        const face = Math.atan2(k.nx, k.nz);
+        const n = kind === 'plastic_monobloc_chair_01' ? 2 + Math.floor(rand(0, 2)) : kind === 'old_tyre' || kind === 'barrel_03' ? 1 + Math.floor(rand(0, 3)) : 1;
+        for (let j = 0; j < n; j++) {
+          const along = (j - (n - 1) / 2) * (kind === 'plastic_monobloc_chair_01' ? 0.75 : 0.9);
+          const px = x + k.ux * along, pz = zz + k.uz * along;
+          const ry = kind === 'painted_wooden_bench' || kind === 'utility_box_01' ? face : face + rand(-0.6, 0.6);
+          props.push({ k: kind, x: px, y: CURB_H, z: pz, ry });
+          if (kind === 'utility_box_01' || kind === 'barrel_03') colliders.addCentered(px, pz, kind === 'utility_box_01' ? 1.2 : 0.7, kind === 'utility_box_01' ? 1.2 : 0.7, kind === 'utility_box_01' ? 1.6 : 1.0, 'static');
+          if (kind === 'painted_wooden_bench') colliders.addOriented(px, pz, 0.9, 0.3, face, 0.8, 'static');
+        }
+      }
+    });
+  }
+
   // ---------- Bake merged meshes ----------
   B.xf = null;
   B.buildAll(mats, group, {
@@ -916,7 +951,7 @@ export function buildCity(scene, layout, colliders, renderer) {
   };
   sharedUniforms.uWet.value = 0;
   freezeStatic(group);
-  return { group, pois, update, setLighting, materials: mats, lampPositions: lamps, rail: infra.rail, trees, lampHeads };
+  return { group, pois, update, setLighting, materials: mats, lampPositions: lamps, rail: infra.rail, trees, lampHeads, props };
 }
 
 function rectPoly(r) {

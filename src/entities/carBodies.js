@@ -36,6 +36,15 @@ export const CAR_MODELS = {
   fortuner: { label: 'Toyota Fortuner', L: 4.795, W: 1.855, H: 1.835, WB: 2.745, wr: 0.385, hood: 1.12, belt: 1.2, hoodLen: 1.15, ws: 0.72, rear: 0.24, taper: 0.86, style: 'suv', pillars: [0.42, 0.8], lights: 'swept', grille: 'toyotaBig', blackPillars: true, cladding: true, rails: true },
   xuv700: { label: 'Mahindra XUV700', L: 4.695, W: 1.89, H: 1.755, WB: 2.75, wr: 0.37, hood: 1.06, belt: 1.14, hoodLen: 1.1, ws: 0.74, rear: 0.3, taper: 0.84, style: 'suv', pillars: [0.44, 0.82], lights: 'swept', grille: 'xuv', blackPillars: true, cladding: true, rails: true },
   hector: { label: 'MG Hector', L: 4.655, W: 1.835, H: 1.76, WB: 2.75, wr: 0.35, hood: 1.08, belt: 1.15, hoodLen: 1.08, ws: 0.72, rear: 0.26, taper: 0.85, style: 'suv', pillars: [0.44, 0.82], lights: 'split', grille: 'mg', blackPillars: true, cladding: true, rails: true },
+  // Newer bestsellers, built on the shape of a close relative with their own dimensions.
+  fronx: { label: 'Maruti Suzuki Fronx', L: 3.995, W: 1.765, H: 1.55, WB: 2.52, wr: 0.31, hood: 0.88, belt: 0.97, hoodLen: 0.92, ws: 0.78, rear: 0.34, taper: 0.8, style: 'hatch', pillars: [0.5], lights: 'swept', grille: 'nexa', blackPillars: true },
+  sonet: { label: 'Kia Sonet', L: 3.995, W: 1.79, H: 1.642, WB: 2.5, wr: 0.33, hood: 1.0, belt: 1.08, hoodLen: 0.95, ws: 0.66, rear: 0.3, taper: 0.84, style: 'suv', pillars: [0.5], lights: 'split', grille: 'cascade', blackPillars: true, cladding: true, rails: true },
+  exter: { label: 'Hyundai Exter', L: 3.815, W: 1.71, H: 1.631, WB: 2.45, wr: 0.32, hood: 0.98, belt: 1.06, hoodLen: 0.9, ws: 0.62, rear: 0.24, taper: 0.86, style: 'suv', pillars: [0.5], lights: 'split', grille: 'tata', blackPillars: true, cladding: true, rails: true, roofBlack: true },
+  amaze: { label: 'Honda Amaze', L: 3.995, W: 1.695, H: 1.501, WB: 2.47, wr: 0.3, hood: 0.9, belt: 0.99, hoodLen: 0.92, ws: 0.7, rear: 0.5, boot: 0.62, taper: 0.8, style: 'sedan', pillars: [0.46], lights: 'swept', grille: 'chromeBar' },
+  grandVitara: { label: 'Maruti Suzuki Grand Vitara', L: 4.345, W: 1.795, H: 1.645, WB: 2.6, wr: 0.34, hood: 1.02, belt: 1.1, hoodLen: 1.05, ws: 0.72, rear: 0.3, taper: 0.83, style: 'suv', pillars: [0.48, 0.86], lights: 'swept', grille: 'tigerNose', blackPillars: true, cladding: true, rails: true },
+  harrier: { label: 'Tata Harrier', L: 4.605, W: 1.922, H: 1.718, WB: 2.741, wr: 0.35, hood: 1.08, belt: 1.15, hoodLen: 1.08, ws: 0.72, rear: 0.26, taper: 0.85, style: 'suv', pillars: [0.44, 0.82], lights: 'split', grille: 'mg', blackPillars: true, cladding: true, rails: true },
+  scorpioN: { label: 'Mahindra Scorpio-N', L: 4.662, W: 1.917, H: 1.857, WB: 2.75, wr: 0.385, hood: 1.12, belt: 1.2, hoodLen: 1.15, ws: 0.72, rear: 0.24, taper: 0.86, style: 'suv', pillars: [0.42, 0.8], lights: 'swept', grille: 'toyotaBig', blackPillars: true, cladding: true, rails: true },
+  hycross: { label: 'Toyota Innova Hycross', L: 4.755, W: 1.85, H: 1.795, WB: 2.85, wr: 0.34, hood: 1.04, belt: 1.12, hoodLen: 1.05, ws: 0.78, rear: 0.2, taper: 0.86, style: 'mpv', pillars: [0.38, 0.76], lights: 'swept', grille: 'toyotaBig', blackPillars: true },
   // Vans: a short nose ahead of a tall box, the front wheels under the front seats.
   eeco: { label: 'Maruti Suzuki Eeco', L: 3.675, W: 1.475, H: 1.825, WB: 2.35, wr: 0.27, hood: 0.96, belt: 1.04, hoodLen: 0.52, ws: 0.6, rear: 0.06, taper: 0.92, style: 'boxy', pillars: [0.3, 0.68], lights: 'tall', grille: 'slim' },
   omni: { label: 'Maruti Suzuki Omni', L: 3.37, W: 1.41, H: 1.64, WB: 1.84, wr: 0.25, hood: 0.92, belt: 0.98, hoodLen: 0.3, ws: 0.5, rear: 0.06, taper: 0.93, style: 'boxy', pillars: [0.28, 0.66], lights: 'square', grille: 'slim' },
@@ -43,11 +52,12 @@ export const CAR_MODELS = {
 
 // Which real cars appear as each vehicle type, with weights.
 export const TYPE_MODELS = {
-  hatch: [['swift', 3], ['alto', 2.5], ['wagonr', 2.5], ['baleno', 2.5], ['i10', 2], ['tiago', 1.5], ['i20', 1.5]],
-  sedan: [['dzire', 2.5], ['city', 2], ['verna', 1.5], ['etios', 1]],
-  taxi: [['etios', 3], ['dzire', 3], ['ertiga', 1.5], ['innova', 1.5], ['carens', 0.5]],
+  hatch: [['swift', 3], ['alto', 2.5], ['wagonr', 2.5], ['baleno', 2.5], ['i10', 2], ['tiago', 1.5], ['i20', 1.5], ['exter', 1.2]],
+  sedan: [['dzire', 2.5], ['city', 2], ['verna', 1.5], ['etios', 1], ['amaze', 1.5]],
+  taxi: [['etios', 3], ['dzire', 3], ['ertiga', 1.5], ['innova', 1.5], ['carens', 0.5], ['hycross', 0.6]],
   suv: [['creta', 3], ['brezza', 2.5], ['nexon', 2], ['scorpio', 2], ['punch', 2], ['venue', 2], ['seltos', 2], ['bolero', 1.5], ['innova', 1.5],
-    ['xuv700', 1.2], ['carens', 1], ['fortuner', 1], ['hector', 1], ['thar', 0.8]],
+    ['xuv700', 1.2], ['carens', 1], ['fortuner', 1], ['hector', 1], ['thar', 0.8], ['fronx', 2], ['sonet', 1.5], ['grandVitara', 1.5],
+    ['harrier', 1], ['scorpioN', 1.2], ['hycross', 1]],
   van: [['eeco', 3], ['omni', 1]],
   hoysala: [['ertiga', 1]],
 };

@@ -1,7 +1,11 @@
 # Namma Bengaluru
 
 An open-world, GTA-style game set in Bengaluru, built for the browser with [Three.js](https://threejs.org).
-No downloads and no 3D asset packs: the city, vehicles, people and textures are all generated in code.
+The city, people and most vehicles are generated in code. A few assets come from outside, all
+credited in [MODEL_CREDITS.md](MODEL_CREDITS.md):
+- the **"Bus Simulator India - Traffic Cars"** vehicle pack (CC BY 4.0);
+- street props and road, concrete and plaster textures from **Poly Haven** (CC0).
+
 The sound is real: recorded Indian autos, Bullets, buses, horns and street ambience (see
 [SOUND_CREDITS.md](SOUND_CREDITS.md)).
 
@@ -171,6 +175,16 @@ and signing.
   (with a siren you can switch on), BBMP garbage trucks, Eeco and Omni vans, and electric scooters
   (Ola S1, Ather, iQube). Tempo travellers, mini trucks, lorries ("Horn OK Please"), water tankers
   and school buses round it out.
+- **Traffic-cars pack.** The 31 vehicles of "Bus Simulator India - Traffic Cars" (by
+  Villanueva-Jonatan-32621) drive alongside the procedural ones:
+  - hatchbacks, sedans, luxury cars, SUVs and four styles of auto rickshaw;
+  - a scooter and motorbikes;
+  - Tata- and Leyland-style lorries, and private city buses;
+  - a police jeep, an ambulance van and a fire engine;
+  - an electric car and an electric microcar.
+
+  They have textured bodies with spinning, steering wheels, and they dent and burn like the rest.
+  Each one is drawn in a single call.
 - **Damage:**
   - Crashes dent the body, and the engine smokes as it weakens.
   - Past a point the engine dies and the vehicle won't move.
@@ -193,8 +207,17 @@ and signing.
   - Nobody drives through anybody: vehicles wait before cutting across someone in a junction or
     into a full exit, and brake in time for the vehicle ahead. When two do meet hard, it's a crash:
     dents and sparks, riders thrown off, the lighter vehicle knocked spinning, horns all round.
+  - Junctions don't lock up. Nobody noses into a junction whose exit is full, even after a long
+    wait. Wrecks are pushed off the road by passers-by once they've stopped. A ring of vehicles
+    each waiting for the next breaks when the newest backs off. Cows honked at long enough amble
+    onto the footpath.
 - **People.** Footpath walkers, crowds at signals that cross on the walk phase (or jaywalk),
   chai stalls and cows.
+- **Street clutter** from Poly Haven on the footpaths, depending on the area:
+  - plastic chairs and rubbish bags outside shops;
+  - benches along the parks;
+  - roadside utility boxes and clay planters;
+  - heaps of barrels and old tyres by the factories.
 - **Weapons**, grounded in the region:
   - **Melee:** fists, a lathi, a cricket bat, a chain, a knife (chaaku), a sickle (kudugolu) and
     a machete ("long").
@@ -274,8 +297,8 @@ and signing.
   - **Act I is playable:** five missions, from a parcel run for the market rowdy Kotte Kumar to
     the ambush on Magadi Road.
   - Mission givers are pink markers on the map.
-  - You start a new game with **₹1,000** in your pocket.
-  - Progress and money are **saved** in the browser.
+  - Every game starts with **₹1,000** in your pocket.
+  - Story progress is **saved** in the browser.
 - **Gigs.** Food deliveries and auto fares keep the money coming between missions. Delivery
   orders arrive on your phone; auto fares wave you down from the street.
 
@@ -293,6 +316,7 @@ src/
     roadnet.js         Polylines → planar road graph → polygon city blocks (pure JS, testable in Node)
     layout.js          Junction corners and cut-backs, traffic edges, blocks, underpasses, flyovers, queries
     city.js            Kerbed footpaths, lots in rotated frames, buildings, parks, lakes, trees, lamps
+    props.js           Poly Haven street props: one instanced mesh per kind, filled with the nearest placements
     infrastructure.js  Carriageways, junction pads, zebras, medians, underpasses + flood water, flyovers
     railway.js         Indian Railways lines, level crossings, stations, trains on curves
     metro.js           Namma Metro routes, viaducts, stations (elevated and underground), trains
@@ -311,6 +335,7 @@ src/
     human.js           Skinned 13-bone people + animations
     carBodies.js       Lofted car bodies for the real models (Swift, Dzire, Etios, Innova…)
     vehicleModels.js   Vehicle types as single skinned meshes (wheels are bones), decals
+    packVehicles.js    The traffic-cars pack: loads the GLB, bakes each vehicle into one skinned mesh
     liveries.js        One canvas atlas for every livery: Hoysala, BMTC, LED boards
     vehicle.js         Tyre-model physics, damage, fire, flood drag and stalling
     traffic.js         Streaming AI traffic on the road graph

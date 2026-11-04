@@ -17,9 +17,10 @@ conversations. Start by reading it, then `README.md` (what the game has) and `do
 
 ## 2. The project in one paragraph
 
-An open-world, GTA-style game set in Bengaluru, in **three.js r186**, bundled with **Vite 5**. Everything
-(city, vehicles, people, textures, signs) is generated in code; only fonts and recorded sounds are
-assets (see `SOUND_CREDITS.md`). The city is built on Bengaluru's real road network, compressed
+An open-world, GTA-style game set in Bengaluru, in **three.js r186**, bundled with **Vite 5**. The city,
+people, signs and most vehicles are generated in code. The assets are: fonts, recorded sounds
+(`SOUND_CREDITS.md`), the "Bus Simulator India - Traffic Cars" vehicle pack (CC BY 4.0) and Poly Haven
+street props and textures (CC0), all credited in `MODEL_CREDITS.md` and on the start screen. The city is built on Bengaluru's real road network, compressed
 around Majestic. It has traffic that keeps left and weaves, Namma Metro and BMTC bus rides, hired
 autos, an auto-driver job, food-delivery gigs, police (Hoysala) chases with wanted stars, weapons,
 garages, a monsoon with floods, day and night, and a story (Act I). It runs in the browser and ships
@@ -59,6 +60,8 @@ settings) selects the phone detail level.
 | `src/world/ao.js` | Baked top-down ground shading (rasterised into a byte array, capped at 4096 px) |
 | `src/entities/vehicle.js` | **Vehicle physics** (San Andreas-style handling table), damage, fire, visuals |
 | `src/entities/vehicleModels.js`, `carBodies.js`, `liveries.js` | Vehicle types (`VEHICLE_TYPES`), builders, real Indian car models (`CAR_MODELS`, `TYPE_MODELS`), liveries |
+| `src/entities/packVehicles.js` | The traffic-cars pack (`public/models/traffic-cars.glb`, built by `tools/models/prepare_traffic_cars.py`): `PACK_TYPES` maps each pack vehicle to a game type, `PACK_SHARE` how often a type uses the pack; each vehicle is baked at load into one skinned mesh (wheel bones) with one atlas material |
+| `src/world/props.js` | Poly Haven street props (`public/models/street-props.glb`, `tools/models/prepare_polyhaven.py`); `city.js` `streetProps()` lays them out, one instanced mesh per kind holds the nearest |
 | `src/entities/traffic.js` | **AI traffic** (kinematic lane-following, junction reservation, contacts and crashes) |
 | `src/entities/player.js`, `pedestrians.js`, `human.js`, `gangs.js` | Player, street life, people, rowdies |
 | `src/systems/*` | Police, missions, story, rides (autos and buses), auto duty, metro ride, garages, GPS, audio, environment (weather, time), signals, weapons, settings |
@@ -103,6 +106,13 @@ settings) selects the phone detail level.
 - **Conventions:** match the surrounding code (concise comments that explain why, same idioms);
   descriptive commit messages that say what changed and why, with numbers where tests were run;
   never put AI model names in code, comments or commits.
+
+- **Pack vehicles** have `model.pack` set and no `model.color` (garage resprays skip them). A new
+  pack vehicle needs a `PACK_TYPES` entry; a pack-only type needs a procedural fallback in
+  `buildVehicleModel` (used if the GLB fails to load). `opts.pack` (template name) forces one.
+- **Photo textures** (`textures.js` `loadPhotos`, `photo()`) are loaded before the city is built and
+  drawn under the painted asphalt, concrete and plaster; without them the textures are as before.
+- **Starting money:** every game starts with `START_MONEY` (₹1000); the story save keeps progress only.
 
 ## 6. History of requests (oldest first)
 
@@ -178,6 +188,7 @@ lock, 0–100 km/h 5.3 s, 26.7 m from 100 km/h.
 7. **Undecided:** WebGPU renderer (benchmarked ~2× CPU cost on the WebGL2 fallback; needs the
    owner's decision).
 8. When ready: open a PR from `claude/clever-carson-z0m3zn` to `main`.
+9. Poly Haven has no character models (its only creature is a rat), so people are still procedural.
 
 ## 9. Prompt to start a new session
 

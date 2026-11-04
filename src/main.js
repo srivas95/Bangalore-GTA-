@@ -16,6 +16,8 @@ import { Police } from './systems/police.js';
 import { Environment } from './systems/environment.js';
 import { Traffic } from './entities/traffic.js';
 import { loadPackVehicles } from './entities/packVehicles.js';
+import { loadProps, PropField } from './world/props.js';
+import { loadPhotos } from './world/textures.js';
 import { StreetLife } from './entities/pedestrians.js';
 import { Player } from './entities/player.js';
 import { Vehicle, damageFromSpeed } from './entities/vehicle.js';
@@ -65,6 +67,7 @@ THREE.ShaderChunk.envmap_physical_pars_fragment = THREE.ShaderChunk.envmap_physi
 async function init() {
   // The traffic-cars pack (vehicle models) loads while the fonts do; it's needed before traffic.
   const packLoad = loadPackVehicles();
+  const propsLoad = loadProps(), photosLoad = loadPhotos();
   // Wait for the Kannada font so the canvas-painted signs render the script.
   try {
     await Promise.race([Promise.all(['26px "Noto Sans Kannada"', '40px "Oswald"', '800 40px "Baloo Tamma 2"', '40px "Anton"', '40px "Yellowtail"'].map((f) => document.fonts.load(f, 'ಕನ್ನಡ Aa'))),
@@ -105,7 +108,10 @@ async function init() {
 
   const layout = new Layout();
   const colliders = new Colliders();
+  await photosLoad;
   const city = buildCity(scene, layout, colliders, renderer);
+  await propsLoad;
+  const propField = new PropField(scene, city.props);
   const metro = buildMetro(scene, layout, colliders);
   const signals = new Signals(scene, layout);
   await packLoad;
@@ -672,6 +678,7 @@ async function init() {
     city.rail.update(dt, world);
     city.update(dt, elapsed, camera);
     particles.update(dt, camera, renderer);
+    propField.update(dt, camera);
     env.update(dt, world.focus, player, police);
     missions.busy = metroRide.active || rides.active;
     missions.update(dt, input, player);

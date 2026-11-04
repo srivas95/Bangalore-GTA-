@@ -688,9 +688,11 @@ export class Traffic {
           if (!a.plan || a.plan.route !== a.route || a.plan.path !== a.path) a.plan = this.planTurn(a);
           const node = a.edge.to;
           if (a.appNode !== node) { a.appNode?.app?.delete(a); (node.app || (node.app = new Set())).add(a); a.appNode = node; }
-          // Wait while it would cut across someone in the junction, or while the road out is
-          // full (don't block the box).
-          if (a.junctionWait < 10 && (!this.junctionClear(a) || !this.exitClear(a) || (left < 10 && !this.approachClear(a)))) {
+          // Wait while it would cut across someone in the junction (after 10 s, nose in anyway), and
+          // always while the road out is full: a vehicle that forces its way into a box it can't
+          // leave holds up every turn through it, the next ones force their way in too, and the
+          // whole junction locks solid.
+          if (!this.exitClear(a) || (a.junctionWait < 10 && (!this.junctionClear(a) || (left < 10 && !this.approachClear(a))))) {
             a.junctionWait += dt;
             target = Math.min(target, Math.max(0, (left - 0.8) * 1.2));
             a.waitingSignal = true;
@@ -731,8 +733,17 @@ export class Traffic {
       if (a.bypassT > 0 && (a.bypassT -= dt) <= 0 && !a.erratic && !a.turning) a.latTarget = 0;
       if (blocker && blocker.waitingSignal) a.waitingSignal = true;
       a.lastBlocker = blocker;
-      // Two vehicles nose to nose, each waiting for the other: the newer one backs off a few metres.
-      if (blocker?.lastBlocker === a && a.stuck > 4 && blocker.id < a.id && (a.backed || 0) < 6 && a.s > 0.5) {
+      // A cow in the way, honked at long enough, ambles off the road.
+      if (blocker?.isCow && a.stuck > 4) blocker.shoo = true;
+      // Vehicles each waiting for the next, round in a ring (two nose to nose, or three or more
+      // locked across a junction): the newest of them backs off a few metres.
+      let ringNewest = false;
+      if (a.stuck > 4 && blocker?.v && blocker.v.driver === 'ai') {
+        let b = blocker, newest = a.id;
+        for (let n = 0; n < 8 && b && b !== a && b.v && b.v.driver === 'ai'; n++) { newest = Math.max(newest, b.id); b = b.lastBlocker; }
+        ringNewest = b === a && newest === a.id;
+      }
+      if (ringNewest && (a.backed || 0) < 6 && a.s > 0.5) {
         const back = Math.min(a.s, 1.2 * dt);
         a.s -= back; a.backed = (a.backed || 0) + back;
       } else if (a.speed > 1) a.backed = 0;

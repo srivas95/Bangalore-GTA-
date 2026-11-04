@@ -64,13 +64,40 @@ function streaks(ctx, x, y, w, len, alpha = 0.12) {
   }
 }
 
+// Photo layers from Poly Haven (CC0, see MODEL_CREDITS.md), loaded before the city is built.
+// Where one is there, the painted textures are drawn over it; without it they're as before.
+const PHOTOS = {};
+export async function loadPhotos(names = ['asphalt_02', 'concrete_floor_02', 'concrete_wall_003']) {
+  await Promise.all(names.map((n) => new Promise((done) => {
+    const im = new Image();
+    im.onload = () => { PHOTOS[n] = im; done(); };
+    im.onerror = () => done();
+    im.src = `./textures/ph/${n}.jpg`;
+  })));
+}
+// Draw a photo across the canvas (toned by tools/models/prepare_polyhaven.py). `op` blends it: an
+// 'overlay' of a grey photo centred on mid-grey adds its grain without shifting the colour.
+function photo(ctx, name, w, h, { filter = '', alpha = 1, op = 'source-over', tiles = 1 } = {}) {
+  const im = PHOTOS[name];
+  if (!im) return false;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = op;
+  if (filter) ctx.filter = filter;
+  for (let i = 0; i < tiles; i++) for (let j = 0; j < tiles; j++) ctx.drawImage(im, (i * w) / tiles, (j * h) / tiles, w / tiles, h / tiles);
+  ctx.restore();
+  return true;
+}
+
 export function asphalt() {
   const [c, ctx] = canvas(512, 512);
   ctx.fillStyle = '#4a4a4c';
   ctx.fillRect(0, 0, 512, 512);
-  blotches(ctx, 512, 512, 40, '30,30,32', 90, 0.25);
-  blotches(ctx, 512, 512, 25, '110,105,100', 70, 0.12);
-  grain(ctx, 512, 512, 0.18, 30000);
+  // A photographed road surface if there is one; the painted blotches and grain over it either way.
+  const real = photo(ctx, 'asphalt_02', 512, 512, { tiles: 4 });
+  blotches(ctx, 512, 512, real ? 18 : 40, '30,30,32', 90, 0.25);
+  blotches(ctx, 512, 512, real ? 10 : 25, '110,105,100', 70, 0.12);
+  grain(ctx, 512, 512, real ? 0.08 : 0.18, real ? 10000 : 30000);
   // Patch repairs and cracks.
   for (let k = 0; k < 4; k++) {
     ctx.fillStyle = `rgba(30,30,32,${rand(0.2, 0.4)})`;
@@ -218,6 +245,7 @@ export function concreteTexture(base = '#bdb8ae') {
   const [c, ctx] = canvas(256, 256);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, 256, 256);
+  photo(ctx, 'concrete_floor_02', 256, 256, { op: 'overlay', alpha: 0.45 });
   // Large paving slabs with slight tone variation.
   for (let y = 0; y < 256; y += 64) for (let x = 0; x < 256; x += 64) {
     const j = rand(-10, 10);
@@ -240,6 +268,7 @@ export function plasterFacade() {
   // frames, sills and AC units stay near-white and glass dark, so they're left unpainted.
   ctx.fillStyle = '#d6d0c5';
   ctx.fillRect(0, 0, 512, 512);
+  photo(ctx, 'concrete_wall_003', 512, 512, { op: 'overlay', alpha: 0.55, tiles: 2 });
   blotches(ctx, 512, 512, 20, '150,140,125', 80, 0.25);
   for (let f = 0; f < 2; f++) {
     for (let b = 0; b < 2; b++) {
@@ -287,6 +316,7 @@ export function apartmentFacade() {
   const [c, ctx] = canvas(512, 512);
   ctx.fillStyle = '#d6cfc3';
   ctx.fillRect(0, 0, 512, 512);
+  photo(ctx, 'concrete_wall_003', 512, 512, { op: 'overlay', alpha: 0.55, tiles: 2 });
   blotches(ctx, 512, 512, 15, '140,130,120', 80, 0.25);
   const clothes = ['#9a3a2e', '#3a6a92', '#c8a43a', '#6a4a7a', '#3a7a6a', '#e4e0d8', '#b8703a'];
   for (let f = 0; f < 2; f++) {
