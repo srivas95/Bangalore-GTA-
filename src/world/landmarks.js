@@ -28,7 +28,7 @@ const G = {
 
 // Paint on the ground (runway, pitch and parking markings), with a stronger depth offset than the
 // asphalt, plaza and grass under it, which are themselves pulled towards the camera.
-function paint(ctx) {
+function groundPaint(ctx) {
   if (!ctx.mats.paint) ctx.mats.paint = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const b = ctx.B.get('paint');
   return (x, y, z, w, d, c = 0xf2f2f2) => b.rect(x - w / 2, x + w / 2, z - d / 2, z + d / 2, y, c);
@@ -503,7 +503,7 @@ function airport(ctx, block) {
   // Runway along the north of the site, taxiway and apron south of it.
   const rz = i.minZ + 70, rw = 45, rx0 = i.minX + 30, rx1 = i.maxX - 30;
   asphalt.rect(rx0, rx1, rz - rw / 2, rz + rw / 2, y, 0x4a4a4a, (x, z) => [x / 8, -z / 8]);
-  const mark = paint(ctx);
+  const mark = groundPaint(ctx);
   for (let x = rx0 + 60; x < rx1 - 60; x += 30) mark(x, y + 0.02, rz, 15, 0.9);
   for (const end of [rx0 + 8, rx1 - 8]) for (let k = -4; k <= 4; k++) if (k) mark(end, y + 0.02, rz + k * 4.4, 18, 1.8);
   for (const sd of [-1, 1]) mark((rx0 + rx1) / 2, y + 0.02, rz + sd * (rw / 2 - 1), rx1 - rx0, 0.5);
@@ -1162,7 +1162,7 @@ function biec(ctx, block) {
   const { B, colliders, signs } = ctx;
   ctx.lawn(block, 0x9aa060);
   const { cx, cz } = siteCentre(block, 190, 160);
-  const stone = B.get('stone'), sheet = B.get('sheet'), glass = B.get('glass'), metal = B.get('metal'), mark = paint(ctx);
+  const stone = B.get('stone'), sheet = B.get('sheet'), glass = B.get('glass'), metal = B.get('metal'), mark = groundPaint(ctx);
   B.get('plaza').rect(cx - 95, cx + 95, cz - 62, cz + 78, 0.17, 0xd4cfc4, (x, z) => [x / 5, -z / 5]);
   for (let x = cx - 86; x <= cx + 86; x += 3) for (const z of [cz + 52, cz + 68]) mark(x, 0.19, z, 0.15, 5);
   for (const k of [-1, 0, 1]) {
@@ -1305,7 +1305,7 @@ function airForceStation(ctx, block) {
   const glow = B.get('glow'), sheet = B.get('sheet'), plaster = B.get('plaster'), metal = B.get('metal');
   const y = 0.17, mx = (i.minX + i.maxX) / 2;
   const auv = (x, z) => [x / 8, -z / 8];
-  const paintOn = paint(ctx), mark = (x, z, w, d, c) => paintOn(x, y + 0.02, z, w, d, c);
+  const paintOn = groundPaint(ctx), mark = (x, z, w, d, c) => paintOn(x, y + 0.02, z, w, d, c);
   // Runway along the north of the site.
   const rz = i.minZ + 110, rw = 45, rx0 = i.minX + 50, rx1 = i.maxX - 50;
   asphalt.rect(rx0, rx1, rz - rw / 2, rz + rw / 2, y, 0x484846, auv);
