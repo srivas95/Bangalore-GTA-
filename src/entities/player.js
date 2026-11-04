@@ -391,7 +391,7 @@ export class Player {
     if (v.engineDead && ctrl.throttle > 0 && !this._deadNag) { this._deadNag = true; world.hud?.say(v.fireT > 0 ? 'It\'s on fire! Get out!' : 'The engine won\'t turn over. It\'s finished.', 2.5); }
     if (!v.engineDead) this._deadNag = false;
     world.audio?.hornHold(v.spec.horn, input.down('KeyH', 'KeyQ'), v.hornPitch);
-    if (v.spec.police && input.hit('KeyG')) v.siren = !v.siren; // your own Hoysala's siren
+    if ((v.spec.police || v.spec.siren) && input.hit('KeyG')) v.siren = !v.siren; // your own Hoysala's (or ambulance's) siren
     if (v.waterDepth > 0.5 && v.speed > 3 && Math.random() < dt * 3) world.audio?.splash();
     this.x = v.x; this.z = v.z; this.y = v.y;
   }
@@ -410,7 +410,7 @@ export class Player {
     if (v.driver === 'ai' || v.driver === 'police') {
       if (v.driver === 'police') world.police?.vehicleStolen(v);
       else { const agent = world.traffic.findAgent(v); if (agent) world.traffic.release(agent); }
-      if (v.type !== 'bus' && v.type !== 'schoolBus') {
+      if (v.type !== 'bus' && v.type !== 'schoolBus' && v.type !== 'ksrtc') {
         const opts = v.rider ? { outfit: v.rider.outfit, female: v.rider.female } : {};
         v.removeRider();
         world.streetLife.spawnFleeing(v.x - Math.cos(v.heading) * 1.5, v.z + Math.sin(v.heading) * 1.5, this.x, this.z, opts);

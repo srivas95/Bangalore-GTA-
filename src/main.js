@@ -650,7 +650,7 @@ async function init() {
         if (d < 2.2 && Math.abs(v.y - player.y) < 2 && (!near || d < near.d)) near = { v, d };
       }
       hud.prompt(near ? (near.v.driver === 'ai' || near.v.driver === 'police' ? `F  "Borrow" the ${near.v.spec.label}` : `F  Get in the ${near.v.spec.label}`) : rides.roadside(player) ? 'H  Wave down an auto' : '');
-    } else hud.prompt(player.vehicle && player.vehicle.speed <= 8 ? (player.vehicle.spec.police ? 'F  Get out  ·  G  Siren' : 'F  Get out') : '');
+    } else hud.prompt(player.vehicle && player.vehicle.speed <= 8 ? (player.vehicle.spec.police || player.vehicle.spec.siren ? 'F  Get out  ·  G  Siren' : 'F  Get out') : '');
 
     if (!window.__freeCam && !metroRide.active) rig.update(dt, input, rideCam || player, colliders);
     if (!rides.active) rides.banner.classList.remove('show');
@@ -663,7 +663,7 @@ async function init() {
     if (gps.target) markers.push({ x: gps.target.x, z: gps.target.z, color: '#c050ff' });
     hud.update(dt, player, rig.yaw, markers);
     touch.update({
-      driving: !!player.vehicle, gun: WEAPONS[player.weapon].kind === 'gun', police: !!player.vehicle?.spec.police,
+      driving: !!player.vehicle, gun: WEAPONS[player.weapon].kind === 'gun', police: !!(player.vehicle?.spec.police || player.vehicle?.spec.siren),
       use: !!entrance || !!shelter || !!story.active || garages.nearStall || !!garages.menu, offer: !!missions.offer, metro: metroRide.active,
       ride: rides.blocking ? rides.state : null, waiting: rides.active && !rides.blocking ? rides.state : null, hail: onFoot && !entrance && !shelter, duty: player.vehicle?.type === 'auto' && !autoDuty.fare,
     });

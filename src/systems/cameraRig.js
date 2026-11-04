@@ -35,7 +35,7 @@ export class CameraRig {
 
     let tx, ty, tz, baseDist;
     if (v) {
-      tx = v.x; tz = v.z; ty = v.y + (v.type === 'bus' ? 3.2 : v.spec.twoWheeler ? 1.4 : 1.6);
+      tx = v.x; tz = v.z; ty = v.y + (v.type === 'bus' || v.type === 'ksrtc' ? 3.2 : v.spec.twoWheeler ? 1.4 : 1.6);
       baseDist = v.spec.cam;
       // Chase cam: swing in behind the car once the mouse is left alone. When the car slides,
       // follow the direction of travel rather than the bonnet, so drifts read from the side.

@@ -7,7 +7,7 @@ let nextId = 1;
 
 // Damage points for a hit at a given closing speed (m/s): a 50 km/h wall costs ~45 of 100.
 export const damageFromSpeed = (s) => (s > 3 ? Math.pow(s - 3, 1.5) * 1.15 : 0);
-const TOUGHNESS = { bus: 0.3, schoolBus: 0.35, lorry: 0.3, tanker: 0.3, tempo: 0.6, miniTruck: 0.7, suv: 0.8, hoysala: 0.8 };
+const TOUGHNESS = { bus: 0.3, schoolBus: 0.35, ksrtc: 0.3, garbage: 0.3, lorry: 0.3, tanker: 0.3, tempo: 0.6, ambulance: 0.6, miniTruck: 0.7, suv: 0.8, hoysala: 0.8 };
 
 // Handling, modelled on the ideas behind GTA San Andreas' handling setup (turn mass, drag,
 // traction, traction loss and bias, drive type, brake bias, steering lock). The values are our
