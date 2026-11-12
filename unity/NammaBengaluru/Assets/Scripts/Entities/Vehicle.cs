@@ -410,6 +410,7 @@ namespace NammaBengaluru.Entities
             if (driver == "player") OnSay?.Invoke("It's on fire! Get out!");
         }
 
-        public void Repair() { health = 100; engineDead = false; fireT = 0; wrecked = false; }
+        public Action OnRepair;
+        public void Repair() { health = 100; engineDead = false; fireT = 0; wrecked = false; OnRepair?.Invoke(); }
     }
 }

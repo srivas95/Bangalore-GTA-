@@ -48,11 +48,11 @@ builds.
 | `world/infrastructure.js` | in `Render/City.cs` | Done except the railway |
 | `systems/colliders.js` | `World/Colliders.cs` | Done |
 | `world/ao.js` (baked ground shading) | | Not yet |
-| `entities/vehicle.js` | `Entities/Vehicle.cs` (physics, damage), `Entities/VehicleView.cs` | Done (dents and fire effects to come) |
+| `entities/vehicle.js` | `Entities/Vehicle.cs` (physics, damage), `Entities/VehicleView.cs` (dents, smoke, fire, scorch) | Done |
 | `entities/vehicleModels.js`, `carBodies.js`, `liveries.js` | Baked by `tools/unity/bake/models.mjs` to `Resources/Models/vehicles.*`, built by `Render/ModelLibrary.cs` | Done (123 variants of all 27 types) |
 | `entities/packVehicles.js` | | Not yet (the GLB traffic-cars pack) |
 | `entities/human.js` | Baked to `Resources/Models/humans.*`; poses in `Entities/Human.cs` | Done (78 people) |
-| `entities/player.js` | `Entities/Player.cs` | On foot, jumping, wading, getting in and out, driving; weapons and fighting to come |
+| `entities/player.js` | `Entities/Player.cs` | Done (on foot, driving, punching, kicking, weapons, aiming, the GUNDA cheat) |
 | `systems/cameraRig.js`, `input.js` | `Systems/CameraRig.cs`, `Systems/GameInput.cs` | Done |
 | `main.js` (start-up, parking, vehicle contacts, `__game.step`) | `Game.cs` | In part |
 | `entities/traffic.js` | `Entities/Traffic.cs` | Done (level crossings wait for the railway port) |
@@ -61,7 +61,10 @@ builds.
 | `entities/pedestrians.js` | `Entities/StreetLife.cs` | Done (cows have square edges; bus-platform crowds wait for the landmarks) |
 | `ui/hud.js` | `UI/Hud.cs` (uGUI + TextMeshPro; Oswald and DejaVu Sans in `Resources/Fonts`) | Done (metro and railway lines, GPS route and garages join the map with their ports) |
 | `systems/audio.js`, `audioSynth.js` (cues and radio), `soundBank.json` | `Systems/GameAudio.cs`, the 261 recordings in `Resources/Audio` | Done (no convolution reverb) |
-| `systems/police.js`, `weapons.js`, `particles.js`, `entities/gangs.js` | | Phase 5 (next) |
+| `systems/particles.js` | `Systems/Particles.cs`, `Resources/Shaders/Particle.shader` | Done |
+| `systems/weapons.js` | `Systems/Weapons.cs` (stats, models, ray tests, NPC fire, pickups) | Done |
+| `systems/police.js` | `Systems/Police.cs` | Done |
+| `entities/gangs.js` | `Systems/Gangs.cs` | Done |
 | `systems/missions.js`, `story.js`, `rides.js`, `route.js`, `autoDuty.js`, `metroRide.js`, `garages.js`, `gps.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 |
 | `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 2 and 6 |
 
@@ -167,3 +170,15 @@ Each Web Audio voice becomes an AudioSource panned in 2D through an AudioLowPass
 gain, pan and air absorption computed exactly as `place()` does. Loop and sustain regions are
 cut into clips of their own at load, and an `Envelope` filter gives scheduled horn blasts their
 attack and release on the audio thread. The small convolution reverb is left out.
+
+### Phase 5b (combat, police, gangs, damage)
+
+- **Particles.** `Systems/Particles.cs` ports particles.js. Smoke, black smoke, dust, spray, fire, sparks, muzzle flash, blast and blood keep their own lifetimes, sizes, colours, drag and lift. They are drawn as camera-facing quads in two dynamic meshes, one alpha-blended and one additive, with the point sprites' soft round falloff.
+- **Weapons.** `Systems/Weapons.cs` has the nine weapons with the web game's stats, their hand-held models (built with the same `put` calls, held in the right fist), the bullet ray test against people, vehicles, walls and the ground, NPC gunfire, and pickups that turn over a glowing ring.
+- **Pickups.** They are placed as main.js does: bats and lathis in the parks, blades in the markets, machetes and kattas in the industrial yards, and the revolver at the Yeshwanthpur APMC yard.
+- **The player.** The player can punch, kick (the cow is unimpressed), swing, stab, shoot from the hip or aim with the right mouse button, reload, and cycle weapons (Tab or 1–9). Typing GUNDA gives every weapon.
+- **Crime and the police.** Crimes raise the wanted level, as in police.js. Hoysala units route through the junction graph with pure pursuit, brake for corners, ram and unstick themselves. Constables get out with lathis and draw revolvers at three stars. Staying out of sight drops a star every 12 s. Being pinned down means BUSTED, a fine and a police station. Dying means WASTED, a hospital bill and a hospital.
+- **Gangs.** Rowdies loiter around markets and yards after dark: brawlers with blades and chains, and gunners with kattas. They alert their crew and drop their weapons when they go down.
+- **Vehicle damage.** Vehicles dent where they're hit, smoke as their health falls, catch fire, explode (blast damage, knockback, scorched shell) and are repaired back to factory condition when they return to the traffic pool.
+
+See `docs/unity/wasted.png`, `vehicle-fire.png` and `explosion.png`.

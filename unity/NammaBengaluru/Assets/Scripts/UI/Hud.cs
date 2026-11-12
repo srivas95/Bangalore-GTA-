@@ -27,6 +27,7 @@ namespace NammaBengaluru.UI
             ["commercial"] = 0xc9b9a0, ["market"] = 0xd0b48c, ["towers"] = 0xb0b8c0, ["mixed"] = 0xc4b8a4, ["industrial"] = 0xa8a4a0,
         };
         static readonly Color GOLD = Css(0xffc400);
+        public static Color CssColor(int hex) => Css(hex);
         static Color Css(int hex, float a = 1) => new Color(((hex >> 16) & 255) / 255f, ((hex >> 8) & 255) / 255f, (hex & 255) / 255f, a);
 
         readonly Layout layout;

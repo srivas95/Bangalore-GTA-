@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using NammaBengaluru.Entities;
 using NammaBengaluru.Render;
 using NammaBengaluru.Systems;
@@ -32,6 +33,15 @@ namespace NammaBengaluru
         public StreetLife streetLife;
         public UI.Hud hud;
         public GameAudio audio;
+        public Particles particles;
+        public Police police;
+        public Gangs gangs;
+        public Pickups pickups;
+        public int money = 1000; // START_MONEY
+        public readonly List<Vehicle> dynamic = new List<Vehicle>(); // free vehicles and the police
+        List<Place> policeStations, hospitals;
+        double screenT, rowdyT = 5;
+        List<Place> pending;
         public bool radioOn = true;
         Vehicle radioVehicle;
         Vehicle hudVehicle;
@@ -96,12 +106,20 @@ namespace NammaBengaluru
         // The player takes a vehicle out of traffic: its driver bolts (not off a bus).
         public void TakeOver(Vehicle v)
         {
-            var agent = traffic.FindAgent(v);
-            if (agent != null) traffic.Release(agent);
+            if (v.driver == "police") police.VehicleStolen(v);
+            else { var agent = traffic.FindAgent(v); if (agent != null) traffic.Release(agent); }
             var rider = ((VehicleView)v.view).RemoveRider();
             if (!free.Contains(v)) free.Add(v);
-            if (!v.type.Contains("us"))
+            bool bus = v.type == "bus" || v.type == "schoolBus" || v.type == "ksrtc" || v.type == "cityBus";
+            if (!bus)
+            {
                 streetLife.SpawnFleeing(v.x - Math.Cos(v.heading) * 1.5, v.z + Math.Sin(v.heading) * 1.5, player.x, player.z, rider?.rig.def);
+                var lines = cfg.LINES["carjacked"];
+                Say($"\"{lines[rnd.Next(lines.Count)]}\"", 3);
+                audio.Voice(rnd.NextDouble() < 0.5 ? "vo_hi_chor" : "vo_kn_nanage_sahaya_madi", v.x, v.z, gender: rider != null && rider.female ? "f" : "m");
+            }
+            else Say("Conductor: \"Ticket ticket! ...oh. You're DRIVING it?\"", 3);
+            Crime(v.spec.police ? "Stealing a Hoysala" : "Vehicle theft", v.x, v.z, v.spec.police ? 2 : 1);
         }
 
         // Knocked off a two-wheeler in a crash: the rider tumbles, gets up and runs.
@@ -117,7 +135,6 @@ namespace NammaBengaluru
         Player IStreetWorld.Player => player;
         public IPlayerWorld PlayerWorld => this;
         public double PedScale => hour >= 23 || hour < 5 ? 0.35 : env.rain > 0.5 ? 0.5 : 1;
-        public void Crime(string what, double x, double z, int stars) { } // wanted levels come with the police port
 
         void Awake()
         {
@@ -142,6 +159,15 @@ namespace NammaBengaluru
             streetLife = new StreetLife(layout, colliders, signals, cfg, root, city.materials);
             traffic.Prewarm(150, hour, this);
             input = new GameInput();
+            particles = new Particles();
+            VehicleView.particles = particles;
+            VehicleView.explode = v => Explode(v.x, v.y + 0.8, v.z, v);
+            police = new Police(layout, colliders);
+            gangs = new Gangs(layout, colliders);
+            pickups = new Pickups(root);
+            policeStations = md.POLICE_STATIONS.Select(p => { var f = FootpathNear(p.x, p.z); return new Place { name = p.name, x = f.x, z = f.z }; }).ToList();
+            hospitals = md.HOSPITALS.Select(p => { var f = FootpathNear(p.x, p.z); return new Place { name = p.name, x = f.x, z = f.z }; }).ToList();
+            PlacePickups();
             hud = new UI.Hud(layout, city.pois);
             hud.SetMoney(1000, true); // START_MONEY
             var cam = Camera.main;
@@ -257,6 +283,14 @@ namespace NammaBengaluru
             vehicles.Clear();
             foreach (var a in traffic.agents) vehicles.Add(a.v);
             vehicles.AddRange(free);
+            foreach (var u in police.units) if (!free.Contains(u.v)) vehicles.Add(u.v);
+
+            // Busted or wasted: the screen holds for a few seconds, then you're back on your feet.
+            if (player.dead)
+            {
+                screenT -= dt;
+                if (screenT <= 0 && pending != null) Respawn();
+            }
 
             if (!freeCam) player.Update(dt, input, rig.yaw, this);
 
@@ -276,20 +310,29 @@ namespace NammaBengaluru
                 var v = free[i];
                 if (v.temp && v != pv && (Math.Abs(v.x - focus.x) > 340 || Math.Abs(v.z - focus.z) > 340)) { free.RemoveAt(i); traffic.Recycle(v); }
             }
+            dynamic.Clear(); dynamic.AddRange(free);
+            foreach (var u in police.units) if (!dynamic.Contains(u.v)) dynamic.Add(u.v);
             ResolveVehicleContacts();
             // What traffic must not drive into: the player, and vehicles as their body circles.
             obstacles.Clear();
-            void VehObstacles(Vehicle v, bool isPlayer)
+            void VehObstacles(Vehicle v, bool isPlayer, bool isCop = false)
             {
-                foreach (var c in v.Circles(new List<Circle>())) obstacles.Add(new Obstacle { x = c.x, z = c.z, r = c.r, y = v.y, isPlayer = isPlayer, parked = !isPlayer, owner = v });
+                foreach (var c in v.Circles(new List<Circle>())) obstacles.Add(new Obstacle { x = c.x, z = c.z, r = c.r, y = v.y, isPlayer = isPlayer, isCop = isCop, parked = !isPlayer && !isCop, owner = v });
             }
             if (pv != null) VehObstacles(pv, true);
             else if (player.y < 0.05) obstacles.Add(new Obstacle { x = player.x, z = player.z, r = player.r, y = player.y, isPlayer = true, owner = player });
             foreach (var v in free) if (v != pv && Math.Abs(v.x - focus.x) < 450 && Math.Abs(v.z - focus.z) < 450) VehObstacles(v, false);
+            foreach (var u in police.units) if (u.v != pv && !free.Contains(u.v)) VehObstacles(u.v, false, true);
+            foreach (var c in police.cops) obstacles.Add(c);
             streetLife.CollectObstacles(obstacles);
             signals.Update(dt, focus.x, focus.z);
             traffic.Update(dt, this);
             streetLife.Update(dt, this);
+            police.Update(dt, this);
+            gangs.Update(dt, this);
+            pickups.Update(dt, this);
+            SpawnRowdies(dt);
+            player.rigPitch = rig.pitch;
             if (!freeCam) rig.Update(dt, input, player, colliders);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
             UpdateHud(dt);
@@ -297,9 +340,177 @@ namespace NammaBengaluru
             audio.SetRain(env.rain);
             audio.Engine(player.vehicle, dt);
             audio.Tick(dt, rig.camera, player, vehicles, streetLife, env, layout);
+            particles.Step(dt, rig.camera);
         }
 
-        static readonly UI.MapMarker[] NoMarkers = new UI.MapMarker[0];
+        void LateUpdate() { particles?.Draw(); }
+
+        // ---------- money, crime, gunfire, bullets, explosions (main.js) ----------
+        public void AddMoney(int n) { money = Math.Max(0, money + n); hud.SetMoney(money); }
+
+        public void Crime(string what, double x, double z, int stars) => police.Crime(what, x, z, stars, this);
+
+        public void Gunfire(double x, double z, bool npc)
+        {
+            streetLife.Panic(x, z, 45);
+            if (!npc) Crime("Firing a gun", x, z, 2);
+        }
+
+        // shooter: the NPC who fired, or null for the player.
+        public void BulletHitAt(BulletHit hit, WeaponDef w, (double x, double y, double z) dir, Ped shooter)
+        {
+            bool byPlayer = shooter == null;
+            double? sx = shooter?.x, sz = shooter?.z;
+            if (hit.kind == "player")
+            {
+                particles.Burst("blood", hit.x, hit.y, hit.z, 6, 2, 0.4);
+                player.Damage(w.dmg * (hit.head ? 0.55 : 0.32), sx, sz, this);
+            }
+            else if (hit.kind == "person")
+            {
+                var p = hit.person;
+                double dmg = w.dmg * (hit.head ? 2 : 1);
+                particles.Burst("blood", hit.x, hit.y, hit.z, 6, 2, 0.4);
+                if (p is Cop c) { police.HitCop(c, dmg, dir.x, dir.z, true, true); if (byPlayer) Crime(c.dead ? "Killing a police officer" : "Shooting a police officer", c.x, c.z, c.dead ? 4 : 3); }
+                else if (p is GangMember m) gangs.Hit(m, dmg, dir.x, dir.z, this, true, true);
+                else { streetLife.Hit(p, dmg, dir.x, dir.z, this, true, true); if (byPlayer) Crime(p.dead ? "Murder" : "Shooting someone", p.x, p.z, p.dead ? 3 : 2); }
+            }
+            else if (hit.kind == "vehicle")
+            {
+                var v = hit.vehicle;
+                v.TakeDamage(w.dmg * 0.2, hit.x, hit.z);
+                particles.Burst("spark", hit.x, hit.y, hit.z, 6, 3, 0.6);
+                audio.Crunch(0.15);
+                if (v == player.vehicle && rnd.NextDouble() < 0.35) player.Damage(w.dmg * 0.2, sx, sz, this);
+                if (byPlayer && v.driver == "police") Crime("Shooting at the police", v.x, v.z, 3);
+            }
+            else if (hit.kind == "wall") particles.Burst("spark", hit.x, hit.y, hit.z, 5, 2.5, 0.6);
+            else particles.Burst("dust", hit.x, 0.1, hit.z, 4, 1.5, 0.8);
+        }
+
+        public void Explode(double x, double y, double z, Vehicle src)
+        {
+            particles.Burst("blast", x, y, z, 26, 7, 0.9);
+            particles.Burst("fire", x, y, z, 30, 5, 1.2, 1.6);
+            particles.Burst("spark", x, y, z, 40, 14, 1.0);
+            for (int k = 0; k < 14; k++) particles.Emit("blackSmoke", x + (rnd.NextDouble() - 0.5) * 3, y + rnd.NextDouble() * 2, z + (rnd.NextDouble() - 0.5) * 3, 0, 2 + rnd.NextDouble() * 2, 0, 2.2);
+            audio.Explosion(x, z);
+            var pp = player.Pos;
+            double pd = Math.Sqrt((pp.x - x) * (pp.x - x) + (pp.z - z) * (pp.z - z));
+            rig.Shake(Math.Max(0, 1.2 - pd / 40));
+            // Blast damage: the player, people, other vehicles.
+            if (pd < 7)
+            {
+                double hurt = 95 * (1 - pd / 7);
+                if (player.vehicle == src && src != null) player.Damage(120, x, z, this);
+                else if (player.vehicle != null) player.Damage(hurt * 0.4, x, z, this);
+                else { player.Damage(hurt, x, z, this); player.knock = 1.6; double a = Math.Atan2(player.x - x, player.z - z); player.kx = Math.Sin(a) * 9; player.kz = Math.Cos(a) * 9; }
+            }
+            foreach (var p in streetLife.peds.ToList())
+            {
+                double d = Math.Sqrt((p.x - x) * (p.x - x) + (p.z - z) * (p.z - z));
+                if (d < 8 && p.state != "down") streetLife.Knock(p, (p.x - x) / (d == 0 ? 1 : d) * 8, (p.z - z) / (d == 0 ? 1 : d) * 8);
+                else if (d < 30) streetLife.Scare(p, x, z);
+            }
+            foreach (var v in vehicles)
+            {
+                if (v == src) continue;
+                double d = Math.Sqrt((v.x - x) * (v.x - x) + (v.z - z) * (v.z - z));
+                if (d > 9) continue;
+                v.TakeDamage(70 * (1 - d / 9), x, z);
+                if (v.driver != "ai") { double k = (1 - d / 9) * 9000 / v.mass; v.vx += (v.x - x) / (d == 0 ? 1 : d) * k; v.vz += (v.z - z) / (d == 0 ? 1 : d) * k; v.angVel += (rnd.NextDouble() - 0.5) * k * 0.4; }
+            }
+        }
+
+        // ---------- busted / wasted ----------
+        static Place NearestOf(List<Place> list, (double x, double z) p) => list.OrderBy(s => (s.x - p.x) * (s.x - p.x) + (s.z - p.z) * (s.z - p.z)).First();
+
+        public void OnBusted()
+        {
+            if (pending != null) return;
+            int fine = Math.Min(money, 100 + police.level * 150);
+            AddMoney(-fine);
+            hud.ShowScreen("BUSTED", $"The Hoysala crew fined you ₹{fine}. \"Next time, swalpa adjust maadi.\"", UI.Hud.CssColor(0x4a8ff0));
+            audio.Sting(true);
+            pending = policeStations;
+            screenT = 4;
+            player.dead = true;
+        }
+
+        public void OnPlayerDown()
+        {
+            if (pending != null) return;
+            if (police.level > 0 && police.cops.Any(c => Math.Sqrt((c.x - player.x) * (c.x - player.x) + (c.z - player.z) * (c.z - player.z)) < 3)) { OnBusted(); return; }
+            int bill = Math.Min(money, Math.Max(200, (int)Math.Round(money * 0.1)));
+            AddMoney(-bill);
+            hud.ShowScreen("WASTED", $"Hospital bill: ₹{bill}. Bengaluru is not for the faint-hearted.", UI.Hud.CssColor(0xe03a2a));
+            audio.Sting(true);
+            pending = hospitals;
+            screenT = 4;
+            player.dead = true;
+        }
+
+        void Respawn()
+        {
+            var p = NearestOf(pending, player.Pos);
+            bool hospital = pending == hospitals;
+            if (player.vehicle != null) player.ExitVehicle(this, true);
+            player.Respawn(p.x, p.z, this);
+            police.Reset(this);
+            rig.first = true;
+            // Repopulate the streets around the new location straight away.
+            elapsed = 0;
+            foreach (var a in traffic.agents.ToList()) if (Math.Sqrt((a.v.x - p.x) * (a.v.x - p.x) + (a.v.z - p.z) * (a.v.z - p.z)) > traffic.radius) traffic.Despawn(a);
+            hud.HideScreen();
+            hud.Toast(p.name, "Bengaluru");
+            pending = null;
+        }
+
+        // ---------- weapons lying around, and rowdies (main.js) ----------
+        // Bats in the parks, blades in the markets, machetes in the industrial yards, and a
+        // couple of kattas if you know where to look.
+        void PlacePickups()
+        {
+            int n = 0, ind = 0, mk = 0;
+            foreach (var b in layout.blocks)
+            {
+                if (b.edge) continue;
+                if (b.zone == "park" && n++ % 2 == 0) { var c = KerbSpot(b, n, 0.04, 1.8); pickups.Add(n % 4 == 0 ? "lathi" : "bat", c.x, c.z, GameConfig.CURB_H, 180); }
+                if (b.zone == "market") { var c = KerbSpot(b, mk, 0.04, 1.8); pickups.Add(new[] { "knife", "chain", "sickle" }[mk++ % 3], c.x, c.z, GameConfig.CURB_H, 180); }
+                if (b.zone == "industrial")
+                {
+                    var c = KerbSpot(b, ind, 0.04, 1.8);
+                    string what = ind == 2 || ind == 9 ? "katta" : ind == 5 ? "ammo:katta" : ind % 3 == 0 ? "machete" : null;
+                    if (what != null) pickups.Add(what, c.x, c.z, GameConfig.CURB_H, 240);
+                    ind++;
+                }
+            }
+            // One revolver, at the back of the Yeshwanthpur APMC yard.
+            var g = md.Geo(13.0305, 77.5345);
+            var apmc = FootpathNear(g[0], g[1]);
+            pickups.Add("revolver", apmc.x, apmc.z, GameConfig.CURB_H, 300);
+        }
+
+        // Rowdies hang about the markets and yards after dark, and don't like being bothered.
+        void SpawnRowdies(double dt)
+        {
+            rowdyT -= dt;
+            if (rowdyT > 0) return;
+            rowdyT = 20;
+            bool night = hour >= 20 || hour < 5;
+            int loose = gangs.members.Count(m => m.crew == null && !m.dead);
+            if (loose >= (night ? 6 : 2)) return;
+            var f = Focus;
+            var blocks = layout.blocks.Where(b => (b.zone == "market" || b.zone == "industrial" || (night && b.zone == "mixed"))
+                && Math.Sqrt((b.cx - f.x) * (b.cx - f.x) + (b.cz - f.z) * (b.cz - f.z)) < 220 && Math.Sqrt((b.cx - f.x) * (b.cx - f.x) + (b.cz - f.z) * (b.cz - f.z)) > 70).ToList();
+            if (blocks.Count == 0) return;
+            var bl = blocks[rnd.Next(blocks.Count)];
+            var p = KerbSpot(bl, rnd.Next(bl.poly.Count), 0.2 + rnd.NextDouble() * 0.6, 2.5);
+            int k = 2 + rnd.Next(2);
+            for (int i = 0; i < k; i++) gangs.Spawn(this, p.x + rnd.NextDouble() * 1.5, p.z + i * 1.2, rnd.NextDouble() < 0.08 ? "katta" : null, name: "Rowdy");
+        }
+
+        readonly List<UI.MapMarker> markers = new List<UI.MapMarker>();
 
         void UpdateHud(double dt)
         {
@@ -321,7 +532,11 @@ namespace NammaBengaluru
                 hud.Prompt(near != null ? (near.driver == "ai" || near.driver == "police" ? $"F  \"Borrow\" the {near.spec.label}" : $"F  Get in the {near.spec.label}") : "");
             }
             else hud.Prompt(pv != null && pv.Speed <= 8 ? (pv.spec.police || pv.spec.siren ? "F  Get out  ·  G  Siren" : "F  Get out") : "");
-            hud.Update(dt, player, rig.yaw, NoMarkers);
+            markers.Clear();
+            foreach (var u in police.units) markers.Add(new UI.MapMarker { x = u.v.x, z = u.v.z, color = (int)(elapsed * 4) % 2 == 1 ? UI.Hud.CssColor(0xe02020) : UI.Hud.CssColor(0x2050ff) });
+            hud.Update(dt, player, rig.yaw, markers);
+            var w = Weapons.WEAPONS[player.weapon];
+            hud.SetWeapon(w.name, player.clip.TryGetValue(player.weapon, out var cl) ? cl : 0, player.ammo.TryGetValue(player.weapon, out var am) ? am : 0, player.reloadT > 0, player.aiming, w.Gun);
             hud.SetClock(env.ClockString(), env.rain > 0.6 ? "☂ Monsoon" : env.rain > 0.1 ? "☂ Rain" : env.night > 0.5 ? "☾ Clear" : "☀ Clear");
         }
 
@@ -329,7 +544,7 @@ namespace NammaBengaluru
         readonly List<Circle> ca = new List<Circle>(), cb = new List<Circle>();
         void ResolveVehicleContacts()
         {
-            foreach (var a in free.ToArray())
+            foreach (var a in dynamic.ToArray())
             {
                 if (a.Speed < 0.05 && a != player.vehicle) continue;
                 foreach (var b in vehicles)

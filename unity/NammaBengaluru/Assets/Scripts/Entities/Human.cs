@@ -18,6 +18,7 @@ namespace NammaBengaluru.Entities
         public readonly double[] rx = new double[N], ry = new double[N], rz = new double[N];
         public double hipsY = HIP_Y, phase, gait;
         public string outfit;
+        public UnityEngine.GameObject weaponGo; // what's in the right hand (Weapons.Equip)
         public bool female;
         // The person as a whole (three.js group rotation, XYZ order) and position, game coordinates.
         public double x, y, z, heading, tiltX;

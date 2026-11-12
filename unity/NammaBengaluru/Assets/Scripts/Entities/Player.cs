@@ -1,5 +1,5 @@
 // The player: walking, running, jumping, wading through floods, and getting in and out of any
-// vehicle (port of src/entities/player.js). Weapons and fighting come with the combat port.
+// vehicle, punching, kicking, swinging and shooting (port of src/entities/player.js).
 using System;
 using System.Collections.Generic;
 using NammaBengaluru.Render;
@@ -22,7 +22,18 @@ namespace NammaBengaluru.Entities
 
     public class Player
     {
-        const double WALK = 2.2, RUN = 6.0, GRAVITY = 14, JUMP = 5;
+        const double WALK = 2.2, RUN = 6.0, GRAVITY = 14, JUMP = 5, PUNCH_T = 0.42, KICK_T = 0.62;
+        class Attack { public string kind; public double t, side; public bool landed; }
+        Attack attack;
+        double fightT, punchSide = -1, fireCd, recoil;
+        public double reloadT;
+        string cheat = "";
+        // Weapons: what you own, rounds in the gun, rounds in your pocket.
+        public readonly HashSet<string> weapons = new HashSet<string> { "fists" };
+        public string weapon = "fists";
+        public readonly Dictionary<string, int> clip = new Dictionary<string, int>(), ammo = new Dictionary<string, int>();
+        public bool Attacking => attack != null;
+        public double rigPitch = 0.3;
 
         public readonly Human human;
         public double x, z, y, vy, heading, r = 0.35, health = 100, hurtCooldown, knock, kx, kz, speed;
@@ -49,11 +60,228 @@ namespace NammaBengaluru.Entities
             if (dead) return;
             health = Math.Max(0, health - n);
             hurtCooldown = 6;
+            GameAudio.I?.Grunt(false);
             if (vehicle == null && fromX != null)
             {
                 double a = Math.Atan2(x - fromX.Value, z - fromZ.Value);
                 kx = Math.Sin(a) * 3; kz = Math.Cos(a) * 3;
             }
+            if (health <= 0) (world as Game)?.OnPlayerDown();
+        }
+
+        // ---------- weapons ----------
+        public void Give(string key, int rounds = 0, bool select = true)
+        {
+            if (!Weapons.WEAPONS.TryGetValue(key, out var w)) return;
+            weapons.Add(key);
+            if (w.Gun)
+            {
+                ammo[key] = (ammo.TryGetValue(key, out var a) ? a : 0) + rounds;
+                if (!clip.ContainsKey(key)) { int n = Math.Min(w.clip, ammo[key]); clip[key] = n; ammo[key] -= n; }
+            }
+            if (select) Select(key);
+        }
+
+        public void Select(string key)
+        {
+            if (!weapons.Contains(key)) return;
+            weapon = key;
+            attack = null; reloadT = 0;
+            Weapons.Equip(human, key);
+            if (vehicle != null && human.weaponGo != null) human.weaponGo.SetActive(false);
+        }
+
+        int Clip => clip.TryGetValue(weapon, out var c) ? c : 0;
+        int Ammo => ammo.TryGetValue(weapon, out var a) ? a : 0;
+
+        // Walking over a pickup.
+        public bool Collect(string what, Game world)
+        {
+            var parts = what.Split(':');
+            string key = parts[0], n = parts.Length > 1 ? parts[1] : null;
+            if (key == "ammo") { if (!weapons.Contains(n)) return false; ammo[n] = (ammo.TryGetValue(n, out var a) ? a : 0) + (n == "katta" ? 4 : 12); world.Say($"+ {Weapons.WEAPONS[n].name} rounds", 1.5); return true; }
+            if (key == "cash") { world.AddMoney(int.Parse(n)); world.Say($"+ ₹{n}", 1.5); return true; }
+            if (key == "health") { if (health >= 100) return false; health = 100; return true; }
+            if (!Weapons.WEAPONS.TryGetValue(key, out var w)) return false;
+            bool had = weapons.Contains(key);
+            Give(key, w.Gun ? (key == "katta" ? 3 : 12) : 0, !had);
+            world.Say(had ? $"{w.name}: more rounds" : $"Picked up: {w.name}{(w.kn != null ? $" ({w.kn})" : "")}", 2);
+            return true;
+        }
+
+        public void CycleWeapon(int dir = 1)
+        {
+            var owned = new List<string>();
+            foreach (var k in Weapons.ORDER) if (weapons.Contains(k)) owned.Add(k);
+            int i = owned.IndexOf(weapon);
+            Select(owned[(i + dir + owned.Count) % owned.Count]);
+        }
+
+        // Fire the current gun. Aiming: down the camera's line of sight; from the hip: at the
+        // nearest threat in front, else straight ahead.
+        void Shoot(Game world)
+        {
+            var w = Weapons.WEAPONS[weapon];
+            if (reloadT > 0 || fireCd > 0) return;
+            if (Clip <= 0)
+            {
+                if (Ammo > 0) Reload();
+                else { GameAudio.I?.Click(); world.Say("Out of rounds.", 1.2); fireCd = 0.4; }
+                return;
+            }
+            fireCd = w.rate;
+            clip[weapon] = Clip - 1;
+            if (rnd.NextDouble() < w.misfire) { GameAudio.I?.Click(); world.Say("Misfire! Country-made, after all.", 1.5); if (Clip <= 0) Reload(); return; }
+            human.Apply();
+            var o = Weapons.Muzzle(human);
+            double dx, dy, dz;
+            var cam = world.rig.camera.transform;
+            if (aiming)
+            {
+                // The point under the crosshair, then from the muzzle to it.
+                var cf = cam.forward; var cp = cam.position;
+                (double x, double y, double z) cd = (cf.x, cf.y, -cf.z), cpos = (cp.x, cp.y, -cp.z);
+                double back = Math.Sqrt((cpos.x - x) * (cpos.x - x) + (cpos.z - z) * (cpos.z - z)) + 0.5;
+                var aimHit = Weapons.Raycast(world, (cpos.x + cd.x * back, cpos.y + cd.y * back, cpos.z + cd.z * back), cd, w.range, this);
+                var tp = aimHit != null ? (aimHit.Value.x, aimHit.Value.y, aimHit.Value.z) : (cpos.x + cd.x * w.range, cpos.y + cd.y * w.range, cpos.z + cd.z * w.range);
+                dx = tp.Item1 - o.x; dy = tp.Item2 - o.y; dz = tp.Item3 - o.z;
+            }
+            else
+            {
+                var t = SoftTarget(world, w.range * 0.7);
+                if (t != null) { dx = t.x - o.x; dy = t.y + 1.2 - o.y; dz = t.z - o.z; heading = Math.Atan2(t.x - x, t.z - z); }
+                else { dx = Math.Sin(heading); dy = 0; dz = Math.Cos(heading); }
+            }
+            double spread = w.spread * (aiming ? 1 : 2.5) * (speed > 3 ? 1.6 : 1);
+            double l = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+            dx = dx / l + (rnd.NextDouble() - 0.5) * spread; dy = dy / l + (rnd.NextDouble() - 0.5) * spread; dz = dz / l + (rnd.NextDouble() - 0.5) * spread;
+            l = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+            var dir = (dx / l, dy / l, dz / l);
+            world.particles.Emit("flash", o.x + dir.Item1 * 0.1, o.y + dir.Item2 * 0.1, o.z + dir.Item3 * 0.1, 0, 0, 0, weapon == "katta" ? 1.2 : 0.8);
+            world.particles.Emit("smoke", o.x, o.y, o.z, dir.Item1, 0.3, dir.Item3, 0.25);
+            GameAudio.I?.Gunshot(weapon);
+            world.Shake(weapon == "katta" ? 0.12 : 0.06);
+            recoil = 1;
+            var hit = Weapons.Raycast(world, o, dir, w.range, this);
+            if (hit != null) world.BulletHitAt(hit.Value, w, dir, null);
+            world.Gunfire(x, z, false);
+            if (Clip <= 0 && Ammo > 0) Reload();
+        }
+
+        void Reload()
+        {
+            var w = Weapons.WEAPONS[weapon];
+            if (!w.Gun || reloadT > 0 || Ammo <= 0 || Clip >= w.clip) return;
+            reloadT = w.reload;
+        }
+
+        Ped SoftTarget(Game world, double range)
+        {
+            Ped best = null; double bd = range;
+            double fx = Math.Sin(heading), fz = Math.Cos(heading);
+            void Consider(Ped o, double pri)
+            {
+                if (o.dead || o.state == "down") return;
+                double dx = o.x - x, dz = o.z - z, d = Math.Sqrt(dx * dx + dz * dz);
+                if (d > bd || (dx * fx + dz * fz) / (d == 0 ? 1 : d) < 0.5) return;
+                double score = d - pri;
+                if (score < bd) { bd = score; best = o; }
+            }
+            foreach (var m in world.gangs.members) Consider(m, m.hostile ? 15 : 5);
+            foreach (var c in world.police.cops) Consider(c, 4);
+            foreach (var p in world.streetLife.peds) if (p.Visible) Consider(p, 0);
+            return best;
+        }
+
+        // Typed cheat codes (on foot): GUNDA = every weapon and a pocketful of rounds.
+        void CheckCheat(GameInput input, IPlayerWorld world)
+        {
+            foreach (var code in input.pressed) if (code.Length == 4 && code.StartsWith("Key")) { cheat += code[3]; if (cheat.Length > 8) cheat = cheat.Substring(cheat.Length - 8); }
+            if (cheat.EndsWith("GUNDA"))
+            {
+                cheat = "";
+                foreach (var k in Weapons.ORDER) Give(k, k == "katta" ? 10 : k == "revolver" ? 36 : 0, false);
+                Select("revolver");
+                world.Say("Cheat: the full Majestic arsenal.", 2.5);
+            }
+        }
+
+        Ped NearestTarget(Game world, double range)
+        {
+            Ped best = null; double bd = range;
+            void Consider(Ped o) { double d = Math.Sqrt((o.x - x) * (o.x - x) + (o.z - z) * (o.z - z)); if (d < bd) { bd = d; best = o; } }
+            foreach (var p in world.streetLife.peds) if (p.state != "down" && p.Visible) Consider(p);
+            foreach (var c in world.police.cops) if (c.state != "down") Consider(c);
+            return best;
+        }
+
+        void UpdateAttack(double dt, Game world)
+        {
+            var a = attack;
+            var w = Weapons.WEAPONS[weapon];
+            bool armed = a.kind == "weapon";
+            double dur = a.kind == "kick" ? KICK_T : armed ? w.t : PUNCH_T;
+            a.t += dt;
+            double k = a.t / dur;
+            if (a.kind == "kick") human.PoseKick(k);
+            else if (armed && w.pose == "overhead") human.PoseLathi(k);
+            else if (armed && w.pose == "swing") human.PoseSwing(k);
+            else human.PosePunch(k, armed ? -1 : a.side);
+            double strike = a.kind == "kick" ? 0.38 : armed ? (w.pose == "stab" ? 0.32 : 0.55) : 0.32;
+            if (!a.landed && k > strike)
+            {
+                a.landed = true;
+                double range = a.kind == "kick" ? 1.7 : armed ? w.range : 1.35;
+                double dmg = a.kind == "kick" ? 45 : armed ? w.dmg : 26;
+                bool lethal = armed && w.lethal;
+                double fx = Math.Sin(heading), fz = Math.Cos(heading);
+                bool any = false;
+                foreach (var p in world.streetLife.TargetsInFront(x, z, heading, range))
+                {
+                    world.streetLife.Hit(p, dmg, fx, fz, world, a.kind == "kick" || (armed && w.pose != "stab"), lethal);
+                    if (lethal) world.particles.Burst("blood", p.x, p.y + 1.1, p.z, 6, 1.6, 0.5);
+                    world.Crime(p.dead ? "Murder" : armed ? "Assault with a weapon" : "Assault", p.x, p.z, p.dead ? 3 : armed ? 2 : 1);
+                    any = true;
+                }
+                foreach (var c in world.police.CopsInFront(x, z, heading, range))
+                {
+                    world.police.HitCop(c, dmg, fx, fz, a.kind == "kick", lethal);
+                    world.Crime(c.dead ? "Killing a police officer" : "Assaulting a police officer", c.x, c.z, c.dead ? 4 : 2);
+                    any = true;
+                }
+                foreach (var m in world.gangs.InFront(x, z, heading, range))
+                {
+                    world.gangs.Hit(m, dmg, fx, fz, world, lethal, a.kind == "kick");
+                    if (lethal) world.particles.Burst("blood", m.x, m.y + 1.1, m.z, 6, 1.6, 0.5);
+                    any = true;
+                }
+                var cows = world.streetLife.CowsInFront(x, z, heading, range);
+                if (cows.Count > 0 && a.kind == "kick")
+                {
+                    // The cow is not impressed.
+                    GameAudio.I?.Moo(cows[0].x, cows[0].z);
+                    world.Say("The cow is unimpressed. You, however, are on the ground.", 3);
+                    knock = 1.6; kx = -fx * 5; kz = -fz * 5;
+                    Damage(10, cows[0].x, cows[0].z, world);
+                    any = true;
+                }
+                if (!any) GameAudio.I?.Whoosh();
+            }
+            if (k >= 1) { attack = null; fightT = 1.6; }
+        }
+
+        // Back on your feet at a hospital or police station.
+        public void Respawn(double rx, double rz, IPlayerWorld world)
+        {
+            if (vehicle != null) { vehicle.driver = null; vehicle = null; }
+            if (transition != null && transition.kind == "in") transition.v.driver = null;
+            human.go.transform.SetParent(world.Root, false);
+            human.go.SetActive(true);
+            human.tiltX = 0;
+            x = rx; z = rz; y = 0.15; vy = 0;
+            health = 100; dead = false; knock = 0; attack = null; kx = kz = 0;
+            transition = null;
+            Place();
         }
 
         static double Wrap(double a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
@@ -64,12 +292,30 @@ namespace NammaBengaluru.Entities
             if (hurtCooldown > 0) hurtCooldown -= dt;
             else if (health < 100) health = Math.Min(100, health + dt * 4);
             if (transition != null) { UpdateTransition(dt, world); return; }
-            if (input.Hit("KeyF", "KeyE", "Enter") && knock <= 0)
+            if (fightT > 0) fightT -= dt;
+            if (input.Hit("KeyF", "KeyE", "Enter") && attack == null && knock <= 0)
             {
                 if (vehicle != null) ExitVehicle(world);
                 else TryEnter(world);
             }
+            var game = world as Game;
+            CheckCheat(input, world);
+            if (fireCd > 0) fireCd -= dt;
+            recoil = Math.Max(0, recoil - dt * 6);
+            if (reloadT > 0)
+            {
+                reloadT -= dt;
+                if (reloadT <= 0)
+                {
+                    var rw = Weapons.WEAPONS[weapon]; int need = rw.clip - Clip, n = Math.Min(need, Ammo);
+                    clip[weapon] = Clip + n; ammo[weapon] = Ammo - n;
+                    GameAudio.I?.Click();
+                }
+            }
+            if (input.Hit("Tab")) CycleWeapon(input.Down("ShiftLeft") ? -1 : 1);
+            for (int k = 1; k <= 9; k++) if (input.Hit("Digit" + k)) { var key = Weapons.ORDER[k - 1]; if (weapons.Contains(key)) Select(key); }
             if (vehicle != null) { aiming = false; Drive(dt, input, world); return; }
+            if (human.weaponGo != null && !human.weaponGo.activeSelf) human.weaponGo.SetActive(true);
 
             var h = human;
             // Knocked over (by a cow, a car or a lathi).
@@ -86,6 +332,26 @@ namespace NammaBengaluru.Entities
                 return;
             }
 
+            var wpn = Weapons.WEAPONS[weapon];
+            bool gun = wpn.Gun;
+            // Guns: hold the right mouse button to aim over the shoulder, left to fire.
+            aiming = gun && input.Down("Mouse2") && knock <= 0;
+            if (game != null && gun && (input.Hit("Mouse0", "KeyZ") || (weapon == "revolver" && input.Down("Mouse0") && aiming))) Shoot(game);
+            if (gun && input.Hit("KeyR") && input.Down("ShiftLeft")) Reload();
+            // Melee (fists or a weapon), and kicks.
+            bool wantKick = input.Hit("KeyX") || (!gun && input.Hit("Mouse2"));
+            bool wantSwing = !gun && input.Hit("Mouse0", "KeyZ");
+            if (game != null && attack == null && (wantKick || wantSwing))
+            {
+                punchSide = -punchSide;
+                attack = new Attack { kind = wantKick ? "kick" : weapon == "fists" ? "punch" : "weapon", side = punchSide };
+                // Face what we're aiming at.
+                var target = NearestTarget(game, 2.4);
+                if (target != null) heading = Math.Atan2(target.x - x, target.z - z);
+                GameAudio.I?.Whoosh();
+                GameAudio.I?.Effort(false);
+            }
+
             double f = input.Axis(new[] { "KeyS", "ArrowDown" }, new[] { "KeyW", "ArrowUp" });
             double s = input.Axis(new[] { "KeyA", "ArrowLeft" }, new[] { "KeyD", "ArrowRight" });
             double depth = world.WaterDepth(x, z, y);
@@ -94,10 +360,27 @@ namespace NammaBengaluru.Entities
             double mx = dx * f + rx * s, mz = dz * f + rz * s, len = Math.Sqrt(mx * mx + mz * mz);
             speed = len > 0 ? (running && !aiming ? RUN : WALK) : 0;
             if (depth > 0.3) speed *= swimming ? 0.6 : 0.55;
-            if (len > 0)
+            if (attack != null)
+            {
+                speed *= 0.15;
+                // Step into the blow: a short lunge during the strike.
+                double dur = attack.kind == "kick" ? KICK_T : PUNCH_T, ka = attack.t / dur;
+                if (attack.kind != "weapon" && ka > 0.18 && ka < 0.36)
+                {
+                    double lv = (attack.kind == "kick" ? 0.2 : 0.3) / (0.18 * dur);
+                    x += Math.Sin(heading) * lv * dt; z += Math.Cos(heading) * lv * dt;
+                }
+            }
+            if (aiming)
+            {
+                // Strafe, always facing where the camera looks.
+                heading = camYaw + Math.PI;
+                if (len > 0) { mx /= len; mz /= len; }
+            }
+            else if (len > 0)
             {
                 mx /= len; mz /= len;
-                heading += Wrap(Math.Atan2(mx, mz) - heading) * Math.Min(1, dt * 12);
+                if (attack == null) heading += Wrap(Math.Atan2(mx, mz) - heading) * Math.Min(1, dt * 12);
             }
             x += mx * speed * dt + kx * dt;
             z += mz * speed * dt + kz * dt;
@@ -106,8 +389,20 @@ namespace NammaBengaluru.Entities
             FinishMove(dt, world, swimming ? depth : 0);
 
             double t = UnityEngine.Time.time;
-            if (speed > 0) h.AnimateWalk(dt, speed); else h.PoseIdle(t);
-            if (!grounded) { h.rx[(int)Human.Bone.thL] = -0.7; h.rx[(int)Human.Bone.knL] = 0.9; h.rx[(int)Human.Bone.thR] = 0.3; }
+            if (attack != null && game != null) UpdateAttack(dt, game);
+            else if (aiming)
+            {
+                if (speed > 0) h.AnimateWalk(dt, speed);
+                int thL = (int)Human.Bone.thL, knL = (int)Human.Bone.knL, thR = (int)Human.Bone.thR, knR = (int)Human.Bone.knR;
+                double a1 = h.rx[thL], a2 = h.rx[knL], a3 = h.rx[thR], a4 = h.rx[knR];
+                h.PoseAim(-rigPitch + 0.25, recoil);
+                if (speed > 0) { h.rx[thL] = a1; h.rx[knL] = a2; h.rx[thR] = a3; h.rx[knR] = a4; }
+            }
+            else if (speed > 0) h.AnimateWalk(dt, speed);
+            else if (fightT > 0) h.PoseFight(t);
+            else h.PoseIdle(t);
+            if (gun && reloadT > 0) { h.rx[(int)Human.Bone.shR] = -0.8; h.rx[(int)Human.Bone.elR] = -1.2; h.rx[(int)Human.Bone.shL] = -0.9; h.rx[(int)Human.Bone.elL] = -1.4; }
+            if (!grounded && attack == null) { h.rx[(int)Human.Bone.thL] = -0.7; h.rx[(int)Human.Bone.knL] = 0.9; h.rx[(int)Human.Bone.thR] = 0.3; }
             if (swimming) h.rx[(int)Human.Bone.shL] = h.rx[(int)Human.Bone.shR] = -2.6 + Math.Sin(t * 1000 / 300) * 0.6;
             Place();
         }
@@ -138,7 +433,7 @@ namespace NammaBengaluru.Entities
                         x += ddx / d * (min - d); z += ddz / d * (min - d);
                         // Getting run over hurts.
                         double rel = Math.Sqrt(v.vx * v.vx + v.vz * v.vz);
-                        if (rel > 5 && hurtCooldown < 5.5) { Damage(Math.Min(60, rel * 3), c.x, c.z, world); knock = 1.8; kx = v.vx * 0.6; kz = v.vz * 0.6; }
+                        if (rel > 5 && hurtCooldown < 5.5) { Damage(Math.Min(60, rel * 3), c.x, c.z, world); knock = 1.8; kx = v.vx * 0.6; kz = v.vz * 0.6; GameAudio.I?.Thud(0.8); }
                     }
                 }
             }
@@ -188,11 +483,7 @@ namespace NammaBengaluru.Entities
             }
             if (best == null) return false;
             var veh = best;
-            if (veh.driver == "ai" || veh.driver == "police")
-            {
-                world.TakeOver(veh);
-                world.Say(veh.type.Contains("us") ? "Conductor: \"Ticket ticket! ...oh. You're DRIVING it?\"" : "\"Ayyo! My vehicle!\"", 3);
-            }
+            if (veh.driver == "ai" || veh.driver == "police") world.TakeOver(veh);
             veh.driver = "player"; // reserved while we walk up to it
             var door = DoorPoint(veh, world);
             double dist = Math.Sqrt((door.x - x) * (door.x - x) + (door.z - z) * (door.z - z));
