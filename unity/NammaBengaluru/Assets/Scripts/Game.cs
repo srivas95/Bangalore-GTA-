@@ -30,6 +30,8 @@ namespace NammaBengaluru
         public Signals signals;
         public Traffic traffic;
         public StreetLife streetLife;
+        public UI.Hud hud;
+        Vehicle hudVehicle;
         public readonly List<Obstacle> obstacles = new List<Obstacle>();
         public Systems.Environment env;
         public double hour { get => env != null ? env.hour : 16.5; set { if (env != null) env.hour = value; } } // 4:30 PM, as the web game starts
@@ -54,7 +56,7 @@ namespace NammaBengaluru
         public double Wetness => env.wetness;
         public double WaterDepth(double x, double z, double y) => env.WaterDepth(x, z, y);
         public double GroundHeight(double x, double z, double y) => layout.GroundHeight(x, z, y);
-        public void Say(string text, double seconds) { lastSay = text; Debug.Log("[Say] " + text); }
+        public void Say(string text, double seconds) { lastSay = text; hud?.Say(text, seconds); }
         public void Shake(double a) => rig?.Shake(a);
 
         // ---------- ITrafficWorld ----------
@@ -137,6 +139,8 @@ namespace NammaBengaluru
             streetLife = new StreetLife(layout, colliders, signals, cfg, root, city.materials);
             traffic.Prewarm(150, hour, this);
             input = new GameInput();
+            hud = new UI.Hud(layout, city.pois);
+            hud.SetMoney(1000, true); // START_MONEY
             var cam = Camera.main;
             cam.farClipPlane = 1400; cam.nearClipPlane = 0.2f; cam.fieldOfView = 62;
             rig = new CameraRig(cam) { yaw = 0 };
@@ -222,7 +226,8 @@ namespace NammaBengaluru
         void Update()
         {
             input.Poll();
-            if (input.Hit("Mouse0") && !input.locked && !freeCam) input.Lock(true);
+            if (input.Hit("Mouse0") && !input.locked && !freeCam && !hud.MapOpen) input.Lock(true);
+            if (input.Hit("KeyM")) { bool open = hud.ToggleMap(); if (open) input.Lock(false); }
             if (input.Hit("Escape")) input.Lock(false);
             // K brings on (or stops) the rain; T speeds the clock up 30× (debug keys in main.js).
             if (input.Hit("KeyK")) { env.SetRain(!env.Raining); Say(env.Raining ? "Dark clouds roll in over Bengaluru…" : "The rain eases off.", 2.5); }
@@ -281,6 +286,33 @@ namespace NammaBengaluru
             streetLife.Update(dt, this);
             if (!freeCam) rig.Update(dt, input, player, colliders);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
+            UpdateHud(dt);
+        }
+
+        static readonly UI.MapMarker[] NoMarkers = new UI.MapMarker[0];
+
+        void UpdateHud(double dt)
+        {
+            var pv = player.vehicle;
+            if (pv != hudVehicle && !player.InTransition)
+            {
+                if (pv != null) hud.VehicleEntered(pv); else hud.VehicleExited();
+                hudVehicle = pv;
+            }
+            // What F (or H) would do here (main.js).
+            if (pv == null && !player.InTransition)
+            {
+                Vehicle near = null; double nd = 0;
+                foreach (var v in vehicles)
+                {
+                    double d = Math.Sqrt((v.x - player.x) * (v.x - player.x) + (v.z - player.z) * (v.z - player.z)) - v.spec.length / 2;
+                    if (d < 2.2 && Math.Abs(v.y - player.y) < 2 && (near == null || d < nd)) { near = v; nd = d; }
+                }
+                hud.Prompt(near != null ? (near.driver == "ai" || near.driver == "police" ? $"F  \"Borrow\" the {near.spec.label}" : $"F  Get in the {near.spec.label}") : "");
+            }
+            else hud.Prompt(pv != null && pv.Speed <= 8 ? (pv.spec.police || pv.spec.siren ? "F  Get out  ·  G  Siren" : "F  Get out") : "");
+            hud.Update(dt, player, rig.yaw, NoMarkers);
+            hud.SetClock(env.ClockString(), env.rain > 0.6 ? "☂ Monsoon" : env.rain > 0.1 ? "☂ Rain" : env.night > 0.5 ? "☾ Clear" : "☀ Clear");
         }
 
         // ---------- Vehicle-vehicle contacts (resolveVehicleContacts in main.js) ----------

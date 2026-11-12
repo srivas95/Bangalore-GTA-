@@ -59,7 +59,7 @@ builds.
 | `systems/signals.js` | `Systems/Signals.cs` | Done |
 | `systems/environment.js`, `world/sky.js` (colours) | `Systems/Environment.cs`, `Resources/Shaders/Sky.shader` | Done (live weather to come) |
 | `entities/pedestrians.js` | `Entities/StreetLife.cs` | Done (cows have square edges; bus-platform crowds wait for the landmarks) |
-| `ui/hud.js` | | Phase 4 (next) |
+| `ui/hud.js` | `UI/Hud.cs` (uGUI + TextMeshPro; Oswald and DejaVu Sans in `Resources/Fonts`) | Done (metro and railway lines, GPS route and garages join the map with their ports) |
 | `systems/audio.js`, `audioSynth.js`, `police.js`, `weapons.js`, `particles.js`, `entities/gangs.js` | | Phase 5 |
 | `systems/missions.js`, `story.js`, `rides.js`, `route.js`, `autoDuty.js`, `metroRide.js`, `garages.js`, `gps.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 |
 | `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 2 and 6 |
@@ -136,3 +136,19 @@ off the road. Hit by a vehicle, people go down (or die above 15 m/s). Hit by the
 stagger, flee or, sometimes, fight back. A carjacked driver, or a rider thrown off a two-wheeler
 in a crash, bolts. Traffic yields to anyone standing in the carriageway. See
 `docs/unity/pedestrians.png`.
+
+### Phase 4d (HUD)
+
+`UI/Hud.cs` rebuilds the web game's heads-up display in uGUI with TextMeshPro, at the same CSS
+sizes on a 1440x810 reference screen: the round minimap that turns with the camera, inside
+the health ring; clock and weather, money (Indian digit grouping) and wanted stars; district
+toasts; the speedometer with the vehicle's name and condition bar; street, junction and
+district names; prompts ("F  Get in the Scooter", "F  \"Borrow\" the …"), subtitles, the radio
+station when you get on, mission and phone panels, the damage flash and the WASTED screen. M opens
+the big map (scroll to zoom, drag to pan, click for a waypoint once the GPS is ported), with
+district, landmark and fuel-station labels that never overlap. The map picture is drawn at
+start-up exactly as `renderMap` draws it (0.32 px per metre, about 3700x4300, DXT1-compressed).
+The font is the game's own Oswald (converted from `public/fonts/oswald-latin.woff2`), with DejaVu
+Sans standing in for system-ui and for the ₹, ★ and weather symbols. Emoji the fonts lack are
+replaced (☂ for rain, ☾ for night, ♪ for the radio). See `docs/unity/hud.png`, `hud-riding.png`
+and `big-map.png`.
