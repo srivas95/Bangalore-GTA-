@@ -55,7 +55,9 @@ builds.
 | `entities/player.js` | `Entities/Player.cs` | On foot, jumping, wading, getting in and out, driving; weapons and fighting to come |
 | `systems/cameraRig.js`, `input.js` | `Systems/CameraRig.cs`, `Systems/GameInput.cs` | Done |
 | `main.js` (start-up, parking, vehicle contacts, `__game.step`) | `Game.cs` | In part |
-| `entities/traffic.js`, `pedestrians.js`, `systems/signals.js`, `environment.js`, `ui/hud.js` | | Phase 4 |
+| `entities/traffic.js` | `Entities/Traffic.cs` | Done (level crossings wait for the railway port) |
+| `systems/signals.js` | `Systems/Signals.cs` | Done |
+| `entities/pedestrians.js`, `systems/environment.js`, `world/sky.js`, `ui/hud.js` | | Phase 4 (next) |
 | `systems/audio.js`, `audioSynth.js`, `police.js`, `weapons.js`, `particles.js`, `entities/gangs.js` | | Phase 5 |
 | `systems/missions.js`, `story.js`, `rides.js`, `route.js`, `autoDuty.js`, `metroRide.js`, `garages.js`, `gps.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 |
 | `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js`, `sky.js` | | Phase 2 and 6 |
@@ -100,3 +102,14 @@ spawn reaches 67 km/h on the scooter in 4 s. See `docs/unity/on-foot.png` and `r
 
 Controls so far: WASD walk/drive, mouse look (click to capture, Esc to release), Shift run,
 Space jump/handbrake, F get in/out, C look behind, G siren.
+
+### Phase 4 so far (traffic and signals)
+
+Traffic is the web game's own AI, ported whole: 170 vehicles streamed around the player with
+the Bengaluru mix (scooters, autos, hatchbacks, BMTC buses, lorries at night), keeping left,
+weaving, riding the wrong side, honking, planning each turn before the stop line, waiting for
+a clear junction, and crashing hard enough to be knocked loose. Signals phase each junction
+(green 18 s, amber 3, all-red 2, then a 10 s pedestrian phase), and named junctions have a
+traffic constable on his platform. Carjacking works (F on any traffic vehicle). A 34 s run from
+the spawn: 170 vehicles, 153 moving, 33 waiting at signals or junctions, mean 31 km/h, two
+crashes; simulated in 3.1 s. See `docs/unity/majestic-circle.png`.

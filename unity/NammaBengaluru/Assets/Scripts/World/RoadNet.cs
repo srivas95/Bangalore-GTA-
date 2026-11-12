@@ -43,6 +43,10 @@ namespace NammaBengaluru.World
         public List<Corner> corners = new List<Corner>();
         public bool through, signal;
         public string name;
+        // Signals: approach group per undirected edge id, groups, cycle length and phase offset.
+        public Dictionary<int, int> sigGroup;
+        public int sigN;
+        public double cycle, sigOffset;
     }
 
     public class NetEdge

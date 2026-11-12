@@ -16,6 +16,8 @@ namespace NammaBengaluru.Entities
         void Say(string text, double seconds);
         void Shake(double amount);
         UnityEngine.Transform Root { get; }
+        // Take a vehicle out of traffic (or from the police) for the player: its driver gets out.
+        void TakeOver(Vehicle v);
     }
 
     public class Player
@@ -179,6 +181,11 @@ namespace NammaBengaluru.Entities
             }
             if (best == null) return false;
             var veh = best;
+            if (veh.driver == "ai" || veh.driver == "police")
+            {
+                world.TakeOver(veh);
+                world.Say(veh.type.Contains("us") ? "Conductor: \"Ticket ticket! ...oh. You're DRIVING it?\"" : "\"Ayyo! My vehicle!\"", 3);
+            }
             veh.driver = "player"; // reserved while we walk up to it
             var door = DoorPoint(veh, world);
             double dist = Math.Sqrt((door.x - x) * (door.x - x) + (door.z - z) * (door.z - z));

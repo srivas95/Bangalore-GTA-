@@ -16,6 +16,29 @@ namespace NammaBengaluru.Entities
         static Material lampRed, lampBlue, lampOff;
 
         public GameObject Go => rig.go;
+        public Human rider;
+
+        // A rider on an open vehicle (scooter, bike, auto), sat on the seat.
+        public void SetRider(Human h)
+        {
+            RemoveRider();
+            if (h == null) return;
+            rider = h;
+            h.go.transform.SetParent(rig.body, false);
+            h.x = 0; h.y = v.spec.seatY - 0.86; h.z = v.spec.twoWheeler ? -0.22 : (rig.def.driverSeat != null ? rig.def.driverSeat[2] : 0.3);
+            h.heading = 0; h.tiltX = 0;
+            h.PoseSit();
+            h.Apply();
+            h.go.SetActive(true);
+        }
+
+        public Human RemoveRider()
+        {
+            var h = rider;
+            rider = null;
+            if (h != null) h.go.SetActive(false);
+            return h;
+        }
 
         public VehicleView(Vehicle v, ModelLibrary.VehicleRig rig, Transform parent)
         {
