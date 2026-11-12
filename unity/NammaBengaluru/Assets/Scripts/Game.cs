@@ -15,7 +15,7 @@ using Debug = UnityEngine.Debug;
 namespace NammaBengaluru
 {
     [DefaultExecutionOrder(-100)]
-    public class Game : MonoBehaviour, IPlayerWorld, ITrafficWorld
+    public class Game : MonoBehaviour, IPlayerWorld, ITrafficWorld, IStreetWorld
     {
         public static Game Instance { get; private set; }
 
@@ -29,6 +29,7 @@ namespace NammaBengaluru
         public GameInput input;
         public Signals signals;
         public Traffic traffic;
+        public StreetLife streetLife;
         public readonly List<Obstacle> obstacles = new List<Obstacle>();
         public Systems.Environment env;
         public double hour { get => env != null ? env.hour : 16.5; set { if (env != null) env.hour = value; } } // 4:30 PM, as the web game starts
@@ -87,14 +88,31 @@ namespace NammaBengaluru
             return v;
         }
 
-        // The player takes a vehicle out of traffic: its rider gets off.
+        // The player takes a vehicle out of traffic: its driver bolts (not off a bus).
         public void TakeOver(Vehicle v)
         {
             var agent = traffic.FindAgent(v);
             if (agent != null) traffic.Release(agent);
-            ((VehicleView)v.view).RemoveRider();
+            var rider = ((VehicleView)v.view).RemoveRider();
             if (!free.Contains(v)) free.Add(v);
+            if (!v.type.Contains("us"))
+                streetLife.SpawnFleeing(v.x - Math.Cos(v.heading) * 1.5, v.z + Math.Sin(v.heading) * 1.5, player.x, player.z, rider?.rig.def);
         }
+
+        // Knocked off a two-wheeler in a crash: the rider tumbles, gets up and runs.
+        public void ThrowRider(Vehicle v, double fromX, double fromZ, double kx, double kz)
+        {
+            var rider = ((VehicleView)v.view).RemoveRider();
+            if (rider == null) return;
+            var p = streetLife.SpawnFleeing(v.x, v.z, fromX, fromZ, rider.rig.def);
+            streetLife.Knock(p, kx, kz);
+        }
+
+        // ---------- IStreetWorld ----------
+        Player IStreetWorld.Player => player;
+        public IPlayerWorld PlayerWorld => this;
+        public double PedScale => hour >= 23 || hour < 5 ? 0.35 : env.rain > 0.5 ? 0.5 : 1;
+        public void Crime(string what, double x, double z, int stars) { } // wanted levels come with the police port
 
         void Awake()
         {
@@ -116,6 +134,7 @@ namespace NammaBengaluru
             ParkVehicles(spawn);
             signals = new Signals(layout, root, city.materials);
             traffic = new Traffic(layout, signals);
+            streetLife = new StreetLife(layout, colliders, signals, cfg, root, city.materials);
             traffic.Prewarm(150, hour, this);
             input = new GameInput();
             var cam = Camera.main;
@@ -256,8 +275,10 @@ namespace NammaBengaluru
             if (pv != null) VehObstacles(pv, true);
             else if (player.y < 0.05) obstacles.Add(new Obstacle { x = player.x, z = player.z, r = player.r, y = player.y, isPlayer = true, owner = player });
             foreach (var v in free) if (v != pv && Math.Abs(v.x - focus.x) < 450 && Math.Abs(v.z - focus.z) < 450) VehObstacles(v, false);
+            streetLife.CollectObstacles(obstacles);
             signals.Update(dt, focus.x, focus.z);
             traffic.Update(dt, this);
+            streetLife.Update(dt, this);
             if (!freeCam) rig.Update(dt, input, player, colliders);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
         }
@@ -306,7 +327,7 @@ namespace NammaBengaluru
                                     traffic.Release(agent);
                                     b.x -= nx * pen * ib / (ia + ib); b.z -= nz * pen * ib / (ia + ib);
                                     b.ApplyImpulse(-nx * jj, -nz * jj, pbx, pbz);
-                                    if (b.spec.twoWheeler) ((VehicleView)b.view).RemoveRider();
+                                    if (b.spec.twoWheeler) ThrowRider(b, a.x, a.z, -nx * Math.Min(9, 3 + dvB), -nz * Math.Min(9, 3 + dvB));
                                     b.temp = true;
                                     free.Add(b);
                                 }

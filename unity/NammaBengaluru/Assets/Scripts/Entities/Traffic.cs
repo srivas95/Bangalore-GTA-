@@ -67,6 +67,7 @@ namespace NammaBengaluru.Entities
         double WaterDepth(double x, double z, double y);
         IVehicleWorld VehicleWorld { get; }
         void Release(Vehicle v); // knocked loose: it joins the free vehicles
+        void ThrowRider(Vehicle v, double fromX, double fromZ, double kx, double kz); // a two-wheeler's rider goes flying
         Vehicle NewVehicle(string type, Func<double> rng);    // a pooled vehicle needs building
         void Show(Vehicle v, bool on);
         void Sync(Vehicle v, double dt);
@@ -602,6 +603,7 @@ namespace NammaBengaluru.Entities
                 v.ApplyImpulse(nx * j * sgn, nz * j * sgn, cx - v.x, cz - v.z);
                 v.temp = true; // tidied away once the player is far off
                 world.Release(v);
+                if (v.spec.twoWheeler) { var o = x == a ? b : a; world.ThrowRider(v, o.v.x, o.v.z, nx * sgn * Math.Min(9, 3 + dv), nz * sgn * Math.Min(9, 3 + dv)); }
             }
             if (Hypot(cx - world.Focus.x, cz - world.Focus.z) < 140)
                 foreach (var x in new[] { a, b }) if (x.v.driver == "ai" && R() < 0.7) { x.honkCd = 0.4 + R(); world.Horn(x.v); }
