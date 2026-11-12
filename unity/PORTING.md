@@ -57,10 +57,11 @@ builds.
 | `main.js` (start-up, parking, vehicle contacts, `__game.step`) | `Game.cs` | In part |
 | `entities/traffic.js` | `Entities/Traffic.cs` | Done (level crossings wait for the railway port) |
 | `systems/signals.js` | `Systems/Signals.cs` | Done |
-| `entities/pedestrians.js`, `systems/environment.js`, `world/sky.js`, `ui/hud.js` | | Phase 4 (next) |
+| `systems/environment.js`, `world/sky.js` (colours) | `Systems/Environment.cs`, `Resources/Shaders/Sky.shader` | Done (live weather to come) |
+| `entities/pedestrians.js`, `ui/hud.js` | | Phase 4 (next) |
 | `systems/audio.js`, `audioSynth.js`, `police.js`, `weapons.js`, `particles.js`, `entities/gangs.js` | | Phase 5 |
 | `systems/missions.js`, `story.js`, `rides.js`, `route.js`, `autoDuty.js`, `metroRide.js`, `garages.js`, `gps.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 |
-| `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js`, `sky.js` | | Phase 2 and 6 |
+| `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 2 and 6 |
 
 ### Phase 1 check (world core)
 
@@ -113,3 +114,13 @@ a clear junction, and crashing hard enough to be knocked loose. Signals phase ea
 traffic constable on his platform. Carjacking works (F on any traffic vehicle). A 34 s run from
 the spawn: 170 vehicles, 153 moving, 33 waiting at signals or junctions, mean 31 km/h, two
 crashes; simulated in 3.1 s. See `docs/unity/majestic-circle.png`.
+
+### Phase 4b (day, night and the monsoon)
+
+`Systems/Environment.cs` ports environment.js line for line: a 24-minute day, the sun's arc
+and colour, a bright blue moon at night, ambient light and fog taken from the sky's own colour
+keys (sky.js), exposure lifted after dark, and rain that arrives on its own every few minutes
+(K forces it, T runs the clock 30× faster). Heavy rain brings lightning, wet roads and, after a
+long shower, a metre of water in the underpasses and then a few centimetres over the roads.
+`Game.WaterDepth` now returns real depths, so scooters drown in flooded underpasses as they do
+in the web game. Headlights come on at night. See `docs/unity/night.png`, `sunset.png` and `rain.png`.

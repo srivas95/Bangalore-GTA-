@@ -30,7 +30,8 @@ namespace NammaBengaluru
         public Signals signals;
         public Traffic traffic;
         public readonly List<Obstacle> obstacles = new List<Obstacle>();
-        public double hour = 16.5; // 4:30 PM, as the web game starts
+        public Systems.Environment env;
+        public double hour { get => env != null ? env.hour : 16.5; set { if (env != null) env.hour = value; } } // 4:30 PM, as the web game starts
         public readonly List<Vehicle> free = new List<Vehicle>();     // parked, abandoned and the player's
         public readonly List<Vehicle> vehicles = new List<Vehicle>(); // everything this frame
         public string lastSay;
@@ -49,8 +50,8 @@ namespace NammaBengaluru
         public Colliders Colliders => colliders;
         public List<Vehicle> Vehicles => vehicles;
         public Transform Root => root;
-        public double Wetness => 0;
-        public double WaterDepth(double x, double z, double y) => 0; // the monsoon comes with the environment port
+        public double Wetness => env.wetness;
+        public double WaterDepth(double x, double z, double y) => env.WaterDepth(x, z, y);
         public double GroundHeight(double x, double z, double y) => layout.GroundHeight(x, z, y);
         public void Say(string text, double seconds) { lastSay = text; Debug.Log("[Say] " + text); }
         public void Shake(double a) => rig?.Shake(a);
@@ -59,7 +60,7 @@ namespace NammaBengaluru
         public (double x, double z) Focus => player.Pos;
         public List<Obstacle> Obstacles => obstacles;
         public double Hour => hour;
-        public double Rain => 0;
+        public double Rain => env.rain;
         public double TrafficScale => (hour >= 8 && hour < 11) || (hour >= 17 && hour < 21) ? 1.3 : hour >= 23 || hour < 5 ? 0.4 : 1; // rush hour is real
         public bool InitialFill => elapsed <= 3;
         public IVehicleWorld VehicleWorld => this;
@@ -125,31 +126,10 @@ namespace NammaBengaluru
                       $"{city.lamps.Count} lamps, {city.tanks.Count} tanks, {colliders.all.Count} colliders, {free.Count} parked vehicles");
         }
 
-        // Late-afternoon sun and haze, as the web game starts (4:30 PM). The day/night cycle and
-        // the monsoon come with the environment port.
+        // The day/night cycle and the monsoon (environment.js).
         void SetupEnvironment()
         {
-            var sun = RenderSettings.sun != null ? RenderSettings.sun : FindAnyObjectByType<Light>();
-            if (sun != null)
-            {
-                sun.type = LightType.Directional;
-                sun.color = CityMaterials.Hex(0xffe6c4);
-                sun.intensity = 1.6f;
-                sun.shadows = LightShadows.Soft;
-                sun.transform.rotation = Quaternion.Euler(38, -120, 0);
-                RenderSettings.sun = sun;
-            }
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = CityMaterials.Hex(0xaebdcc);
-            RenderSettings.fogStartDistance = 150;
-            RenderSettings.fogEndDistance = 800;
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = CityMaterials.Hex(0xc4d8ee);
-            RenderSettings.ambientEquatorColor = CityMaterials.Hex(0xa8a296);
-            RenderSettings.ambientGroundColor = CityMaterials.Hex(0x8a7560);
-            Shader.SetGlobalFloat("_NB_Night", 0);
-            Shader.SetGlobalFloat("_NB_Wet", 0);
+            env = new Systems.Environment(layout, root, city.materials);
         }
 
         // A point on a footpath near a place (footpathNear in main.js).
@@ -225,6 +205,9 @@ namespace NammaBengaluru
             input.Poll();
             if (input.Hit("Mouse0") && !input.locked && !freeCam) input.Lock(true);
             if (input.Hit("Escape")) input.Lock(false);
+            // K brings on (or stops) the rain; T speeds the clock up 30× (debug keys in main.js).
+            if (input.Hit("KeyK")) { env.SetRain(!env.Raining); Say(env.Raining ? "Dark clouds roll in over Bengaluru…" : "The rain eases off.", 2.5); }
+            if (input.Hit("KeyT")) { env.timeScale = env.timeScale > 1 ? 1 : 30; Say(env.timeScale > 1 ? "Time ×30" : "Time normal", 1.5); }
             Tick(Math.Min(Time.deltaTime, 1.0 / 20));
         }
 
@@ -276,6 +259,7 @@ namespace NammaBengaluru
             signals.Update(dt, focus.x, focus.z);
             traffic.Update(dt, this);
             if (!freeCam) rig.Update(dt, input, player, colliders);
+            env.Update(dt, focus.x, focus.z, pv, rig.camera);
         }
 
         // ---------- Vehicle-vehicle contacts (resolveVehicleContacts in main.js) ----------
