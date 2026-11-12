@@ -21,6 +21,7 @@ namespace NammaBengaluru.Render
         public string type, modelKey, livery;
         public int seed;
         public int? color;
+        public bool garage; // garage stock (one per model Chikka Motors sells, in base paint 0xb01c22): never in traffic
         public VehicleSpec spec;
         public double[] driverSeat;
         public LightBarDef lightBar;
@@ -59,7 +60,7 @@ namespace NammaBengaluru.Render
             hbytes = Resources.Load<TextAsset>("Models/humans").bytes;
             vehicles = JsonConvert.DeserializeObject<List<VehicleModelDef>>(Resources.Load<TextAsset>("Models/vehicles_index").text);
             humans = JsonConvert.DeserializeObject<List<HumanModelDef>>(Resources.Load<TextAsset>("Models/humans_index").text);
-            byType = vehicles.GroupBy(v => v.type).ToDictionary(g => g.Key, g => g.ToList());
+            byType = vehicles.Where(v => !v.garage).GroupBy(v => v.type).ToDictionary(g => g.Key, g => g.ToList());
             // Two-wheelers are flagged in the JS by their spec; the baked spec carries the flag.
             var vs = Resources.Load<Shader>("Shaders/Vehicle") ?? Shader.Find("NammaBengaluru/Vehicle");
             vehicleMat = new Material(vs) { name = "vehicle", enableInstancing = true };
@@ -70,6 +71,8 @@ namespace NammaBengaluru.Render
             decalMat = CityMaterials.Make("decals", new CityMaterials.Spec { map = "decals", emission = "decals_glow", emitColor = 0xffffff, emitDay = 1.1f, emitNight = 1.1f, roughness = 0.35f, metallic = 0.15f, alphaTest = true, cutoff = 0.4f, offset = -2 });
         }
 
+        // A garage model (type and model key as in garages.js FOR_SALE), or null.
+        public static VehicleModelDef GarageModel(string type, string modelKey) { Load(); return vehicles.FirstOrDefault(v => v.garage && v.type == type && v.modelKey == modelKey); }
         public static IList<VehicleModelDef> ForType(string type) { Load(); return byType.TryGetValue(type, out var l) ? l : null; }
         public static VehicleSpec SpecFor(string type) { var l = ForType(type); return l?[0].spec; }
         public static IEnumerable<string> Types { get { Load(); return byType.Keys; } }

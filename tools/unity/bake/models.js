@@ -7,6 +7,11 @@ import { decalAtlas } from '/src/entities/liveries.js';
 import { createHuman, B as BONES } from '/src/entities/human.js';
 import { mulberry32 } from '/src/world/textures.js';
 
+// garages.js FOR_SALE: [type, model].
+const GARAGE = [['scooter', 'activa'], ['scooter', 'ola'], ['scooter', 'ather'], ['bike', null], ['sportBike', null], ['auto', null], ['van', 'omni'], ['van', 'eeco'],
+  ['hatch', 'alto'], ['hatch', 'tiago'], ['hatch', 'i10'], ['hatch', 'swift'], ['hatch', 'baleno'], ['hatch', 'i20'], ['sedan', 'dzire'], ['sedan', 'etios'], ['suv', 'punch'],
+  ['sedan', 'city'], ['suv', 'venue'], ['suv', 'brezza'], ['suv', 'innova'], ['suv', 'creta'], ['suv', 'seltos'], ['suv', 'carens'], ['suv', 'scorpio'], ['suv', 'thar'],
+  ['suv', 'hector'], ['suv', 'xuv700'], ['suv', 'fortuner']];
 const VARIANTS = { default: 4, hatch: 8, sedan: 8, taxi: 4, suv: 6, scooter: 6, bike: 5, auto: 4, bus: 6, cityBus: 4, ksrtc: 4 };
 
 function pack(geo, withPbr, withSkin) {
@@ -32,22 +37,29 @@ function pack(geo, withPbr, withSkin) {
 window.bake = async () => {
   try { await Promise.race([document.fonts.load('800 40px "Baloo Tamma 2"', 'ಕನ್ನಡ Aa'), new Promise((r) => setTimeout(r, 4000))]); } catch { /* ignore */ }
   const models = [];
+  const add = (type, seed, m, extra = {}) => {
+    const sk = m.mesh.skeleton;
+    const bones = sk.bones.map((b) => ({ parent: sk.bones.indexOf(b.parent), p: [b.position.x, b.position.y, b.position.z] }));
+    models.push({
+      type, seed, spec: m.spec, color: m.color ?? null, modelKey: m.modelKey ?? null, livery: m.livery?.name ?? m.livery ?? null,
+      driverSeat: m.driverSeat ?? null, lightBar: m.lightBar ?? null,
+      bones, wheels: m.wheels.map((w) => ({ steer: w.steer ? sk.bones.indexOf(w.steer) : -1, spin: sk.bones.indexOf(w.spin), r: w.r })),
+      body: pack(m.mesh.geometry, true, true),
+      decal: m.decalMesh ? pack(m.decalMesh.geometry, false, false) : null,
+      ...extra,
+    });
+  };
   for (const type of Object.keys(VEHICLE_TYPES)) {
     const n = VARIANTS[type] || VARIANTS.default;
     for (let k = 0; k < n; k++) {
       const seed = 1000 + k * 7919 + type.length * 31;
-      const m = buildVehicleModel(type, mulberry32(seed));
-      const sk = m.mesh.skeleton;
-      const bones = sk.bones.map((b) => ({ parent: sk.bones.indexOf(b.parent), p: [b.position.x, b.position.y, b.position.z] }));
-      models.push({
-        type, seed, spec: m.spec, color: m.color ?? null, modelKey: m.modelKey ?? null, livery: m.livery?.name ?? m.livery ?? null,
-        driverSeat: m.driverSeat ?? null, lightBar: m.lightBar ?? null,
-        bones, wheels: m.wheels.map((w) => ({ steer: w.steer ? sk.bones.indexOf(w.steer) : -1, spin: sk.bones.indexOf(w.spin), r: w.r })),
-        body: pack(m.mesh.geometry, true, true),
-        decal: m.decalMesh ? pack(m.decalMesh.geometry, false, false) : null,
-      });
+      add(type, seed, buildVehicleModel(type, mulberry32(seed)));
     }
   }
+  // Garage stock: one of every model Chikka Motors sells (and the red Activa you start with), in
+  // the base paint 0xb01c22, flagged so traffic never picks them. The port repaints them by
+  // swapping that colour's vertices, as garages.js recolor() does.
+  for (const [type, model] of GARAGE) add(type, 4242, buildVehicleModel(type, mulberry32(4242), { model: model ?? undefined, color: 0xb01c22 }), { garage: true, modelKey: model });
   // People: the player, then seeded passers-by in every outfit (and police, riders, hawkers).
   const humans = [];
   const bakeHuman = (name, opts, seed) => {

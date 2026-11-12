@@ -16,11 +16,17 @@ namespace NammaBengaluru.Render
 {
     public class Lot { public Frame f; public double minX, maxX, minZ, maxZ; public string face = "s"; public bool road; public double roadW; }
     public class TreeSpec { public double x, z, s, y; public int t; public bool noCollide; }
-    public class TextSign { public string key, bg, fg, font, face; public string[] text, fonts; public double x, y, z, w, h, rotY; }
+    public class TextSign
+    {
+        public string key, bg, fg, font, face; public string[] text, fonts; public double x, y, z, w, h, rotY;
+        public int texH;             // canvas height for textTexture (default: 1024 * h / w, at least 64)
+        public float emissive = 0.05f; // MeshStandardMaterial emissiveIntensity
+        public bool basic;           // MeshBasicMaterial (metro boards): unlit
+    }
     public class Poi { public string name, district; public double x, z, heading; }
     public class Pois
     {
-        public List<Poi> food = new List<Poi>(), homes = new List<Poi>(), landmarks = new List<Poi>(), parking = new List<Poi>(), industrial = new List<Poi>(), fuel = new List<Poi>();
+        public List<Poi> food = new List<Poi>(), homes = new List<Poi>(), landmarks = new List<Poi>(), parking = new List<Poi>(), industrial = new List<Poi>(), fuel = new List<Poi>(), garages = new List<Poi>();
     }
     public class PropSpot { public string k; public double x, y, z, ry; }
 

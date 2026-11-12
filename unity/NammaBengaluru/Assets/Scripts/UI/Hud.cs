@@ -45,7 +45,9 @@ namespace NammaBengaluru.UI
 
         TextMeshProUGUI clock, moneyText, stars, weapon, toast, toastSub, radio, subtitle, prompt, speed, vehicleName, street, district, missionTitle, missionBody, missionTimer, phoneText, screenTitle, screenSub, north, gpsDist;
         Fader toastF, radioF, subF, promptF, speedF, missionF, phoneF, damageF;
-        GameObject screen, crosshair;
+        GameObject screen, crosshair, menuPanel;
+        TextMeshProUGUI menuText;
+        UnityEngine.UI.Image menuEdge;
         UnityEngine.UI.Image healthFill, vhpBar;
         RectTransform miniMap, miniArrow, miniMarkers;
         readonly List<UnityEngine.UI.Image> markerPool = new List<UnityEngine.UI.Image>();
@@ -59,6 +61,40 @@ namespace NammaBengaluru.UI
         Vector2? dragFrom;
         public bool MapOpen => bigMap.activeSelf;
         public Action<double, double, double> onMapTap; // world x, z, and a pick radius in metres
+        // The GPS line (from you to the waypoint) and its length; set by the game every frame.
+        public List<(double x, double z)> route;
+        public double routeLength;
+        readonly List<RectTransform> miniRoute = new List<RectTransform>(), bigRoute = new List<RectTransform>();
+
+        // The route as a thick purple line with a dark edge, as children of a map image (anchored
+        // at its bottom-left corner): map(x, z) gives the point in the image's units.
+        void DrawRoute(List<RectTransform> pool, RectTransform parent, Func<double, double, Vector2> map, float w)
+        {
+            int n = 0;
+            if (route != null)
+                for (int pass = 0; pass < 2; pass++)
+                    for (int i = 1; i < route.Count; i++)
+                    {
+                        Vector2 a = map(route[i - 1].x, route[i - 1].z), b = map(route[i].x, route[i].z), d = b - a;
+                        float len = d.magnitude;
+                        if (len < 0.01f) continue;
+                        while (pool.Count <= n)
+                        {
+                            var rt = Rect(parent, "Route", Vector2.zero, new Vector2(0, 0.5f), Vector2.zero, Vector2.one);
+                            Img(rt, null, Color.white);
+                            pool.Add(rt);
+                        }
+                        var seg = pool[n++];
+                        if (!seg.gameObject.activeSelf) seg.gameObject.SetActive(true);
+                        float ww = pass == 0 ? w * 1.6f : w;
+                        seg.sizeDelta = new Vector2(len + ww * 0.5f, ww);
+                        seg.anchoredPosition = a - d / len * ww * 0.25f;
+                        seg.localEulerAngles = new Vector3(0, 0, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
+                        seg.GetComponent<UnityEngine.UI.Image>().color = pass == 0 ? new Color(30 / 255f, 0, 40 / 255f, 0.8f) : Css(0xc050ff);
+                        seg.SetAsLastSibling();
+                    }
+            for (int i = n; i < pool.Count; i++) if (pool[i].gameObject.activeSelf) pool[i].gameObject.SetActive(false);
+        }
 
         string lastDistrict, curStreet, curDist, curPrompt, curClock, curStars, curMission;
         double toastT, subT, radioT, shownMoney, damageT;
@@ -269,6 +305,15 @@ namespace NammaBengaluru.UI
 
             BuildBigMap();
 
+            // Garage (and metro, ride) menus: a dark card in the middle of the screen.
+            var mp = Rect(root, "Menu", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(470, 560));
+            Img(mp, null, new Color(12 / 255f, 12 / 255f, 16 / 255f, 0.93f));
+            menuEdge = Img(Rect(mp, "Edge", new Vector2(0.5f, 1), new Vector2(0.5f, 1), Vector2.zero, new Vector2(470, 4)), null, GOLD);
+            menuText = Text(Stretch(mp, "Text", Vector2.zero, Vector2.one), 15, Color.white, TextAlignmentOptions.TopLeft, null, sansFont);
+            menuText.margin = new Vector4(16, 14, 16, 12); menuText.richText = true; menuText.textWrappingMode = TextWrappingModes.Normal;
+            menuPanel = mp.gameObject;
+            menuPanel.SetActive(false);
+
             // WASTED / BUSTED.
             var scr = Stretch(root, "Screen", Vector2.zero, Vector2.one);
             Img(scr, null, new Color(0, 0, 0, 0.45f));
@@ -467,6 +512,27 @@ namespace NammaBengaluru.UI
         }
         public string CurrentPrompt => curPrompt;
 
+        // A menu: title (and a subtitle), rows of (label, price, selected, unavailable), a footer.
+        public void ShowMenu(string title, string sub, IList<(string label, string price, bool sel, bool off)> rows, string foot, int accent)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"<size=19><b>{title}</b></size>  <color=#9a9a9a><size=14>{sub}</size></color>\n\n");
+            foreach (var r in rows)
+            {
+                string c = r.off ? "#6a6a6a" : r.sel ? "#ffffff" : "#d0d0d0";
+                string mark = r.sel ? "<color=#ffc400>▶</color> " : "   ";
+                sb.Append($"{mark}<color={c}>{r.label}</color><pos=82%><color={(r.off ? "#6a6a6a" : "#7ee07e")}>{r.price}</color>\n");
+            }
+            sb.Append($"\n<size=12><color=#9a9a9a>{foot}</color></size>");
+            menuText.text = sb.ToString();
+            menuEdge.color = Css(accent);
+            float h = Mathf.Clamp(menuText.preferredHeight + 10, 160, 760);
+            ((RectTransform)menuPanel.transform).sizeDelta = new Vector2(470, h);
+            menuPanel.SetActive(true);
+        }
+        public void HideMenu() => menuPanel.SetActive(false);
+        public bool MenuOpen => menuPanel.activeSelf;
+
         public void Phone(string html)
         {
             if (!string.IsNullOrEmpty(html)) phoneText.text = html.Replace("<br>", "\n");
@@ -626,6 +692,11 @@ namespace NammaBengaluru.UI
             double heading = player.vehicle != null ? player.vehicle.heading : player.heading;
             miniArrow.localEulerAngles = new Vector3(0, 0, (float)((heading - camYaw - Math.PI) * Mathf.Rad2Deg));
             north.rectTransform.anchoredPosition = new Vector2((float)(sy * R), (float)(cy * R - 4));
+            double mapH = mapTex.height / MAP_SCALE;
+            DrawRoute(miniRoute, miniMap, (x, z) => new Vector2((float)((x - W.minX) * scale), (float)((mapH - (z - W.minZ)) * scale)), 5);
+            // GPS distance to the waypoint.
+            string gd = route != null ? (routeLength > 950 ? $"{routeLength / 1000:F1} km" : $"{Math.Round(routeLength / 10) * 10} m") : "";
+            if (gpsDist.text != gd) gpsDist.text = gd;
         }
 
         UnityEngine.UI.Image Marker(List<UnityEngine.UI.Image> pool, RectTransform parent, int i, float size)
@@ -698,6 +769,8 @@ namespace NammaBengaluru.UI
             if (markers != null) foreach (var m in markers) { var img = Marker(bigMarkerPool, bigMarkers, n++, 14); img.color = m.color; img.transform.parent.GetComponent<RectTransform>().anchoredPosition = At(m.x, m.z); }
             for (int i = n; i < bigMarkerPool.Count; i++) bigMarkerPool[i].transform.parent.gameObject.SetActive(false);
             bigPlayer.anchoredPosition = At(p.x, p.z);
+            double mh = mapTex.height / MAP_SCALE;
+            DrawRoute(bigRoute, bigImage, (x, z) => new Vector2((float)((x - W.minX) * S), (float)((mh - (z - W.minZ)) * S)), 5);
         }
         Vector2? tapFrom;
         float tapT;

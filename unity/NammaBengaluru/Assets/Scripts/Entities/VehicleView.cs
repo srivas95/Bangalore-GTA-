@@ -187,6 +187,31 @@ namespace NammaBengaluru.Entities
             if (rig.decal != null) rig.decal.enabled = false;
         }
 
+        // Repaint: swap the paint colour's vertices for another (garages.js recolor). The model's
+        // own colour is the one to replace; returns false for vehicles with no single paint colour.
+        public int? paint;
+        public bool Recolor(int hex)
+        {
+            int? from = paint ?? rig.def.color;
+            if (from == null) return false;
+            Own();
+            var a = LinColor.Hex(from.Value); var b = LinColor.Hex(hex);
+            byte U(double v) => (byte)Math.Round(Math.Max(0, Math.Min(1, v)) * 255);
+            byte ar = U(a.r), ag = U(a.g), ab = U(a.b);
+            var to = new Color32(U(b.r), U(b.g), U(b.b), 255);
+            var col = ownBody.colors32;
+            for (int i = 0; i < col.Length; i++)
+            {
+                var c = col[i];
+                if (Math.Abs(c.r - ar) <= 1 && Math.Abs(c.g - ag) <= 1 && Math.Abs(c.b - ab) <= 1) col[i] = new Color32(to.r, to.g, to.b, c.a);
+            }
+            ownBody.colors32 = col;
+            // The repainted body is the new factory finish.
+            if (origBody != null && origBody != ownBody) { origBody = UnityEngine.Object.Instantiate(ownBody); }
+            paint = hex;
+            return true;
+        }
+
         // Factory reset (garages, and vehicles going back to the traffic pool).
         void Repair()
         {

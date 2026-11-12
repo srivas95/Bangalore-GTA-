@@ -1,0 +1,990 @@
+[
+  {
+    "key": "up_16th Main Road Railway Underpass",
+    "text": [
+      "16TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_18th Cross Road Railway Underpass",
+    "text": [
+      "18TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_19th Cross Road Railway Underpass",
+    "text": [
+      "19TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_14th Cross Road Railway Underpass",
+    "text": [
+      "14TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_Tumkur Road Railway Underpass",
+    "text": [
+      "TUMKUR ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_13th Cross Road Railway Underpass",
+    "text": [
+      "13TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_Outer Ring Road Railway Underpass",
+    "text": [
+      "OUTER RING ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_9th Main Road Railway Underpass",
+    "text": [
+      "9TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_11th Main Road Railway Underpass",
+    "text": [
+      "11TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_6th Main Road Railway Underpass",
+    "text": [
+      "6TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_7th Main Road Railway Underpass",
+    "text": [
+      "7TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_7th Cross Road Railway Underpass",
+    "text": [
+      "7TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_6th Cross Road Railway Underpass",
+    "text": [
+      "6TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_Palace Road Railway Underpass",
+    "text": [
+      "PALACE ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_19th Main Road Railway Underpass",
+    "text": [
+      "19TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_21st Main Road Railway Underpass",
+    "text": [
+      "21ST MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_17th Cross Road Railway Underpass",
+    "text": [
+      "17TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_23rd Main Road Railway Underpass",
+    "text": [
+      "23RD MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_16th Cross Road Railway Underpass",
+    "text": [
+      "16TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_3rd Main Road Railway Underpass",
+    "text": [
+      "3RD MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_4th Main Road Railway Underpass",
+    "text": [
+      "4TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_Hennur Road Railway Underpass",
+    "text": [
+      "HENNUR ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_5th Main Road Railway Underpass",
+    "text": [
+      "5TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_8th Main Road Railway Underpass",
+    "text": [
+      "8TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_13th Main Road Railway Underpass",
+    "text": [
+      "13TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_14th Main Road Railway Underpass",
+    "text": [
+      "14TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_15th Cross Road Railway Underpass",
+    "text": [
+      "15TH CROSS ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_20th Main Road Railway Underpass",
+    "text": [
+      "20TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_22nd Main Road Railway Underpass",
+    "text": [
+      "22ND MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_24th Main Road Railway Underpass",
+    "text": [
+      "24TH MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_1st Main Road Railway Underpass",
+    "text": [
+      "1ST MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_2nd Main Road Railway Underpass",
+    "text": [
+      "2ND MAIN ROAD RAILWAY UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 6.8,
+    "texH": 166
+  },
+  {
+    "key": "up_K.R. Circle Underpass",
+    "text": [
+      "K.R. CIRCLE UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "up_Okalipuram Underpass",
+    "text": [
+      "OKALIPURAM UNDERPASS",
+      "ಕೆಳಸೇತುವೆ · HEIGHT 4.2 m"
+    ],
+    "bg": "#1f4e8c",
+    "fg": "#fff",
+    "w": 12.0,
+    "texH": 94
+  },
+  {
+    "key": "fo_Silk Board Flyover",
+    "text": [
+      "SILK BOARD FLYOVER",
+      "ಮೇಲ್ಸೇತುವೆ"
+    ],
+    "bg": "#1f6a3a",
+    "fg": "#fff",
+    "w": 10.200000000000001,
+    "texH": 141
+  },
+  {
+    "key": "fo_Hebbal Flyover",
+    "text": [
+      "HEBBAL FLYOVER",
+      "ಮೇಲ್ಸೇತುವೆ"
+    ],
+    "bg": "#1f6a3a",
+    "fg": "#fff",
+    "w": 10.200000000000001,
+    "texH": 141
+  },
+  {
+    "key": "toll_NICE Road Toll Plaza",
+    "text": [
+      "ನೈಸ್ ರಸ್ತೆ ಸುಂಕ ಕೇಂದ್ರ",
+      "NICE ROAD TOLL PLAZA"
+    ],
+    "bg": "#c8202a",
+    "fg": "#ffffff",
+    "w": 22.0,
+    "texH": 64
+  },
+  {
+    "key": "metroWork",
+    "text": [
+      "ROAD CLOSED · METRO WORK",
+      "ಮೆಟ್ರೋ ಕಾಮಗಾರಿ"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 6.0,
+    "texH": 256
+  },
+  {
+    "key": "fuel_hp_fascia",
+    "text": [
+      "HP"
+    ],
+    "bg": "#0b4ea2",
+    "fg": "#ffffff",
+    "font": "bold 92px \"Oswald\", Arial, sans-serif",
+    "w": 4.0,
+    "texH": 128
+  },
+  {
+    "key": "fuel_hp_totem",
+    "text": [
+      "HP",
+      "HINDUSTAN PETROLEUM",
+      "PETROL · DIESEL"
+    ],
+    "bg": "#0b4ea2",
+    "fg": "#ffffff",
+    "fonts": [
+      "bold 300px \"Oswald\", Arial, sans-serif",
+      "bold 84px \"Noto Sans Kannada\", \"Oswald\", sans-serif",
+      "bold 84px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 1.6,
+    "texH": 1792
+  },
+  {
+    "key": "brand_VAISHNAVI SAPPHIRE_22",
+    "text": [
+      "VAISHNAVI SAPPHIRE",
+      "MALL · YESHWANTHPUR"
+    ],
+    "bg": "#0e2f6a",
+    "fg": "#ffffff",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 21.6,
+    "texH": 171
+  },
+  {
+    "key": "brand_VAISHNAVI SAPPHIRE_7",
+    "text": [
+      "VAISHNAVI SAPPHIRE",
+      "MALL · YESHWANTHPUR"
+    ],
+    "bg": "#0e2f6a",
+    "fg": "#ffffff",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 7.0241420954351783,
+    "texH": 525
+  },
+  {
+    "key": "brand_TAJ YESHWANTPUR_25",
+    "text": [
+      "TAJ YESHWANTPUR",
+      "BENGALURU"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#d8b56a",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 24.61767891566269,
+    "texH": 175
+  },
+  {
+    "key": "brand_TAJ YESHWANTPUR_8",
+    "text": [
+      "TAJ YESHWANTPUR",
+      "BENGALURU"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#d8b56a",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 8.2941609217994845,
+    "texH": 519
+  },
+  {
+    "key": "fuel_iocl_fascia",
+    "text": [
+      "IndianOil"
+    ],
+    "bg": "#f26522",
+    "fg": "#ffffff",
+    "font": "bold 92px \"Oswald\", Arial, sans-serif",
+    "w": 4.0,
+    "texH": 128
+  },
+  {
+    "key": "fuel_iocl_totem",
+    "text": [
+      "IndianOil",
+      "ಇಂಡಿಯನ್ ಆಯಿಲ್ · INDIAN OIL",
+      "PETROL · DIESEL"
+    ],
+    "bg": "#f26522",
+    "fg": "#ffffff",
+    "fonts": [
+      "bold 300px \"Oswald\", Arial, sans-serif",
+      "bold 84px \"Noto Sans Kannada\", \"Oswald\", sans-serif",
+      "bold 84px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 1.6,
+    "texH": 1792
+  },
+  {
+    "key": "brand_SHERATON GRAND_25",
+    "text": [
+      "SHERATON GRAND",
+      "BANGALORE · BRIGADE GATEWAY"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#e8e0d0",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 24.986271171970291,
+    "texH": 172
+  },
+  {
+    "key": "brand_SHERATON GRAND_10",
+    "text": [
+      "SHERATON GRAND",
+      "BANGALORE · BRIGADE GATEWAY"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#e8e0d0",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 9.62100518109277,
+    "texH": 447
+  },
+  {
+    "key": "brand_MANTRI SQUARE_22",
+    "text": [
+      "MANTRI SQUARE",
+      "MALLESHWARAM"
+    ],
+    "bg": "#2a1a5a",
+    "fg": "#ffffff",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 21.6,
+    "texH": 171
+  },
+  {
+    "key": "brand_MANTRI SQUARE_12",
+    "text": [
+      "MANTRI SQUARE",
+      "MALLESHWARAM"
+    ],
+    "bg": "#2a1a5a",
+    "fg": "#ffffff",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 12.315822497857733,
+    "texH": 299
+  },
+  {
+    "key": "fuel_bpcl_fascia",
+    "text": [
+      "BHARAT PETROLEUM"
+    ],
+    "bg": "#0054a6",
+    "fg": "#ffd200",
+    "font": "bold 92px \"Oswald\", Arial, sans-serif",
+    "w": 4.0,
+    "texH": 128
+  },
+  {
+    "key": "fuel_bpcl_totem",
+    "text": [
+      "BHARAT PETROLEUM",
+      "Pure for Sure",
+      "PETROL · DIESEL"
+    ],
+    "bg": "#0054a6",
+    "fg": "#ffd200",
+    "fonts": [
+      "bold 300px \"Oswald\", Arial, sans-serif",
+      "bold 84px \"Noto Sans Kannada\", \"Oswald\", sans-serif",
+      "bold 84px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 1.6,
+    "texH": 1792
+  },
+  {
+    "key": "brand_JW MARRIOTT_25",
+    "text": [
+      "JW MARRIOTT",
+      "BENGALURU"
+    ],
+    "bg": "#1c1c1c",
+    "fg": "#e8d6a8",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 24.662421652628108,
+    "texH": 174
+  },
+  {
+    "key": "brand_JW MARRIOTT_5",
+    "text": [
+      "JW MARRIOTT",
+      "BENGALURU"
+    ],
+    "bg": "#1c1c1c",
+    "fg": "#e8d6a8",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 5.4187481675287712,
+    "texH": 794
+  },
+  {
+    "key": "brand_ITC GARDENIA_25",
+    "text": [
+      "ITC GARDENIA",
+      "A LUXURY COLLECTION HOTEL"
+    ],
+    "bg": "#2e4a2a",
+    "fg": "#f0e6c8",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 24.87089108750224,
+    "texH": 173
+  },
+  {
+    "key": "brand_ITC GARDENIA_9",
+    "text": [
+      "ITC GARDENIA",
+      "A LUXURY COLLECTION HOTEL"
+    ],
+    "bg": "#2e4a2a",
+    "fg": "#f0e6c8",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 9.40990863843821,
+    "texH": 457
+  },
+  {
+    "key": "brand_TAJ MG ROAD_11",
+    "text": [
+      "TAJ MG ROAD",
+      "BENGALURU"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#d8b56a",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 10.807288804367237,
+    "texH": 398
+  },
+  {
+    "key": "brand_TAJ MG ROAD_5",
+    "text": [
+      "TAJ MG ROAD",
+      "BENGALURU"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#d8b56a",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 4.8769958396387523,
+    "texH": 882
+  },
+  {
+    "key": "brand_PHOENIX MARKETCITY_22",
+    "text": [
+      "PHOENIX MARKETCITY",
+      "MAHADEVAPURA"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#f0c040",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 21.6,
+    "texH": 171
+  },
+  {
+    "key": "brand_PHOENIX MARKETCITY_10",
+    "text": [
+      "PHOENIX MARKETCITY",
+      "MAHADEVAPURA"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#f0c040",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 9.7488735281955456,
+    "texH": 378
+  },
+  {
+    "key": "brand_NEXUS SHANTINIKETAN_22",
+    "text": [
+      "NEXUS SHANTINIKETAN",
+      "WHITEFIELD"
+    ],
+    "bg": "#0f2a4a",
+    "fg": "#ffffff",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 21.6,
+    "texH": 171
+  },
+  {
+    "key": "brand_NEXUS SHANTINIKETAN_10",
+    "text": [
+      "NEXUS SHANTINIKETAN",
+      "WHITEFIELD"
+    ],
+    "bg": "#0f2a4a",
+    "fg": "#ffffff",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 10.009606452831067,
+    "texH": 368
+  },
+  {
+    "key": "brand_GOLDEN GRAND_25",
+    "text": [
+      "GOLDEN GRAND",
+      "YESHWANTHPUR"
+    ],
+    "bg": "#3a2a10",
+    "fg": "#f0c860",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 25.200000000000003,
+    "texH": 171
+  },
+  {
+    "key": "brand_GOLDEN GRAND_12",
+    "text": [
+      "GOLDEN GRAND",
+      "YESHWANTHPUR"
+    ],
+    "bg": "#3a2a10",
+    "fg": "#f0c860",
+    "fonts": [
+      "bold 96px \"Oswald\", Arial, sans-serif",
+      "40px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 11.918856649005319,
+    "texH": 361
+  },
+  {
+    "key": "brand_ORION MALL_22",
+    "text": [
+      "ORION MALL",
+      "BRIGADE GATEWAY"
+    ],
+    "bg": "#ffffff",
+    "fg": "#c8102e",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 21.6,
+    "texH": 171
+  },
+  {
+    "key": "brand_ORION MALL_9",
+    "text": [
+      "ORION MALL",
+      "BRIGADE GATEWAY"
+    ],
+    "bg": "#ffffff",
+    "fg": "#c8102e",
+    "fonts": [
+      "bold 72px \"Oswald\", Arial, sans-serif",
+      "34px \"Oswald\", Arial, sans-serif"
+    ],
+    "w": 9.4069112747767942,
+    "texH": 392
+  },
+  {
+    "key": "garage_Chikka Motors",
+    "text": [
+      "ಚಿಕ್ಕ ಮೋಟಾರ್ಸ್",
+      "CHIKKA MOTORS",
+      "SALES · SERVICE · RESPRAY"
+    ],
+    "bg": "#c0182a",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 300
+  },
+  {
+    "key": "garage_Sri Manjunatha Puncture",
+    "text": [
+      "ಶ್ರೀ ಮಂಜುನಾಥ ಪಂಕ್ಚರ್",
+      "SRI MANJUNATHA PUNCTURE",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Koramangala Auto Works",
+    "text": [
+      "ಕೋರಮಂಗಲ ಆಟೋ ವರ್ಕ್ಸ್",
+      "KORAMANGALA AUTO WORKS",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Indiranagar Car Care",
+    "text": [
+      "ಇಂದಿರಾನಗರ ಕಾರ್ ಕೇರ್",
+      "INDIRANAGAR CAR CARE",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Yeshwanthpur Tyre Point",
+    "text": [
+      "ಯಶವಂತಪುರ ಟೈರ್ ಪಾಯಿಂಟ್",
+      "YESHWANTHPUR TYRE POINT",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Rajajinagar Service Centre",
+    "text": [
+      "ರಾಜಾಜಿನಗರ ಸರ್ವಿಸ್",
+      "RAJAJINAGAR SERVICE CENTRE",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Banashankari Puncture Shop",
+    "text": [
+      "ಬನಶಂಕರಿ ಪಂಕ್ಚರ್",
+      "BANASHANKARI PUNCTURE SHOP",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Hebbal Motor Garage",
+    "text": [
+      "ಹೆಬ್ಬಾಳ ಮೋಟಾರ್ ಗ್ಯಾರೇಜ್",
+      "HEBBAL MOTOR GARAGE",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Mysore Road Tyre Works",
+    "text": [
+      "ಮೈಸೂರು ರಸ್ತೆ ಟೈರ್",
+      "MYSORE ROAD TYRE WORKS",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_HSR Car Clinic",
+    "text": [
+      "ಎಚ್‌ಎಸ್‌ಆರ್ ಕಾರ್ ಕ್ಲಿನಿಕ್",
+      "HSR CAR CLINIC",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Marathahalli Auto Garage",
+    "text": [
+      "ಮಾರತ್ತಹಳ್ಳಿ ಆಟೋ ಗ್ಯಾರೇಜ್",
+      "MARATHAHALLI AUTO GARAGE",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Whitefield Car Spa",
+    "text": [
+      "ವೈಟ್‌ಫೀಲ್ಡ್ ಕಾರ್ ಸ್ಪಾ",
+      "WHITEFIELD CAR SPA",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  },
+  {
+    "key": "garage_Yelahanka Puncture & Service",
+    "text": [
+      "ಯಲಹಂಕ ಪಂಕ್ಚರ್",
+      "YELAHANKA PUNCTURE & SERVICE",
+      "PUNCTURE · SERVICE · RESPRAY"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111111",
+    "w": 4.2,
+    "texH": 300
+  }
+]

@@ -65,7 +65,11 @@ builds.
 | `systems/weapons.js` | `Systems/Weapons.cs` (stats, models, ray tests, NPC fire, pickups) | Done |
 | `systems/police.js` | `Systems/Police.cs` | Done |
 | `entities/gangs.js` | `Systems/Gangs.cs` | Done |
-| `systems/missions.js`, `story.js`, `rides.js`, `route.js`, `autoDuty.js`, `metroRide.js`, `garages.js`, `gps.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 |
+| `systems/route.js`, `gps.js` | `Systems/Route.cs` (A*, lane paths, drive plans, GPS) | Done |
+| `systems/missions.js` | `Systems/Missions.cs` (deliveries, markers) | Done |
+| `systems/garages.js` | `Systems/Garages.cs` | Done (saves in PlayerPrefs) |
+| text signs (`buildTextSigns`, garage and metro boards) | `Render/TextSigns.cs`, baked by `tools/unity/bake/signs.mjs` | Done |
+| `systems/story.js`, `rides.js`, `autoDuty.js`, `metroRide.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 (next) |
 | `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 2 and 6 |
 
 ### Phase 1 check (world core)
@@ -182,3 +186,17 @@ attack and release on the audio thread. The small convolution reverb is left out
 - **Vehicle damage.** Vehicles dent where they're hit, smoke as their health falls, catch fire, explode (blast damage, knockback, scorched shell) and are repaired back to factory condition when they return to the traffic pool.
 
 See `docs/unity/wasted.png`, `vehicle-fire.png` and `explosion.png`.
+
+### Phase 6a (deliveries, GPS, garages, text signs)
+
+- **Deliveries.** Food delivery offers come in on the phone (J to accept), with a beam-and-ring marker over the restaurant and then the customer, a timer, speed bonuses, tips and a rating.
+- **GPS.** Click the big map to set a waypoint (click it again to clear it). A purple route line, A* over the junctions as in route.js, is drawn on the minimap and the big map, with the distance left.
+- **Garages.** The 13 roadside stalls and Chikka Motors are where garages.js puts them. Drive into the cyan bay, or walk up and press E, for repairs and resprays (a respray loses up to three stars if no Hoysala saw you drive in). Chikka's showroom sells all 29 models. What you buy is saved in PlayerPrefs, parked outside, and can be called to any garage. The showroom models are baked as garage stock in a base paint and repainted by swapping that colour, as `recolor()` does.
+- **The start scooter.** It is now the red Activa the web game starts you on.
+- **Text signs.** The boards over underpasses, flyovers and toll plazas, at fuel stations, on heritage buildings and over the garages are painted by the web game's own `textTexture()`, so the Kannada is shaped properly.
+- **Rebuilding the boards.** To rebuild them after a change:
+  1. In Play mode, choose Tools > Namma Bengaluru > Export text signs.
+  2. Run `node tools/unity/bake/signs.mjs`.
+- **Kannada in the HUD.** Menus and the HUD leave out Kannada text, because TextMeshPro can't shape the script.
+
+See `docs/unity/garage.png`.

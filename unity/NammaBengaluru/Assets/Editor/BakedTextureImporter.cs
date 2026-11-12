@@ -14,7 +14,7 @@ namespace NammaBengaluru.EditorTools
             var ti = (TextureImporter)assetImporter;
             string name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
             bool normal = name.EndsWith("_normal");
-            bool clamp = name == "signs" || name == "leaves" || name == "light_pool";
+            bool clamp = name == "signs" || name == "leaves" || name == "light_pool" || assetPath.Replace('\\', '/').Contains("/Baked/Text/");
             ti.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
             ti.sRGBTexture = !normal;
             ti.wrapMode = clamp ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;

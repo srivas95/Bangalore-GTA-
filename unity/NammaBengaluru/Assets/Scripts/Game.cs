@@ -37,6 +37,9 @@ namespace NammaBengaluru
         public Police police;
         public Gangs gangs;
         public Pickups pickups;
+        public Gps gps;
+        public Missions missions;
+        public Garages garages;
         public int money = 1000; // START_MONEY
         public readonly List<Vehicle> dynamic = new List<Vehicle>(); // free vehicles and the police
         List<Place> policeStations, hospitals;
@@ -159,6 +162,8 @@ namespace NammaBengaluru
             streetLife = new StreetLife(layout, colliders, signals, cfg, root, city.materials);
             traffic.Prewarm(150, hour, this);
             input = new GameInput();
+            hud = new UI.Hud(layout, city.pois);
+            hud.SetMoney(money, true); // START_MONEY
             particles = new Particles();
             VehicleView.particles = particles;
             VehicleView.explode = v => Explode(v.x, v.y + 0.8, v.z, v);
@@ -168,8 +173,16 @@ namespace NammaBengaluru
             policeStations = md.POLICE_STATIONS.Select(p => { var f = FootpathNear(p.x, p.z); return new Place { name = p.name, x = f.x, z = f.z }; }).ToList();
             hospitals = md.HOSPITALS.Select(p => { var f = FootpathNear(p.x, p.z); return new Place { name = p.name, x = f.x, z = f.z }; }).ToList();
             PlacePickups();
-            hud = new UI.Hud(layout, city.pois);
-            hud.SetMoney(1000, true); // START_MONEY
+            TextSigns.Build(city.signs, root);
+            gps = new Gps(layout);
+            missions = new Missions(this, root);
+            garages = new Garages(this, root);
+            hud.onMapTap = (x, z, slop) =>
+            {
+                if (gps.target != null && Math.Sqrt((gps.target.Value.x - x) * (gps.target.Value.x - x) + (gps.target.Value.z - z) * (gps.target.Value.z - z)) < Math.Max(25, slop)) { gps.Clear(); Say("Waypoint cleared", 1.5); return; }
+                gps.Set(x, z);
+                Say("Waypoint set. Follow the purple line.", 2);
+            };
             var cam = Camera.main;
             cam.farClipPlane = 1400; cam.nearClipPlane = 0.2f; cam.fieldOfView = 62;
             rig = new CameraRig(cam) { yaw = 0 };
@@ -197,6 +210,18 @@ namespace NammaBengaluru
                     if (b != null && !b.island && !colliders.PointBlocked(px, pz, 1) && colliders.ResolveCircle(px, pz, 1.2, GameConfig.CURB_H) == null) return (px, pz);
                 }
             return (x, z);
+        }
+
+        // A particular model in a particular paint (garage stock, and the red start scooter).
+        public Vehicle ParkModel(string type, string model, int color, double x, double z, double heading)
+        {
+            var def = ModelLibrary.GarageModel(type, model) ?? ModelLibrary.Pick(type, rnd.NextDouble);
+            var v = new Vehicle(type, def.spec, x, z, heading, rnd.NextDouble);
+            v.y = layout.GroundHeight(v.x, v.z, null);
+            var view = new VehicleView(v, ModelLibrary.BuildVehicle(type, rnd.NextDouble, def), root);
+            if (def.garage && color != 0xb01c22) view.Recolor(color);
+            free.Add(v);
+            return v;
         }
 
         public Vehicle Park(string type, double x, double z, double heading)
@@ -230,7 +255,9 @@ namespace NammaBengaluru
             foreach (var (type, d) in new[] { ("scooter", 3.0), ("bike", 6.0), ("auto", 10.0) })
             {
                 var p = FootpathNear(spawn.x + ux * d, spawn.z + uz * d);
-                Park(type, p.x, p.z, heading);
+                // The scooter you start with is a red one (main.js: { color: 0xb01c22 }).
+                if (type == "scooter") ParkModel("scooter", "activa", 0xb01c22, p.x, p.z, heading);
+                else Park(type, p.x, p.z, heading);
             }
             // More scattered around town, denser in the CBD.
             string[] types = { "scooter", "scooter", "bike", "sportBike", "auto", "hatch", "sedan", "taxi", "suv", "delivery" };
@@ -292,7 +319,9 @@ namespace NammaBengaluru
                 if (screenT <= 0 && pending != null) Respawn();
             }
 
-            if (!freeCam) player.Update(dt, input, rig.yaw, this);
+            // A garage menu takes the keys; otherwise the garages watch their bays as you play.
+            garages.Update(dt, input);
+            if (!freeCam && !garages.menu) player.Update(dt, input, rig.yaw, this);
 
             var pv = player.vehicle;
             if (pv != null && !free.Contains(pv)) free.Add(pv);
@@ -332,6 +361,8 @@ namespace NammaBengaluru
             gangs.Update(dt, this);
             pickups.Update(dt, this);
             SpawnRowdies(dt);
+            missions.Update(dt, input, player);
+            if (gps.Update(dt, player.Pos.x, player.Pos.z)) { Say("You have arrived.", 2.5); audio.Click(); }
             player.rigPitch = rig.pitch;
             if (!freeCam) rig.Update(dt, input, player, colliders);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
@@ -521,7 +552,9 @@ namespace NammaBengaluru
                 hudVehicle = pv;
             }
             // What F (or H) would do here (main.js).
-            if (pv == null && !player.InTransition)
+            if (garages.menu) hud.Prompt("");
+            else if (garages.nearStall) { /* the garage set its own prompt */ }
+            else if (pv == null && !player.InTransition)
             {
                 Vehicle near = null; double nd = 0;
                 foreach (var v in vehicles)
@@ -533,6 +566,9 @@ namespace NammaBengaluru
             }
             else hud.Prompt(pv != null && pv.Speed <= 8 ? (pv.spec.police || pv.spec.siren ? "F  Get out  ·  G  Siren" : "F  Get out") : "");
             markers.Clear();
+            markers.AddRange(missions.Markers);
+            if (gps.target != null) markers.Add(new UI.MapMarker { x = gps.target.Value.x, z = gps.target.Value.z, color = UI.Hud.CssColor(0xc050ff) });
+            hud.route = gps.route; hud.routeLength = gps.length;
             foreach (var u in police.units) markers.Add(new UI.MapMarker { x = u.v.x, z = u.v.z, color = (int)(elapsed * 4) % 2 == 1 ? UI.Hud.CssColor(0xe02020) : UI.Hud.CssColor(0x2050ff) });
             hud.Update(dt, player, rig.yaw, markers);
             var w = Weapons.WEAPONS[player.weapon];
