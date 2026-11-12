@@ -23,9 +23,10 @@ namespace NammaBengaluru.Systems
 
         static double Clamp(double v, double lo, double hi) => v < lo ? lo : v > hi ? hi : v;
 
-        public void Update(double dt, GameInput input, Player player, Colliders colliders)
+        // follow: a vehicle to ride along with instead of the player's own (hired autos, buses).
+        public void Update(double dt, GameInput input, Player player, Colliders colliders, Vehicle follow = null)
         {
-            var v = player.vehicle;
+            var v = follow ?? player.vehicle;
             if (input.mouseDX != 0 || input.mouseDY != 0) idle = 0; else idle += dt;
             yaw -= input.mouseDX * 0.0025 * sens;
             pitch = Clamp(pitch + input.mouseDY * 0.002 * sens * (invert ? -1 : 1), -0.15, 1.2);

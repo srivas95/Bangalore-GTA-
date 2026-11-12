@@ -45,7 +45,10 @@ namespace NammaBengaluru.UI
 
         TextMeshProUGUI clock, moneyText, stars, weapon, toast, toastSub, radio, subtitle, prompt, speed, vehicleName, street, district, missionTitle, missionBody, missionTimer, phoneText, screenTitle, screenSub, north, gpsDist;
         Fader toastF, radioF, subF, promptF, speedF, missionF, phoneF, damageF;
-        GameObject screen, crosshair, menuPanel;
+        GameObject screen, crosshair, menuPanel, banner;
+        TextMeshProUGUI bannerText;
+        UnityEngine.UI.Image bannerEdge;
+        string bannerKey;
         TextMeshProUGUI menuText;
         UnityEngine.UI.Image menuEdge;
         UnityEngine.UI.Image healthFill, vhpBar;
@@ -314,6 +317,15 @@ namespace NammaBengaluru.UI
             menuPanel = mp.gameObject;
             menuPanel.SetActive(false);
 
+            // Ride and metro banners: a dark strip at the top with a coloured left edge.
+            var bn = Rect(root, "Banner", new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -24), new Vector2(440, 74));
+            Img(bn, null, new Color(10 / 255f, 10 / 255f, 14 / 255f, 0.78f));
+            bannerEdge = Img(Rect(bn, "Edge", new Vector2(0, 0.5f), new Vector2(0, 0.5f), Vector2.zero, new Vector2(6, 74)), null, Color.gray);
+            bannerText = Text(Stretch(bn, "Text", Vector2.zero, Vector2.one), 14, Color.white, TextAlignmentOptions.TopLeft, null, sansFont);
+            bannerText.margin = new Vector4(18, 8, 14, 6); bannerText.richText = true; bannerText.textWrappingMode = TextWrappingModes.Normal;
+            banner = bn.gameObject;
+            banner.SetActive(false);
+
             // WASTED / BUSTED.
             var scr = Stretch(root, "Screen", Vector2.zero, Vector2.one);
             Img(scr, null, new Color(0, 0, 0, 0.45f));
@@ -531,6 +543,47 @@ namespace NammaBengaluru.UI
             menuPanel.SetActive(true);
         }
         public void HideMenu() => menuPanel.SetActive(false);
+
+        // A long list with section headers (ride and metro menus): shows a window of rows around
+        // the selection. Rows: (label, sub, price, header colour or null).
+        public void ShowList(string title, string sub, IList<(string label, string sub, string price, string header)> rows, int sel, string foot, int accent)
+        {
+            const int WINDOW = 16;
+            int first = Math.Max(0, Math.Min(sel - WINDOW / 2, rows.Count - WINDOW));
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"<size=19><b>{title}</b></size>\n<color=#bdbdbd><size=13>{sub}</size></color>\n\n");
+            if (first > 0) sb.Append("<color=#7a7a7a>   ▲</color>\n");
+            for (int i = first; i < Math.Min(rows.Count, first + WINDOW); i++)
+            {
+                var r = rows[i];
+                if (r.header != null) { sb.Append($"<b><color={r.header}>{r.label}</color></b>\n"); continue; }
+                string mark = i == sel ? "<color=#ffc400>▶</color> " : "   ";
+                string c = i == sel ? "#ffffff" : "#d0d0d0";
+                sb.Append($"{mark}<color={c}>{r.label}</color>{(r.sub != null ? $" <size=12><color=#9a9a9a>{r.sub}</color></size>" : "")}<pos=82%><color=#7ee07e>{r.price}</color>\n");
+            }
+            if (first + WINDOW < rows.Count) sb.Append("<color=#7a7a7a>   ▼</color>\n");
+            sb.Append($"\n<size=12><color=#9a9a9a>{foot}</color></size>");
+            menuText.text = sb.ToString();
+            menuEdge.color = Css(accent);
+            float h = Mathf.Clamp(menuText.preferredHeight + 10, 160, 760);
+            ((RectTransform)menuPanel.transform).sizeDelta = new Vector2(470, h);
+            menuPanel.SetActive(true);
+        }
+
+        public void Banner(int color, string title, string text, string keys)
+        {
+            string key = $"{color}|{title}|{text}|{keys}";
+            if (bannerKey != key)
+            {
+                bannerKey = key;
+                bannerText.text = $"<size=17><b>{title}</b></size>\n<color=#dddddd>{text}</color>\n<size=12><color=#aaaaaa>{keys}</color></size>";
+                bannerEdge.color = Css(color);
+                float w = Mathf.Clamp(bannerText.preferredWidth + 10, 340, 900);
+                ((RectTransform)banner.transform).sizeDelta = new Vector2(w, 74);
+            }
+            if (!banner.activeSelf) banner.SetActive(true);
+        }
+        public void HideBanner() { if (banner.activeSelf) banner.SetActive(false); }
         public bool MenuOpen => menuPanel.activeSelf;
 
         public void Phone(string html)

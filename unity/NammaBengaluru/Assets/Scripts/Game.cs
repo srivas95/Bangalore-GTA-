@@ -40,6 +40,9 @@ namespace NammaBengaluru
         public Gps gps;
         public Missions missions;
         public Garages garages;
+        public AutoDuty autoDuty;
+        public Rides rides;
+        Rides.Shelter shelterNear;
         public int money = 1000; // START_MONEY
         public readonly List<Vehicle> dynamic = new List<Vehicle>(); // free vehicles and the police
         List<Place> policeStations, hospitals;
@@ -177,6 +180,8 @@ namespace NammaBengaluru
             gps = new Gps(layout);
             missions = new Missions(this, root);
             garages = new Garages(this, root);
+            autoDuty = new AutoDuty(this, root);
+            rides = new Rides(this, root);
             hud.onMapTap = (x, z, slop) =>
             {
                 if (gps.target != null && Math.Sqrt((gps.target.Value.x - x) * (gps.target.Value.x - x) + (gps.target.Value.z - z) * (gps.target.Value.z - z)) < Math.Max(25, slop)) { gps.Clear(); Say("Waypoint cleared", 1.5); return; }
@@ -319,9 +324,21 @@ namespace NammaBengaluru
                 if (screenT <= 0 && pending != null) Respawn();
             }
 
-            // A garage menu takes the keys; otherwise the garages watch their bays as you play.
-            garages.Update(dt, input);
-            if (!freeCam && !garages.menu) player.Update(dt, input, rig.yaw, this);
+            // BMTC shelters (E) and waving down an auto (H), on foot.
+            bool onFoot = player.vehicle == null && pending == null && !rides.Active && !player.InTransition && !garages.menu;
+            shelterNear = onFoot && !garages.nearStall ? rides.NearShelter(player.Pos) : null;
+            if (shelterNear != null && input.Hit("KeyE")) { input.pressed.Remove("KeyE"); rides.StopMenu(shelterNear); }
+            if (onFoot && input.Hit("KeyH")) rides.HailAuto();
+            // A ride's menus and boarding, or a garage menu, take the keys; otherwise you play on.
+            Vehicle rideCam = null;
+            if (rides.Blocking) rideCam = rides.Update(dt, input);
+            else if (garages.menu) garages.Update(dt, input);
+            else
+            {
+                garages.Update(dt, input);
+                if (!freeCam) player.Update(dt, input, rig.yaw, this);
+                if (rides.Active) rideCam = rides.Update(dt, input);
+            }
 
             var pv = player.vehicle;
             if (pv != null && !free.Contains(pv)) free.Add(pv);
@@ -349,7 +366,7 @@ namespace NammaBengaluru
                 foreach (var c in v.Circles(new List<Circle>())) obstacles.Add(new Obstacle { x = c.x, z = c.z, r = c.r, y = v.y, isPlayer = isPlayer, isCop = isCop, parked = !isPlayer && !isCop, owner = v });
             }
             if (pv != null) VehObstacles(pv, true);
-            else if (player.y < 0.05) obstacles.Add(new Obstacle { x = player.x, z = player.z, r = player.r, y = player.y, isPlayer = true, owner = player });
+            else if (player.y < 0.05 && !rides.Carrying) obstacles.Add(new Obstacle { x = player.x, z = player.z, r = player.r, y = player.y, isPlayer = true, owner = player });
             foreach (var v in free) if (v != pv && Math.Abs(v.x - focus.x) < 450 && Math.Abs(v.z - focus.z) < 450) VehObstacles(v, false);
             foreach (var u in police.units) if (u.v != pv && !free.Contains(u.v)) VehObstacles(u.v, false, true);
             foreach (var c in police.cops) obstacles.Add(c);
@@ -361,10 +378,12 @@ namespace NammaBengaluru
             gangs.Update(dt, this);
             pickups.Update(dt, this);
             SpawnRowdies(dt);
+            missions.busy = rides.Active;
             missions.Update(dt, input, player);
+            autoDuty.Update(dt, input, player);
             if (gps.Update(dt, player.Pos.x, player.Pos.z)) { Say("You have arrived.", 2.5); audio.Click(); }
             player.rigPitch = rig.pitch;
-            if (!freeCam) rig.Update(dt, input, player, colliders);
+            if (!freeCam) rig.Update(dt, input, player, colliders, rideCam);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
             UpdateHud(dt);
             if (player.vehicle != radioVehicle) { radioVehicle = player.vehicle; audio.Radio(radioVehicle != null && radioOn); }
@@ -481,17 +500,26 @@ namespace NammaBengaluru
             player.dead = true;
         }
 
+        // Repopulate the streets around a new location straight away (after a respawn, a skipped
+        // ride or a metro trip).
+        public void Reseed()
+        {
+            var p = player.Pos;
+            elapsed = 0;
+            traffic.edgeTimer = 0;
+            foreach (var a in traffic.agents.ToList()) if (Math.Sqrt((a.v.x - p.x) * (a.v.x - p.x) + (a.v.z - p.z) * (a.v.z - p.z)) > traffic.radius && !a.keep) traffic.Despawn(a);
+        }
+
         void Respawn()
         {
             var p = NearestOf(pending, player.Pos);
             bool hospital = pending == hospitals;
             if (player.vehicle != null) player.ExitVehicle(this, true);
+            rides.Abort();
             player.Respawn(p.x, p.z, this);
             police.Reset(this);
             rig.first = true;
-            // Repopulate the streets around the new location straight away.
-            elapsed = 0;
-            foreach (var a in traffic.agents.ToList()) if (Math.Sqrt((a.v.x - p.x) * (a.v.x - p.x) + (a.v.z - p.z) * (a.v.z - p.z)) > traffic.radius) traffic.Despawn(a);
+            Reseed();
             hud.HideScreen();
             hud.Toast(p.name, "Bengaluru");
             pending = null;
@@ -552,8 +580,10 @@ namespace NammaBengaluru
                 hudVehicle = pv;
             }
             // What F (or H) would do here (main.js).
-            if (garages.menu) hud.Prompt("");
+            if (garages.menu || rides.Blocking) hud.Prompt("");
+            else if (rides.Active) hud.Prompt("Q  Give up waiting");
             else if (garages.nearStall) { /* the garage set its own prompt */ }
+            else if (shelterNear != null) hud.Prompt($"E  BMTC bus stop · {shelterNear.name}");
             else if (pv == null && !player.InTransition)
             {
                 Vehicle near = null; double nd = 0;
@@ -562,11 +592,13 @@ namespace NammaBengaluru
                     double d = Math.Sqrt((v.x - player.x) * (v.x - player.x) + (v.z - player.z) * (v.z - player.z)) - v.spec.length / 2;
                     if (d < 2.2 && Math.Abs(v.y - player.y) < 2 && (near == null || d < nd)) { near = v; nd = d; }
                 }
-                hud.Prompt(near != null ? (near.driver == "ai" || near.driver == "police" ? $"F  \"Borrow\" the {near.spec.label}" : $"F  Get in the {near.spec.label}") : "");
+                hud.Prompt(near != null ? (near.driver == "ai" || near.driver == "police" ? $"F  \"Borrow\" the {near.spec.label}" : $"F  Get in the {near.spec.label}") : rides.Roadside(player.Pos) != null ? "H  Wave down an auto" : "");
             }
             else hud.Prompt(pv != null && pv.Speed <= 8 ? (pv.spec.police || pv.spec.siren ? "F  Get out  ·  G  Siren" : "F  Get out") : "");
             markers.Clear();
             markers.AddRange(missions.Markers);
+            markers.AddRange(autoDuty.MapMarkers);
+            if (pv == null && !rides.Active) markers.AddRange(rides.MapMarkers(player.x, player.z));
             if (gps.target != null) markers.Add(new UI.MapMarker { x = gps.target.Value.x, z = gps.target.Value.z, color = UI.Hud.CssColor(0xc050ff) });
             hud.route = gps.route; hud.routeLength = gps.length;
             foreach (var u in police.units) markers.Add(new UI.MapMarker { x = u.v.x, z = u.v.z, color = (int)(elapsed * 4) % 2 == 1 ? UI.Hud.CssColor(0xe02020) : UI.Hud.CssColor(0x2050ff) });

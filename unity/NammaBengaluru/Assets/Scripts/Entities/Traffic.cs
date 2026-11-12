@@ -313,7 +313,7 @@ namespace NammaBengaluru.Entities
             return new Plan { e2 = e2, lane2 = lane2, turn = turn, next = next, route = route, path = a.path };
         }
 
-        void LeaveJunction(Agent a)
+        public void LeaveJunction(Agent a)
         {
             if (a.appNode != null && app.TryGetValue(a.appNode, out var ap)) ap.Remove(a);
             a.appNode = null;

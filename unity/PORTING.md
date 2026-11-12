@@ -69,7 +69,9 @@ builds.
 | `systems/missions.js` | `Systems/Missions.cs` (deliveries, markers) | Done |
 | `systems/garages.js` | `Systems/Garages.cs` | Done (saves in PlayerPrefs) |
 | text signs (`buildTextSigns`, garage and metro boards) | `Render/TextSigns.cs`, baked by `tools/unity/bake/signs.mjs` | Done |
-| `systems/story.js`, `rides.js`, `autoDuty.js`, `metroRide.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 (next) |
+| `systems/autoDuty.js` | `Systems/AutoDuty.cs` | Done |
+| `systems/rides.js` | `Systems/Rides.cs` (hired autos, BMTC buses and shelters) | Done |
+| `systems/story.js`, `metroRide.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 (next) |
 | `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 2 and 6 |
 
 ### Phase 1 check (world core)
@@ -200,3 +202,11 @@ See `docs/unity/wasted.png`, `vehicle-fire.png` and `explosion.png`.
 - **Kannada in the HUD.** Menus and the HUD leave out Kannada text, because TextMeshPro can't shape the script.
 
 See `docs/unity/garage.png`.
+
+### Phase 6b (autos and buses)
+
+- **Auto duty.** In any auto, J puts you on duty. Walkers ahead wave you down (more often in rain and at rush hour). The passenger walks round and climbs into the back, says where they're going, and the GPS takes over. The meter runs at the Bengaluru tariff (₹30 for the first 2 km, ₹15 a km after that, 1.5× at night). Scare a passenger and they bail out; drive gently and they tip.
+- **Hiring an auto.** H at any roadside waves down an auto, which is the traffic AI's own vehicle, sent to pull in beside you. Pick a district or your waypoint and ride along with the camera behind it. The driver rushes through the traffic, and you pay the meter (sometimes ₹20 over).
+- **BMTC buses.** There are nine real routes, run both ways, with 154 shelters along them (shared where routes overlap) and named after junctions and districts. E at a shelter shows the stops ahead and their fares. The bus comes up the route, stopping at every stop, and you ring the bell (E) or skip to your stop (T).
+
+See `docs/unity/auto-ride.png`.
