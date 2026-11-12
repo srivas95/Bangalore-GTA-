@@ -48,8 +48,13 @@ builds.
 | `world/infrastructure.js` | in `Render/City.cs` | Done except the railway |
 | `systems/colliders.js` | `World/Colliders.cs` | Done |
 | `world/ao.js` (baked ground shading) | | Not yet |
-| `entities/player.js`, `human.js`, `vehicle.js`, `vehicleModels.js`, `carBodies.js`, `liveries.js`, `packVehicles.js` | | Phase 3 |
-| `systems/cameraRig.js`, `input.js` | | Phase 3 |
+| `entities/vehicle.js` | `Entities/Vehicle.cs` (physics, damage), `Entities/VehicleView.cs` | Done (dents and fire effects to come) |
+| `entities/vehicleModels.js`, `carBodies.js`, `liveries.js` | Baked by `tools/unity/bake/models.mjs` to `Resources/Models/vehicles.*`, built by `Render/ModelLibrary.cs` | Done (123 variants of all 27 types) |
+| `entities/packVehicles.js` | | Not yet (the GLB traffic-cars pack) |
+| `entities/human.js` | Baked to `Resources/Models/humans.*`; poses in `Entities/Human.cs` | Done (78 people) |
+| `entities/player.js` | `Entities/Player.cs` | On foot, jumping, wading, getting in and out, driving; weapons and fighting to come |
+| `systems/cameraRig.js`, `input.js` | `Systems/CameraRig.cs`, `Systems/GameInput.cs` | Done |
+| `main.js` (start-up, parking, vehicle contacts, `__game.step`) | `Game.cs` | In part |
 | `entities/traffic.js`, `pedestrians.js`, `systems/signals.js`, `environment.js`, `ui/hud.js` | | Phase 4 |
 | `systems/audio.js`, `audioSynth.js`, `police.js`, `weapons.js`, `particles.js`, `entities/gangs.js` | | Phase 5 |
 | `systems/missions.js`, `story.js`, `rides.js`, `route.js`, `autoDuty.js`, `metroRide.js`, `garages.js`, `gps.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 |
@@ -83,3 +88,15 @@ Still to come for the city, each tracked below:
 
 Each of the first four draws random numbers in the JS, so until they're in, the building
 choices after the first of them differ from the web game's (the layout and lots don't).
+
+### Phase 3 (playable)
+
+You can walk around Majestic, get on the scooter, bike or auto parked at the start (F), and
+drive anything parked around town: 120 vehicles are parked as in the web game, lorries outside
+the Peenya factories. The handling is the web game's tyre model, ported line for line. Vehicles
+and people are the web game's own procedural models, baked by its builders. `Game.Step(n)`
+advances the simulation without rendering, like `window.__game.step(n)`: a scripted ride from the
+spawn reaches 67 km/h on the scooter in 4 s. See `docs/unity/on-foot.png` and `riding.png`.
+
+Controls so far: WASD walk/drive, mouse look (click to capture, Esc to release), Shift run,
+Space jump/handbrake, F get in/out, C look behind, G siren.
