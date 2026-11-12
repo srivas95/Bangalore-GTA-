@@ -35,6 +35,8 @@ namespace NammaBengaluru.World
         public Lake lake;
         public double[] siteAt;
         public HotelSite hotel;
+        // Set while the city is built: footprints already taken (lot rectangles, reserved sites).
+        public List<double[][]> placed;
     }
 
     public class Underpass

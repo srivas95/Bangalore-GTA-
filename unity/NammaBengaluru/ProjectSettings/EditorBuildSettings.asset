@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Bengaluru.unity
-    guid: 85fa9627178eafe35a604d75ba076845
+    path: Assets/Scenes/Game.unity
+    guid: b9884c889bab62923929838eb5961a6e
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

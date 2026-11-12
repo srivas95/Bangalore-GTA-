@@ -1,0 +1,54 @@
+{
+ "shop": {
+  "cols": 4,
+  "rows": 2
+ },
+ "roads": {
+  "road_3_4": {
+   "lanes": 3,
+   "median": 4,
+   "width": 24.4
+  },
+  "road_2_3": {
+   "lanes": 2,
+   "median": 3,
+   "width": 16.6
+  },
+  "road_2_0": {
+   "lanes": 2,
+   "median": 0,
+   "width": 13.6
+  },
+  "road_1_0": {
+   "lanes": 1,
+   "median": 0,
+   "width": 6.8
+  },
+  "road_3_6": {
+   "lanes": 3,
+   "median": 6,
+   "width": 26.4
+  },
+  "road_1_4": {
+   "lanes": 1,
+   "median": 4,
+   "width": 10.8
+  }
+ },
+ "tiles": {
+  "facade": {
+   "w": 7,
+   "h": 6.4
+  },
+  "glass": {
+   "w": 8,
+   "h": 12.8
+  },
+  "shop": {
+   "w": 8,
+   "h": 4
+  },
+  "signCols": 4,
+  "signRows": 16
+ }
+}

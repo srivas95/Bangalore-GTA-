@@ -6,6 +6,16 @@ algorithms, and the game's own physics (tyre model, colliders, kinematic traffic
 as they are, so it drives and behaves the same. Unity does the rendering, input, audio, UI and
 builds.
 
+## Conventions
+
+- Game logic keeps the web game's coordinates: right-handed, +x east, +z south, +y up, metres.
+  Only rendering converts, at the boundary: Unity position = (x, y, -z), and a three.js yaw `a`
+  is a Unity yaw of `-a`. Seen in Unity's left-handed space that is the same picture three.js
+  draws, so meshes keep three's triangle order reversed (three winds front faces
+  counter-clockwise, Unity clockwise). `Game.ToUnity` does the conversion.
+- Colours: vertex colours are linear, as three.js stores them (`LinColor.Hex` converts sRGB hex).
+- Seeded randomness uses `Mulberry32`, bit for bit the JS one, and the same seeds.
+
 ## How it's structured
 
 - `Assets/Scripts/World/` is the world core. It has no `UnityEngine` dependency, so it also
@@ -31,8 +41,13 @@ builds.
 | `config.js` | `World/GameConfig.cs` (+ JSON) | Done |
 | `world/roadnet.js` | `World/RoadNet.cs` | Done, identical output |
 | `world/layout.js` | `World/Layout.cs` | Done, identical output |
-| `world/city.js`, `meshBuilder.js`, `textures.js`, `surface.js`, `geom.js`, `ao.js`, `infrastructure.js` | | Phase 2 |
-| `systems/colliders.js` | | Phase 2 |
+| `world/meshBuilder.js`, `geom.js` | `Render/MeshBuilder.cs`, `Render/Geom.cs`, `World/Earcut.cs`, `World/Primitives.cs` | Done |
+| `world/textures.js`, `signboards.js` | Baked to `Resources/Baked/*.png` by `tools/unity/bake` | Done (painted by the JS itself) |
+| `world/surface.js` | `Resources/Shaders/City.shader` (+ `Instanced`, `Glow`) | Done |
+| `world/city.js` | `Render/City.cs`, `Render/InstancedForest.cs`, `Render/CityMaterials.cs` | Mostly: see below |
+| `world/infrastructure.js` | in `Render/City.cs` | Done except the railway |
+| `systems/colliders.js` | `World/Colliders.cs` | Done |
+| `world/ao.js` (baked ground shading) | | Not yet |
 | `entities/player.js`, `human.js`, `vehicle.js`, `vehicleModels.js`, `carBodies.js`, `liveries.js`, `packVehicles.js` | | Phase 3 |
 | `systems/cameraRig.js`, `input.js` | | Phase 3 |
 | `entities/traffic.js`, `pedestrians.js`, `systems/signals.js`, `environment.js`, `ui/hud.js` | | Phase 4 |
@@ -47,3 +62,24 @@ directed traffic edges, 1,919 blocks and 26 islands with the same zones and coor
 all 23 landmark sites and 11 hotels in the same blocks, 41 underpasses, 28 level crossings,
 both flyovers, 9,261,151 filled raster cells, and the same answers to spatial queries. The C#
 build takes 1.9 s (JS: 2.8 s).
+
+### Phase 2 (city rendering)
+
+The city builds in about 25 s in the Editor: 1,919 blocks, 136,029 trees, 22,499 street lamps,
+194,019 rooftop water tanks and 455,542 colliders, the same counts the JS builds where the
+ported parts reach. Roads, junctions with zebra crossings, raised medians, underpasses, the
+flyovers, the NICE Road toll plaza, footpaths with painted kerbs, and every zone's buildings
+(street blocks, markets, commercial, towers with hotels and malls, government, residential,
+industrial sheds, fuel stations, lakes, rural fields) are drawn with the web game's own textures
+and its world-space surface shading. See `docs/unity/city-street.png` and `city-aerial.png`.
+
+Still to come for the city, each tracked below:
+- Landmark builders (`landmarks.js`): their sites are reserved and paved, nothing stands there yet.
+- Cubbon Park's walks, lamps and railings (its trees are there).
+- The railway, and the metro viaducts and their clearances.
+- Text signs (street, underpass, hotel crowns, fuel totems): collected, not drawn yet.
+- Poly Haven street props (`props.js`): positions are collected; needs a glTF importer.
+- Baked ground shading (`ao.js`), lamp light pools at night.
+
+Each of the first four draws random numbers in the JS, so until they're in, the building
+choices after the first of them differ from the web game's (the layout and lots don't).
