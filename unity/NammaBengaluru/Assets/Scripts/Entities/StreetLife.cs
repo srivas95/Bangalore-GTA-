@@ -279,12 +279,14 @@ namespace NammaBengaluru.Entities
             p.vy = 2.5 + Math.Min(8, Math.Sqrt(vx * vx + vz * vz) * 0.15);
             p.timer = 4.5;
             p.health = Math.Max(p.health, 40);
+            GameAudio.I?.Thud(0.6);
         }
 
         // Killed: down for good.
         public void Kill(Ped p, double vx, double vz)
         {
             if (p.dead) return;
+            GameAudio.I?.Death(p.h.female, p.x, p.z);
             if (p.kind == "crowd" || p.kind == "stall") Detach(p);
             p.state = "walk"; // so Knock() takes effect
             Knock(p, vx, vz);
@@ -294,23 +296,28 @@ namespace NammaBengaluru.Entities
         // Gunfire or a blade nearby: everyone runs.
         public void Panic(double x, double z, double r)
         {
-            int screams = 0;
+            int screams = 0, n = 0;
             foreach (var q in peds.ToList())
             {
                 if (q.state == "down" || q.dead) continue;
                 if (Math.Abs(q.x - x) < r && Math.Abs(q.z - z) < r)
                 {
-                    if (q.state != "flee" && screams < 2 && rng.Next() < 0.35) screams++; // (screams come with the audio port)
+                    if (q.state != "flee" && screams < 2 && rng.Next() < 0.35) { screams++; GameAudio.I?.Scream(q.h.female, q.x, q.z); }
                     Scare(q, x, z);
+                    n++;
                 }
             }
+            if (n > 6) GameAudio.I?.CrowdScream(x, z);
         }
 
+        // (After Panic's loop:) more than six people running makes the crowd scream.
         // Player melee (or a bullet) lands on a pedestrian.
         public void Hit(Ped p, double dmg, double dirX, double dirZ, IStreetWorld world, bool kick, bool lethal = false)
         {
             if (p.dead) return;
             p.health -= dmg;
+            GameAudio.I?.Punch(kick);
+            GameAudio.I?.Grunt(p.h.female, p.x, p.z);
             if (lethal && p.health <= 0)
             {
                 Kill(p, dirX * 5, dirZ * 5);
@@ -715,7 +722,7 @@ namespace NammaBengaluru.Entities
                 {
                     c.moving = !c.moving && rng.Next() < 0.5;
                     c.timer = c.moving ? Rand(3, 8) : Rand(5, 15);
-                    if (rng.Next() < 0.3) { } // moo (comes with the audio port)
+                    if (rng.Next() < 0.3) GameAudio.I?.Moo(c.x, c.z);
                 }
                 if (c.shoo)
                 {

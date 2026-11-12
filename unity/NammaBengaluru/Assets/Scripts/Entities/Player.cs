@@ -156,7 +156,14 @@ namespace NammaBengaluru.Entities
             bool wasStalled = v.stalled;
             double impact = v.Update(dt, ctrl, world);
             if (v.stalled && !wasStalled) world.Say("Engine flooded!", 3);
-            if (impact > 4) world.Shake(Math.Min(0.6, impact / 25));
+            if (impact > 4)
+            {
+                Systems.GameAudio.I?.Thud(Math.Min(1, impact / 15));
+                Systems.GameAudio.I?.Crunch(Math.Min(1, impact / 18));
+                world.Shake(Math.Min(0.6, impact / 25));
+            }
+            Systems.GameAudio.I?.HornHold(v.spec.horn, input.Down("KeyH", "KeyQ"), v.hornPitch);
+            if (v.waterDepth > 0.5 && v.Speed > 3 && UnityEngine.Random.value < dt * 3) Systems.GameAudio.I?.Splash();
             if ((v.spec.police || v.spec.siren) && input.Hit("KeyG")) v.siren = !v.siren;
             x = v.x; z = v.z; y = v.y;
             if (IsOpen(v)) SeatHuman(v);
@@ -226,7 +233,7 @@ namespace NammaBengaluru.Entities
                 x = tr.fromX + (door.x - tr.fromX) * k; z = tr.fromZ + (door.z - tr.fromZ) * k;
                 heading += Wrap(Math.Atan2(door.x - tr.fromX, door.z - tr.fromZ) - heading) * Math.Min(1, dt * 14);
                 h.AnimateWalk(dt, 3.2);
-                if (k >= 1) { tr.phase = "enter"; tr.t = 0; }
+                if (k >= 1) { tr.phase = "enter"; tr.t = 0; if (!Doorless(v)) Systems.GameAudio.I?.Door("open"); }
             }
             else if (tr.kind == "in")
             {
@@ -254,6 +261,7 @@ namespace NammaBengaluru.Entities
         {
             vehicle = v;
             v.driver = "player";
+            Systems.GameAudio.I?.Door(Doorless(v) ? "mount" : "close");
             if (IsOpen(v)) { human.PoseSit(); SeatHuman(v); human.go.SetActive(true); }
             else human.go.SetActive(false);
             world.Say(v.spec.label, 2);
@@ -278,6 +286,8 @@ namespace NammaBengaluru.Entities
             human.go.transform.SetParent(world.Root, false);
             human.go.SetActive(true);
             human.tiltX = 0;
+            Systems.GameAudio.I?.HornHold(v.spec.horn, false);
+            Systems.GameAudio.I?.Door(Doorless(v) ? "mount" : "exit");
             var door = DoorPoint(v, world); var seat = SeatPoint(v);
             double lx = Math.Cos(v.heading), lz = -Math.Sin(v.heading);
             double ex = door.x + lx * 0.25 * door.side, ez = door.z + lz * 0.25 * door.side;

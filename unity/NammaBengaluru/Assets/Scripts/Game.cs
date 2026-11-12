@@ -31,6 +31,9 @@ namespace NammaBengaluru
         public Traffic traffic;
         public StreetLife streetLife;
         public UI.Hud hud;
+        public GameAudio audio;
+        public bool radioOn = true;
+        Vehicle radioVehicle;
         Vehicle hudVehicle;
         public readonly List<Obstacle> obstacles = new List<Obstacle>();
         public Systems.Environment env;
@@ -70,7 +73,7 @@ namespace NammaBengaluru
         public void Release(Vehicle v) { if (!free.Contains(v)) free.Add(v); }
         public void Show(Vehicle v, bool on) => ((VehicleView)v.view).SetVisible(on);
         public void Sync(Vehicle v, double dt) => ((VehicleView)v.view).Sync(dt);
-        public void Horn(Vehicle v) { } // sound comes with the audio port
+        public void Horn(Vehicle v) => audio?.Horn(v.spec.horn, v.x, v.z, v.hornPitch);
 
         static readonly HashSet<string> OPEN = new HashSet<string> { "scooter", "delivery", "bike", "sportBike", "auto", "goodsAuto" };
 
@@ -153,6 +156,8 @@ namespace NammaBengaluru
         void SetupEnvironment()
         {
             env = new Systems.Environment(layout, root, city.materials);
+            audio = GameAudio.Create(md);
+            env.onThunder = d => audio.Thunder(d, 0.6 + rnd.NextDouble() * 0.4);
         }
 
         // A point on a footpath near a place (footpathNear in main.js).
@@ -231,6 +236,7 @@ namespace NammaBengaluru
             if (input.Hit("Escape")) input.Lock(false);
             // K brings on (or stops) the rain; T speeds the clock up 30× (debug keys in main.js).
             if (input.Hit("KeyK")) { env.SetRain(!env.Raining); Say(env.Raining ? "Dark clouds roll in over Bengaluru…" : "The rain eases off.", 2.5); }
+            if (input.Hit("KeyR")) { radioOn = !radioOn; Say(radioOn ? "Radio on" : "Radio off", 1.2); audio.Radio(radioOn && player.vehicle != null); }
             if (input.Hit("KeyT")) { env.timeScale = env.timeScale > 1 ? 1 : 30; Say(env.timeScale > 1 ? "Time ×30" : "Time normal", 1.5); }
             Tick(Math.Min(Time.deltaTime, 1.0 / 20));
         }
@@ -287,6 +293,10 @@ namespace NammaBengaluru
             if (!freeCam) rig.Update(dt, input, player, colliders);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
             UpdateHud(dt);
+            if (player.vehicle != radioVehicle) { radioVehicle = player.vehicle; audio.Radio(radioVehicle != null && radioOn); }
+            audio.SetRain(env.rain);
+            audio.Engine(player.vehicle, dt);
+            audio.Tick(dt, rig.camera, player, vehicles, streetLife, env, layout);
         }
 
         static readonly UI.MapMarker[] NoMarkers = new UI.MapMarker[0];
@@ -375,6 +385,8 @@ namespace NammaBengaluru
                                 b.x -= nx * pen * ib / (ia + ib); b.z -= nz * pen * ib / (ia + ib);
                                 if (vn < 0) { a.ApplyImpulse(nx * jj, nz * jj, pax, paz); b.ApplyImpulse(-nx * jj, -nz * jj, pbx, pbz); }
                             }
+                            if (-vn > 3) audio.Thud(Math.Min(1, -vn / 15));
+                            if (-vn > 4) audio.Crunch(Math.Min(1, -vn / 18));
                             if (-vn > 2)
                             {
                                 double share(double m1, double m2) => 2 * m2 / (m1 + m2);

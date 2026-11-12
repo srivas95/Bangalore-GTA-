@@ -60,7 +60,8 @@ builds.
 | `systems/environment.js`, `world/sky.js` (colours) | `Systems/Environment.cs`, `Resources/Shaders/Sky.shader` | Done (live weather to come) |
 | `entities/pedestrians.js` | `Entities/StreetLife.cs` | Done (cows have square edges; bus-platform crowds wait for the landmarks) |
 | `ui/hud.js` | `UI/Hud.cs` (uGUI + TextMeshPro; Oswald and DejaVu Sans in `Resources/Fonts`) | Done (metro and railway lines, GPS route and garages join the map with their ports) |
-| `systems/audio.js`, `audioSynth.js`, `police.js`, `weapons.js`, `particles.js`, `entities/gangs.js` | | Phase 5 |
+| `systems/audio.js`, `audioSynth.js` (cues and radio), `soundBank.json` | `Systems/GameAudio.cs`, the 261 recordings in `Resources/Audio` | Done (no convolution reverb) |
+| `systems/police.js`, `weapons.js`, `particles.js`, `entities/gangs.js` | | Phase 5 (next) |
 | `systems/missions.js`, `story.js`, `rides.js`, `route.js`, `autoDuty.js`, `metroRide.js`, `garages.js`, `gps.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 |
 | `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 2 and 6 |
 
@@ -152,3 +153,17 @@ The font is the game's own Oswald (converted from `public/fonts/oswald-latin.wof
 Sans standing in for system-ui and for the ₹, ★ and weather symbols. Emoji the fonts lack are
 replaced (☂ for rain, ☾ for night, ♪ for the radio). See `docs/unity/hud.png`, `hud-riding.png`
 and `big-map.png`.
+
+### Phase 5a (sound)
+
+`Systems/GameAudio.cs` ports audio.js with the same 261 recordings (copied to
+`Resources/Audio`, imported at the web game's decode rates by `Editor/GameAudioImporter.cs`) and
+the same mix: the RPM-layer engines (yours and the eight nearest in traffic, with Doppler), every
+horn profile (bursts, the lorry's tune, the held horn on H or Q), the siren pair, ambience beds by
+hour, weather and place (parks, lakes, crowds, rain, storms, dogs after dark), tyres, scraping and
+road roar, footsteps on the walk cycle, doors, crashes and glass, voices for hits, deaths and
+screams, thunder with the lightning, cows, and the synthesised ping, cash, sting and radio (R).
+Each Web Audio voice becomes an AudioSource panned in 2D through an AudioLowPassFilter, with
+gain, pan and air absorption computed exactly as `place()` does. Loop and sustain regions are
+cut into clips of their own at load, and an `Envelope` filter gives scheduled horn blasts their
+attack and release on the audio thread. The small convolution reverb is left out.

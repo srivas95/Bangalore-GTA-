@@ -592,6 +592,8 @@ namespace NammaBengaluru.Entities
             double Share(double m1, double m2) => Math.Min(1.6, 2 * m2 / (m1 + m2));
             A.TakeDamage(Vehicle.DamageFromSpeed(closing * Share(A.mass, Bv.mass) * 0.75), cx, cz);
             Bv.TakeDamage(Vehicle.DamageFromSpeed(closing * Share(Bv.mass, A.mass) * 0.75), cx, cz);
+            double near = Math.Max(0, 1 - Hypot(cx - world.Focus.x, cz - world.Focus.z) / 140);
+            if (near > 0) Systems.GameAudio.I?.Crunch(Math.Min(1, closing / 18) * near);
             foreach (var (x, sgn, dv) in new[] { (a, 1.0, j * ia), (b, -1.0, j * ib) })
             {
                 var v = x.v;
