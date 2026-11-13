@@ -17,6 +17,7 @@ namespace NammaBengaluru.Render
         static readonly Dictionary<string, Material> mats = new Dictionary<string, Material>();
         static readonly List<TextSign> all = new List<TextSign>(); // every board put up, for ExportSpecs
         static Mesh quad;
+        internal static void ResetStatics() { index = null; mats.Clear(); all.Clear(); quad = null; }
 
         public static string Bg(TextSign s) => s.bg ?? "#2a2622";
         public static string Fg(TextSign s) => s.fg ?? "#f2e6c8";
@@ -36,7 +37,8 @@ namespace NammaBengaluru.Render
             if (!index.TryGetValue(s.key, out var file)) { mats[s.key] = null; return null; }
             m = CityMaterials.Make("text_" + s.key, new CityMaterials.Spec
             {
-                map = "Text/" + file, emission = s.basic ? null : "Text/" + file, emitColor = 0xffffff, emitDay = s.emissive, emitNight = s.emissive, roughness = 0.7f,
+                // (MeshBasicMaterial boards, the metro's, ignore the light: full-strength emission here.)
+                map = "Text/" + file, emission = "Text/" + file, emitColor = 0xffffff, emitDay = s.basic ? 1f : s.emissive, emitNight = s.basic ? 1f : s.emissive, roughness = 0.7f,
             });
             mats[s.key] = m;
             return m;

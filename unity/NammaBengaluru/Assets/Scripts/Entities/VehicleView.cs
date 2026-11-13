@@ -119,6 +119,7 @@ namespace NammaBengaluru.Entities
         // ---------- damage (vehicle.js: dent, scorch, repair, effects) ----------
         public static Systems.Particles particles;       // set by the game
         public static Action<Vehicle> explode;          // the bang when a fire burns out
+        internal static void ResetStatics() { lampRed = lampBlue = lampOff = null; particles = null; explode = null; }
         Mesh origBody, origDecal, ownBody, ownDecal;
         static readonly System.Random R = new System.Random();
 

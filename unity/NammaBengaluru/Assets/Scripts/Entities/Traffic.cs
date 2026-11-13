@@ -693,6 +693,13 @@ namespace NammaBengaluru.Entities
                         if (!jump && !committed && d < look + 10) { tgt = Math.Min(tgt, Math.Max(0, (d - 0.3) * 1.2)); a.waitingSignal = true; }
                     }
                 }
+                // Level crossing gates down: wait behind them.
+                foreach (var lc in layout.levelCrossings)
+                {
+                    if (!lc.closed || a.edge.und != lc.edge) continue;
+                    double d = (lc.x - v.x) * Math.Sin(v.heading) + (lc.z - v.z) * Math.Cos(v.heading);
+                    if (d > 10.5 && d < look + 20) { tgt = Math.Min(tgt, Math.Max(0, (d - 11.5) * 1.2)); a.waitingSignal = true; } // already past the gate: clear the tracks
+                }
                 // Junctions: choose the turn before the stop line, and wait there while it would cut
                 // across someone already in the junction (after a long wait, nose in anyway).
                 if (!a.turning && !(a.edge.flyover != null && a.lane == 0))

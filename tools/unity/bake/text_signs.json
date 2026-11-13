@@ -418,6 +418,127 @@
     "texH": 256
   },
   {
+    "key": "lc",
+    "text": [
+      "LEVEL CROSSING",
+      "ಲೆವೆಲ್ ಕ್ರಾಸಿಂಗ್ · STOP LOOK GO"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 2.6,
+    "texH": 394
+  },
+  {
+    "key": "rs_Krantivira Sangolli Rayanna (Bengaluru City) Station",
+    "text": [
+      "ಬೆಂಗಳೂರು ನಗರ ರೈಲು ನಿಲ್ದಾಣ",
+      "KSR BENGALURU"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 6.0,
+    "texH": 239
+  },
+  {
+    "key": "rsb_Krantivira Sangolli Rayanna (Bengaluru City) Station",
+    "text": [
+      "ಕ್ರಾಂತಿವೀರ ಸಂಗೊಳ್ಳಿ ರಾಯಣ್ಣ ಬೆಂಗಳೂರು ನಿಲ್ದಾಣ",
+      "KSR BENGALURU CITY RAILWAY STATION"
+    ],
+    "bg": "#8a2a22",
+    "fg": "#fff4d8",
+    "w": 30.0,
+    "texH": 89
+  },
+  {
+    "key": "rs_Yeshwanthpur Junction",
+    "text": [
+      "ಯಶವಂತಪುರ ಜಂಕ್ಷನ್",
+      "YESHWANTHPUR"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 6.0,
+    "texH": 239
+  },
+  {
+    "key": "rsb_Yeshwanthpur Junction",
+    "text": [
+      "ಯಶವಂತಪುರ ಜಂಕ್ಷನ್",
+      "YESHWANTHPUR JN."
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 16.0,
+    "texH": 205
+  },
+  {
+    "key": "rs_Bengaluru Cantonment",
+    "text": [
+      "ಬೆಂಗಳೂರು ದಂಡು",
+      "BENGALURU CANTT."
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 6.0,
+    "texH": 239
+  },
+  {
+    "key": "rsb_Bengaluru Cantonment",
+    "text": [
+      "ಬೆಂಗಳೂರು ದಂಡು",
+      "BENGALURU CANTT."
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 16.0,
+    "texH": 205
+  },
+  {
+    "key": "rs_Krishnarajapuram",
+    "text": [
+      "ಕೃಷ್ಣರಾಜಪುರಂ",
+      "K.R. PURAM"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 6.0,
+    "texH": 239
+  },
+  {
+    "key": "rsb_Krishnarajapuram",
+    "text": [
+      "ಕೃಷ್ಣರಾಜಪುರಂ",
+      "KRISHNARAJAPURAM"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 16.0,
+    "texH": 205
+  },
+  {
+    "key": "rs_Whitefield",
+    "text": [
+      "ವೈಟ್‌ಫೀಲ್ಡ್",
+      "WHITEFIELD"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 6.0,
+    "texH": 239
+  },
+  {
+    "key": "rsb_Whitefield",
+    "text": [
+      "ವೈಟ್‌ಫೀಲ್ಡ್",
+      "WHITEFIELD"
+    ],
+    "bg": "#f2c200",
+    "fg": "#111",
+    "w": 16.0,
+    "texH": 205
+  },
+  {
     "key": "fuel_hp_fascia",
     "text": [
       "HP"
@@ -461,7 +582,7 @@
     "texH": 171
   },
   {
-    "key": "brand_VAISHNAVI SAPPHIRE_7",
+    "key": "brand_VAISHNAVI SAPPHIRE_10",
     "text": [
       "VAISHNAVI SAPPHIRE",
       "MALL · YESHWANTHPUR"
@@ -472,11 +593,11 @@
       "bold 72px \"Oswald\", Arial, sans-serif",
       "34px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 7.0241420954351783,
-    "texH": 525
+    "w": 9.5022586343321027,
+    "texH": 388
   },
   {
-    "key": "brand_TAJ YESHWANTPUR_25",
+    "key": "brand_TAJ YESHWANTPUR_24",
     "text": [
       "TAJ YESHWANTPUR",
       "BENGALURU"
@@ -487,11 +608,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 24.61767891566269,
-    "texH": 175
+    "w": 23.632113024545831,
+    "texH": 182
   },
   {
-    "key": "brand_TAJ YESHWANTPUR_8",
+    "key": "brand_TAJ YESHWANTPUR_9",
     "text": [
       "TAJ YESHWANTPUR",
       "BENGALURU"
@@ -502,8 +623,8 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 8.2941609217994845,
-    "texH": 519
+    "w": 9.0603112436109221,
+    "texH": 475
   },
   {
     "key": "fuel_iocl_fascia",
@@ -545,11 +666,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 24.986271171970291,
-    "texH": 172
+    "w": 25.181793665513396,
+    "texH": 171
   },
   {
-    "key": "brand_SHERATON GRAND_10",
+    "key": "brand_SHERATON GRAND_9",
     "text": [
       "SHERATON GRAND",
       "BANGALORE · BRIGADE GATEWAY"
@@ -560,8 +681,8 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 9.62100518109277,
-    "texH": 447
+    "w": 9.24902449520072,
+    "texH": 465
   },
   {
     "key": "brand_MANTRI SQUARE_22",
@@ -579,7 +700,7 @@
     "texH": 171
   },
   {
-    "key": "brand_MANTRI SQUARE_12",
+    "key": "brand_MANTRI SQUARE_9",
     "text": [
       "MANTRI SQUARE",
       "MALLESHWARAM"
@@ -590,8 +711,8 @@
       "bold 72px \"Oswald\", Arial, sans-serif",
       "34px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 12.315822497857733,
-    "texH": 299
+    "w": 8.9820556341996411,
+    "texH": 410
   },
   {
     "key": "fuel_bpcl_fascia",
@@ -633,11 +754,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 24.662421652628108,
-    "texH": 174
+    "w": 25.200000000000003,
+    "texH": 171
   },
   {
-    "key": "brand_JW MARRIOTT_5",
+    "key": "brand_JW MARRIOTT_12",
     "text": [
       "JW MARRIOTT",
       "BENGALURU"
@@ -648,11 +769,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 5.4187481675287712,
-    "texH": 794
+    "w": 12.246853820616378,
+    "texH": 351
   },
   {
-    "key": "brand_ITC GARDENIA_25",
+    "key": "brand_ITC GARDENIA_24",
     "text": [
       "ITC GARDENIA",
       "A LUXURY COLLECTION HOTEL"
@@ -663,11 +784,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 24.87089108750224,
-    "texH": 173
+    "w": 24.056369230104607,
+    "texH": 179
   },
   {
-    "key": "brand_ITC GARDENIA_9",
+    "key": "brand_ITC GARDENIA_12",
     "text": [
       "ITC GARDENIA",
       "A LUXURY COLLECTION HOTEL"
@@ -678,11 +799,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 9.40990863843821,
-    "texH": 457
+    "w": 12.372783655915407,
+    "texH": 348
   },
   {
-    "key": "brand_TAJ MG ROAD_11",
+    "key": "brand_TAJ MG ROAD_10",
     "text": [
       "TAJ MG ROAD",
       "BENGALURU"
@@ -693,11 +814,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 10.807288804367237,
-    "texH": 398
+    "w": 10.464835294662043,
+    "texH": 411
   },
   {
-    "key": "brand_TAJ MG ROAD_5",
+    "key": "brand_TAJ MG ROAD_8",
     "text": [
       "TAJ MG ROAD",
       "BENGALURU"
@@ -708,8 +829,8 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 4.8769958396387523,
-    "texH": 882
+    "w": 7.6240973362536169,
+    "texH": 564
   },
   {
     "key": "brand_PHOENIX MARKETCITY_22",
@@ -727,7 +848,7 @@
     "texH": 171
   },
   {
-    "key": "brand_PHOENIX MARKETCITY_10",
+    "key": "brand_PHOENIX MARKETCITY_11",
     "text": [
       "PHOENIX MARKETCITY",
       "MAHADEVAPURA"
@@ -738,8 +859,8 @@
       "bold 72px \"Oswald\", Arial, sans-serif",
       "34px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 9.7488735281955456,
-    "texH": 378
+    "w": 11.225949449997859,
+    "texH": 328
   },
   {
     "key": "brand_NEXUS SHANTINIKETAN_22",
@@ -757,7 +878,7 @@
     "texH": 171
   },
   {
-    "key": "brand_NEXUS SHANTINIKETAN_10",
+    "key": "brand_NEXUS SHANTINIKETAN_11",
     "text": [
       "NEXUS SHANTINIKETAN",
       "WHITEFIELD"
@@ -768,8 +889,8 @@
       "bold 72px \"Oswald\", Arial, sans-serif",
       "34px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 10.009606452831067,
-    "texH": 368
+    "w": 11.219782302316743,
+    "texH": 329
   },
   {
     "key": "brand_GOLDEN GRAND_25",
@@ -783,11 +904,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 25.200000000000003,
-    "texH": 171
+    "w": 24.855322328442707,
+    "texH": 173
   },
   {
-    "key": "brand_GOLDEN GRAND_12",
+    "key": "brand_GOLDEN GRAND_8",
     "text": [
       "GOLDEN GRAND",
       "YESHWANTHPUR"
@@ -798,8 +919,8 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 11.918856649005319,
-    "texH": 361
+    "w": 7.6713628986026157,
+    "texH": 561
   },
   {
     "key": "brand_ORION MALL_22",
@@ -828,8 +949,8 @@
       "bold 72px \"Oswald\", Arial, sans-serif",
       "34px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 9.4069112747767942,
-    "texH": 392
+    "w": 9.04570177519694,
+    "texH": 408
   },
   {
     "key": "garage_Chikka Motors",
@@ -986,5 +1107,2007 @@
     "fg": "#111111",
     "w": 4.2,
     "texH": 300
+  },
+  {
+    "key": "metro_ಕೆಂಗೇರಿ|KENGERI#9a2d8c",
+    "text": [
+      "ಕೆಂಗೇರಿ",
+      "KENGERI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಕೆಂಗೇರಿ|Kengeri#1a1a1a",
+    "text": [
+      "ಕೆಂಗೇರಿ",
+      "Kengeri"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · KENGERI#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · KENGERI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಕೆಂಗೇರಿ ಬಸ್ ನಿಲ್ದಾಣ|KENGERI BUS TERMINAL#9a2d8c",
+    "text": [
+      "ಕೆಂಗೇರಿ ಬಸ್ ನಿಲ್ದಾಣ",
+      "KENGERI BUS TERMINAL"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಕೆಂಗೇರಿ ಬಸ್ ನಿಲ್ದಾಣ|Kengeri Bus Terminal#1a1a1a",
+    "text": [
+      "ಕೆಂಗೇರಿ ಬಸ್ ನಿಲ್ದಾಣ",
+      "Kengeri Bus Terminal"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · KENGERI BUS TERMINAL#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · KENGERI BUS TERMINAL"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಪಟ್ಟಣಗೆರೆ|PATTANAGERE#9a2d8c",
+    "text": [
+      "ಪಟ್ಟಣಗೆರೆ",
+      "PATTANAGERE"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಪಟ್ಟಣಗೆರೆ|Pattanagere#1a1a1a",
+    "text": [
+      "ಪಟ್ಟಣಗೆರೆ",
+      "Pattanagere"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · PATTANAGERE#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · PATTANAGERE"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಜ್ಞಾನಭಾರತಿ|JNANABHARATHI#9a2d8c",
+    "text": [
+      "ಜ್ಞಾನಭಾರತಿ",
+      "JNANABHARATHI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಜ್ಞಾನಭಾರತಿ|Jnanabharathi#1a1a1a",
+    "text": [
+      "ಜ್ಞಾನಭಾರತಿ",
+      "Jnanabharathi"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · JNANABHARATHI#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · JNANABHARATHI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ರಾಜರಾಜೇಶ್ವರಿ ನಗರ|RAJARAJESHWARI NAGAR#9a2d8c",
+    "text": [
+      "ರಾಜರಾಜೇಶ್ವರಿ ನಗರ",
+      "RAJARAJESHWARI NAGAR"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ರಾಜರಾಜೇಶ್ವರಿ ನಗರ|Rajarajeshwari Nagar#1a1a1a",
+    "text": [
+      "ರಾಜರಾಜೇಶ್ವರಿ ನಗರ",
+      "Rajarajeshwari Nagar"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · RAJARAJESHWARI NAGAR#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · RAJARAJESHWARI NAGAR"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ನಾಯಂಡಹಳ್ಳಿ|NAYANDAHALLI#9a2d8c",
+    "text": [
+      "ನಾಯಂಡಹಳ್ಳಿ",
+      "NAYANDAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ನಾಯಂಡಹಳ್ಳಿ|Nayandahalli#1a1a1a",
+    "text": [
+      "ನಾಯಂಡಹಳ್ಳಿ",
+      "Nayandahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ಮೈಸೂರು ರಸ್ತೆ|MYSORE ROAD#9a2d8c",
+    "text": [
+      "ಮೈಸೂರು ರಸ್ತೆ",
+      "MYSORE ROAD"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಮೈಸೂರು ರಸ್ತೆ|Mysore Road#1a1a1a",
+    "text": [
+      "ಮೈಸೂರು ರಸ್ತೆ",
+      "Mysore Road"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · MYSORE ROAD#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · MYSORE ROAD"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ದೀಪಾಂಜಲಿ ನಗರ|DEEPANJALI NAGAR#9a2d8c",
+    "text": [
+      "ದೀಪಾಂಜಲಿ ನಗರ",
+      "DEEPANJALI NAGAR"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ದೀಪಾಂಜಲಿ ನಗರ|Deepanjali Nagar#1a1a1a",
+    "text": [
+      "ದೀಪಾಂಜಲಿ ನಗರ",
+      "Deepanjali Nagar"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · DEEPANJALI NAGAR#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · DEEPANJALI NAGAR"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಅತ್ತಿಗುಪ್ಪೆ|ATTIGUPPE#9a2d8c",
+    "text": [
+      "ಅತ್ತಿಗುಪ್ಪೆ",
+      "ATTIGUPPE"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಅತ್ತಿಗುಪ್ಪೆ|Attiguppe#1a1a1a",
+    "text": [
+      "ಅತ್ತಿಗುಪ್ಪೆ",
+      "Attiguppe"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · ATTIGUPPE#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · ATTIGUPPE"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ವಿಜಯನಗರ|VIJAYANAGAR#9a2d8c",
+    "text": [
+      "ವಿಜಯನಗರ",
+      "VIJAYANAGAR"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ವಿಜಯನಗರ|Vijayanagar#1a1a1a",
+    "text": [
+      "ವಿಜಯನಗರ",
+      "Vijayanagar"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · VIJAYANAGAR#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · VIJAYANAGAR"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಹೊಸಹಳ್ಳಿ|HOSAHALLI#9a2d8c",
+    "text": [
+      "ಹೊಸಹಳ್ಳಿ",
+      "HOSAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಹೊಸಹಳ್ಳಿ|Hosahalli#1a1a1a",
+    "text": [
+      "ಹೊಸಹಳ್ಳಿ",
+      "Hosahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · HOSAHALLI#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · HOSAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಮಾಗಡಿ ರಸ್ತೆ|MAGADI ROAD#9a2d8c",
+    "text": [
+      "ಮಾಗಡಿ ರಸ್ತೆ",
+      "MAGADI ROAD"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಮಾಗಡಿ ರಸ್ತೆ|Magadi Road#1a1a1a",
+    "text": [
+      "ಮಾಗಡಿ ರಸ್ತೆ",
+      "Magadi Road"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · MAGADI ROAD#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · MAGADI ROAD"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಕ್ರಾಂತಿವೀರ ಸಂಗೊಳ್ಳಿ ರಾಯಣ್ಣ ರೈಲು ನಿಲ್ದಾಣ|Krantivira Sangolli Rayanna Railway Station#9a2d8c",
+    "text": [
+      "ಕ್ರಾಂತಿವೀರ ಸಂಗೊಳ್ಳಿ ರಾಯಣ್ಣ ರೈಲು ನಿಲ್ದಾಣ",
+      "Krantivira Sangolli Rayanna Railway Station"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಾಡಪ್ರಭು ಕೆಂಪೇಗೌಡ ನಿಲ್ದಾಣ, ಮೆಜೆಸ್ಟಿಕ್|Nadaprabhu Kempegowda Station, Majestic#9a2d8c",
+    "text": [
+      "ನಾಡಪ್ರಭು ಕೆಂಪೇಗೌಡ ನಿಲ್ದಾಣ, ಮೆಜೆಸ್ಟಿಕ್",
+      "Nadaprabhu Kempegowda Station, Majestic"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · NADAPRABHU KEMPEGOWDA STATION, MAJESTIC#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · NADAPRABHU KEMPEGOWDA STATION, MAJESTIC"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಸರ್ ಎಂ. ವಿಶ್ವೇಶ್ವರಯ್ಯ|Sir M. Visveshwaraya Station, Central College#9a2d8c",
+    "text": [
+      "ಸರ್ ಎಂ. ವಿಶ್ವೇಶ್ವರಯ್ಯ",
+      "Sir M. Visveshwaraya Station, Central College"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SIR M. VISVESHWARAYA STATION, CENTRAL COLLEGE#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SIR M. VISVESHWARAYA STATION, CENTRAL COLLEGE"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಡಾ. ಬಿ.ಆರ್. ಅಂಬೇಡ್ಕರ್, ವಿಧಾನಸೌಧ|Dr. B.R. Ambedkar Station, Vidhana Soudha#9a2d8c",
+    "text": [
+      "ಡಾ. ಬಿ.ಆರ್. ಅಂಬೇಡ್ಕರ್, ವಿಧಾನಸೌಧ",
+      "Dr. B.R. Ambedkar Station, Vidhana Soudha"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · DR. B.R. AMBEDKAR STATION, VIDHANA SOUDHA#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · DR. B.R. AMBEDKAR STATION, VIDHANA SOUDHA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಕಬ್ಬನ್ ಉದ್ಯಾನವನ|Cubbon Park#9a2d8c",
+    "text": [
+      "ಕಬ್ಬನ್ ಉದ್ಯಾನವನ",
+      "Cubbon Park"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · CUBBON PARK#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · CUBBON PARK"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಮಹಾತ್ಮ ಗಾಂಧಿ ರಸ್ತೆ|MAHATMA GANDHI ROAD#9a2d8c",
+    "text": [
+      "ಮಹಾತ್ಮ ಗಾಂಧಿ ರಸ್ತೆ",
+      "MAHATMA GANDHI ROAD"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಮಹಾತ್ಮ ಗಾಂಧಿ ರಸ್ತೆ|Mahatma Gandhi Road#1a1a1a",
+    "text": [
+      "ಮಹಾತ್ಮ ಗಾಂಧಿ ರಸ್ತೆ",
+      "Mahatma Gandhi Road"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · MAHATMA GANDHI ROAD#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · MAHATMA GANDHI ROAD"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಟ್ರಿನಿಟಿ|TRINITY#9a2d8c",
+    "text": [
+      "ಟ್ರಿನಿಟಿ",
+      "TRINITY"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಟ್ರಿನಿಟಿ|Trinity#1a1a1a",
+    "text": [
+      "ಟ್ರಿನಿಟಿ",
+      "Trinity"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · TRINITY#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · TRINITY"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಹಲಸೂರು|HALASURU#9a2d8c",
+    "text": [
+      "ಹಲಸೂರು",
+      "HALASURU"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಹಲಸೂರು|Halasuru#1a1a1a",
+    "text": [
+      "ಹಲಸೂರು",
+      "Halasuru"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · HALASURU#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · HALASURU"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಇಂದಿರಾನಗರ|INDIRANAGAR#9a2d8c",
+    "text": [
+      "ಇಂದಿರಾನಗರ",
+      "INDIRANAGAR"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಇಂದಿರಾನಗರ|Indiranagar#1a1a1a",
+    "text": [
+      "ಇಂದಿರಾನಗರ",
+      "Indiranagar"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · INDIRANAGAR#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · INDIRANAGAR"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಸ್ವಾಮಿ ವಿವೇಕಾನಂದ ರಸ್ತೆ|SWAMI VIVEKANANDA ROAD#9a2d8c",
+    "text": [
+      "ಸ್ವಾಮಿ ವಿವೇಕಾನಂದ ರಸ್ತೆ",
+      "SWAMI VIVEKANANDA ROAD"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಸ್ವಾಮಿ ವಿವೇಕಾನಂದ ರಸ್ತೆ|Swami Vivekananda Road#1a1a1a",
+    "text": [
+      "ಸ್ವಾಮಿ ವಿವೇಕಾನಂದ ರಸ್ತೆ",
+      "Swami Vivekananda Road"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SWAMI VIVEKANANDA ROAD#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SWAMI VIVEKANANDA ROAD"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಬೈಯಪ್ಪನಹಳ್ಳಿ|BAIYAPPANAHALLI#9a2d8c",
+    "text": [
+      "ಬೈಯಪ್ಪನಹಳ್ಳಿ",
+      "BAIYAPPANAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಬೈಯಪ್ಪನಹಳ್ಳಿ|Baiyappanahalli#1a1a1a",
+    "text": [
+      "ಬೈಯಪ್ಪನಹಳ್ಳಿ",
+      "Baiyappanahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · BAIYAPPANAHALLI#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · BAIYAPPANAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಬೆನ್ನಿಗಾನಹಳ್ಳಿ|BENNIGANAHALLI#9a2d8c",
+    "text": [
+      "ಬೆನ್ನಿಗಾನಹಳ್ಳಿ",
+      "BENNIGANAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಬೆನ್ನಿಗಾನಹಳ್ಳಿ|Benniganahalli#1a1a1a",
+    "text": [
+      "ಬೆನ್ನಿಗಾನಹಳ್ಳಿ",
+      "Benniganahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · BENNIGANAHALLI#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · BENNIGANAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಕೃಷ್ಣರಾಜಪುರ|KRISHNARAJAPURA#9a2d8c",
+    "text": [
+      "ಕೃಷ್ಣರಾಜಪುರ",
+      "KRISHNARAJAPURA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಕೃಷ್ಣರಾಜಪುರ|Krishnarajapura#1a1a1a",
+    "text": [
+      "ಕೃಷ್ಣರಾಜಪುರ",
+      "Krishnarajapura"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · KRISHNARAJAPURA#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · KRISHNARAJAPURA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಸಿಂಗಯ್ಯನಪಾಳ್ಯ|SINGAYYANAPALYA#9a2d8c",
+    "text": [
+      "ಸಿಂಗಯ್ಯನಪಾಳ್ಯ",
+      "SINGAYYANAPALYA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಸಿಂಗಯ್ಯನಪಾಳ್ಯ|Singayyanapalya#1a1a1a",
+    "text": [
+      "ಸಿಂಗಯ್ಯನಪಾಳ್ಯ",
+      "Singayyanapalya"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SINGAYYANAPALYA#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SINGAYYANAPALYA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಗರುಡಾಚಾರಪಾಳ್ಯ|GARUDACHARAPALYA#9a2d8c",
+    "text": [
+      "ಗರುಡಾಚಾರಪಾಳ್ಯ",
+      "GARUDACHARAPALYA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಗರುಡಾಚಾರಪಾಳ್ಯ|Garudacharapalya#1a1a1a",
+    "text": [
+      "ಗರುಡಾಚಾರಪಾಳ್ಯ",
+      "Garudacharapalya"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · GARUDACHARAPALYA#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · GARUDACHARAPALYA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಹೂಡಿ|HOODI#9a2d8c",
+    "text": [
+      "ಹೂಡಿ",
+      "HOODI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಹೂಡಿ|Hoodi#1a1a1a",
+    "text": [
+      "ಹೂಡಿ",
+      "Hoodi"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · HOODI#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · HOODI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಸೀತಾರಾಮಪಾಳ್ಯ|SEETHARAMPALYA#9a2d8c",
+    "text": [
+      "ಸೀತಾರಾಮಪಾಳ್ಯ",
+      "SEETHARAMPALYA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಸೀತಾರಾಮಪಾಳ್ಯ|Seetharampalya#1a1a1a",
+    "text": [
+      "ಸೀತಾರಾಮಪಾಳ್ಯ",
+      "Seetharampalya"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SEETHARAMPALYA#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SEETHARAMPALYA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಕುಂದಲಹಳ್ಳಿ|KUNDALAHALLI#9a2d8c",
+    "text": [
+      "ಕುಂದಲಹಳ್ಳಿ",
+      "KUNDALAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಕುಂದಲಹಳ್ಳಿ|Kundalahalli#1a1a1a",
+    "text": [
+      "ಕುಂದಲಹಳ್ಳಿ",
+      "Kundalahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · KUNDALAHALLI#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · KUNDALAHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ನಲ್ಲೂರಹಳ್ಳಿ|NALLURHALLI#9a2d8c",
+    "text": [
+      "ನಲ್ಲೂರಹಳ್ಳಿ",
+      "NALLURHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ನಲ್ಲೂರಹಳ್ಳಿ|Nallurhalli#1a1a1a",
+    "text": [
+      "ನಲ್ಲೂರಹಳ್ಳಿ",
+      "Nallurhalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · NALLURHALLI#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · NALLURHALLI"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಶ್ರೀ ಸತ್ಯ ಸಾಯಿ ಆಸ್ಪತ್ರೆ|SRI SATHYA SAI HOSPITAL#9a2d8c",
+    "text": [
+      "ಶ್ರೀ ಸತ್ಯ ಸಾಯಿ ಆಸ್ಪತ್ರೆ",
+      "SRI SATHYA SAI HOSPITAL"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಶ್ರೀ ಸತ್ಯ ಸಾಯಿ ಆಸ್ಪತ್ರೆ|Sri Sathya Sai Hospital#1a1a1a",
+    "text": [
+      "ಶ್ರೀ ಸತ್ಯ ಸಾಯಿ ಆಸ್ಪತ್ರೆ",
+      "Sri Sathya Sai Hospital"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SRI SATHYA SAI HOSPITAL#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SRI SATHYA SAI HOSPITAL"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಪಟ್ಟಂದೂರು ಅಗ್ರಹಾರ|PATTANDUR AGRAHARA#9a2d8c",
+    "text": [
+      "ಪಟ್ಟಂದೂರು ಅಗ್ರಹಾರ",
+      "PATTANDUR AGRAHARA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಪಟ್ಟಂದೂರು ಅಗ್ರಹಾರ|Pattandur Agrahara#1a1a1a",
+    "text": [
+      "ಪಟ್ಟಂದೂರು ಅಗ್ರಹಾರ",
+      "Pattandur Agrahara"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · PATTANDUR AGRAHARA#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · PATTANDUR AGRAHARA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಕಾಡುಗೋಡಿ ಟ್ರೀ ಪಾರ್ಕ್|KADUGODI TREE PARK#9a2d8c",
+    "text": [
+      "ಕಾಡುಗೋಡಿ ಟ್ರೀ ಪಾರ್ಕ್",
+      "KADUGODI TREE PARK"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಕಾಡುಗೋಡಿ ಟ್ರೀ ಪಾರ್ಕ್|Kadugodi Tree Park#1a1a1a",
+    "text": [
+      "ಕಾಡುಗೋಡಿ ಟ್ರೀ ಪಾರ್ಕ್",
+      "Kadugodi Tree Park"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · KADUGODI TREE PARK#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · KADUGODI TREE PARK"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಹೋಪ್‌ಫಾರ್ಮ್ ಚನ್ನಸಂದ್ರ|HOPEFARM CHANNASANDRA#9a2d8c",
+    "text": [
+      "ಹೋಪ್‌ಫಾರ್ಮ್ ಚನ್ನಸಂದ್ರ",
+      "HOPEFARM CHANNASANDRA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಹೋಪ್‌ಫಾರ್ಮ್ ಚನ್ನಸಂದ್ರ|Hopefarm Channasandra#1a1a1a",
+    "text": [
+      "ಹೋಪ್‌ಫಾರ್ಮ್ ಚನ್ನಸಂದ್ರ",
+      "Hopefarm Channasandra"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · HOPEFARM CHANNASANDRA#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · HOPEFARM CHANNASANDRA"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ವೈಟ್‌ಫೀಲ್ಡ್ (ಕಾಡುಗೋಡಿ)|WHITEFIELD (KADUGODI)#9a2d8c",
+    "text": [
+      "ವೈಟ್‌ಫೀಲ್ಡ್ (ಕಾಡುಗೋಡಿ)",
+      "WHITEFIELD (KADUGODI)"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ವೈಟ್‌ಫೀಲ್ಡ್ (ಕಾಡುಗೋಡಿ)|Whitefield (Kadugodi)#1a1a1a",
+    "text": [
+      "ವೈಟ್‌ಫೀಲ್ಡ್ (ಕಾಡುಗೋಡಿ)",
+      "Whitefield (Kadugodi)"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · WHITEFIELD (KADUGODI)#9a2d8c",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · WHITEFIELD (KADUGODI)"
+    ],
+    "bg": "#9a2d8c",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ನಾಗಸಂದ್ರ|NAGASANDRA#2fae4a",
+    "text": [
+      "ನಾಗಸಂದ್ರ",
+      "NAGASANDRA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ನಾಗಸಂದ್ರ|Nagasandra#1a1a1a",
+    "text": [
+      "ನಾಗಸಂದ್ರ",
+      "Nagasandra"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · NAGASANDRA#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · NAGASANDRA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ದಾಸರಹಳ್ಳಿ|DASARAHALLI#2fae4a",
+    "text": [
+      "ದಾಸರಹಳ್ಳಿ",
+      "DASARAHALLI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ದಾಸರಹಳ್ಳಿ|Dasarahalli#1a1a1a",
+    "text": [
+      "ದಾಸರಹಳ್ಳಿ",
+      "Dasarahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · DASARAHALLI#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · DASARAHALLI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಜಾಲಹಳ್ಳಿ|JALAHALLI#2fae4a",
+    "text": [
+      "ಜಾಲಹಳ್ಳಿ",
+      "JALAHALLI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಜಾಲಹಳ್ಳಿ|Jalahalli#1a1a1a",
+    "text": [
+      "ಜಾಲಹಳ್ಳಿ",
+      "Jalahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · JALAHALLI#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · JALAHALLI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಪೀಣ್ಯ ಇಂಡಸ್ಟ್ರಿ|PEENYA INDUSTRY#2fae4a",
+    "text": [
+      "ಪೀಣ್ಯ ಇಂಡಸ್ಟ್ರಿ",
+      "PEENYA INDUSTRY"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಪೀಣ್ಯ ಇಂಡಸ್ಟ್ರಿ|Peenya Industry#1a1a1a",
+    "text": [
+      "ಪೀಣ್ಯ ಇಂಡಸ್ಟ್ರಿ",
+      "Peenya Industry"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · PEENYA INDUSTRY#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · PEENYA INDUSTRY"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಪೀಣ್ಯ|PEENYA#2fae4a",
+    "text": [
+      "ಪೀಣ್ಯ",
+      "PEENYA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಪೀಣ್ಯ|Peenya#1a1a1a",
+    "text": [
+      "ಪೀಣ್ಯ",
+      "Peenya"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · PEENYA#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · PEENYA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಗೊರಗುಂಟೆಪಾಳ್ಯ|GORAGUNTEPALYA#2fae4a",
+    "text": [
+      "ಗೊರಗುಂಟೆಪಾಳ್ಯ",
+      "GORAGUNTEPALYA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಗೊರಗುಂಟೆಪಾಳ್ಯ|Goraguntepalya#1a1a1a",
+    "text": [
+      "ಗೊರಗುಂಟೆಪಾಳ್ಯ",
+      "Goraguntepalya"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ಯಶವಂತಪುರ|YESHWANTHPUR#2fae4a",
+    "text": [
+      "ಯಶವಂತಪುರ",
+      "YESHWANTHPUR"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಯಶವಂತಪುರ|Yeshwanthpur#1a1a1a",
+    "text": [
+      "ಯಶವಂತಪುರ",
+      "Yeshwanthpur"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · YESHWANTHPUR#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · YESHWANTHPUR"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಸ್ಯಾಂಡಲ್ ಸೋಪ್ ಫ್ಯಾಕ್ಟರಿ|SANDAL SOAP FACTORY#2fae4a",
+    "text": [
+      "ಸ್ಯಾಂಡಲ್ ಸೋಪ್ ಫ್ಯಾಕ್ಟರಿ",
+      "SANDAL SOAP FACTORY"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಸ್ಯಾಂಡಲ್ ಸೋಪ್ ಫ್ಯಾಕ್ಟರಿ|Sandal Soap Factory#1a1a1a",
+    "text": [
+      "ಸ್ಯಾಂಡಲ್ ಸೋಪ್ ಫ್ಯಾಕ್ಟರಿ",
+      "Sandal Soap Factory"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SANDAL SOAP FACTORY#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SANDAL SOAP FACTORY"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಮಹಾಲಕ್ಷ್ಮಿ|MAHALAKSHMI#2fae4a",
+    "text": [
+      "ಮಹಾಲಕ್ಷ್ಮಿ",
+      "MAHALAKSHMI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಮಹಾಲಕ್ಷ್ಮಿ|Mahalakshmi#1a1a1a",
+    "text": [
+      "ಮಹಾಲಕ್ಷ್ಮಿ",
+      "Mahalakshmi"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · MAHALAKSHMI#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · MAHALAKSHMI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ರಾಜಾಜಿನಗರ|RAJAJINAGAR#2fae4a",
+    "text": [
+      "ರಾಜಾಜಿನಗರ",
+      "RAJAJINAGAR"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ರಾಜಾಜಿನಗರ|Rajajinagar#1a1a1a",
+    "text": [
+      "ರಾಜಾಜಿನಗರ",
+      "Rajajinagar"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · RAJAJINAGAR#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · RAJAJINAGAR"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಮಹಾಕವಿ ಕುವೆಂಪು ರಸ್ತೆ|MAHAKAVI KUVEMPU ROAD#2fae4a",
+    "text": [
+      "ಮಹಾಕವಿ ಕುವೆಂಪು ರಸ್ತೆ",
+      "MAHAKAVI KUVEMPU ROAD"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಮಹಾಕವಿ ಕುವೆಂಪು ರಸ್ತೆ|Mahakavi Kuvempu Road#1a1a1a",
+    "text": [
+      "ಮಹಾಕವಿ ಕುವೆಂಪು ರಸ್ತೆ",
+      "Mahakavi Kuvempu Road"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · MAHAKAVI KUVEMPU ROAD#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · MAHAKAVI KUVEMPU ROAD"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಶ್ರೀರಾಂಪುರ|SRIRAMPURA#2fae4a",
+    "text": [
+      "ಶ್ರೀರಾಂಪುರ",
+      "SRIRAMPURA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಶ್ರೀರಾಂಪುರ|Srirampura#1a1a1a",
+    "text": [
+      "ಶ್ರೀರಾಂಪುರ",
+      "Srirampura"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SRIRAMPURA#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SRIRAMPURA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಮಂತ್ರಿ ಸ್ಕ್ವೇರ್ ಸಂಪಿಗೆ ರಸ್ತೆ|MANTRI SQUARE SAMPIGE ROAD#2fae4a",
+    "text": [
+      "ಮಂತ್ರಿ ಸ್ಕ್ವೇರ್ ಸಂಪಿಗೆ ರಸ್ತೆ",
+      "MANTRI SQUARE SAMPIGE ROAD"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಮಂತ್ರಿ ಸ್ಕ್ವೇರ್ ಸಂಪಿಗೆ ರಸ್ತೆ|Mantri Square Sampige Road#1a1a1a",
+    "text": [
+      "ಮಂತ್ರಿ ಸ್ಕ್ವೇರ್ ಸಂಪಿಗೆ ರಸ್ತೆ",
+      "Mantri Square Sampige Road"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · MANTRI SQUARE SAMPIGE ROAD#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · MANTRI SQUARE SAMPIGE ROAD"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ನಾಡಪ್ರಭು ಕೆಂಪೇಗೌಡ ನಿಲ್ದಾಣ, ಮೆಜೆಸ್ಟಿಕ್|Nadaprabhu Kempegowda Station, Majestic#2fae4a",
+    "text": [
+      "ನಾಡಪ್ರಭು ಕೆಂಪೇಗೌಡ ನಿಲ್ದಾಣ, ಮೆಜೆಸ್ಟಿಕ್",
+      "Nadaprabhu Kempegowda Station, Majestic"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ಚಿಕ್ಕಪೇಟೆ|Chickpete#2fae4a",
+    "text": [
+      "ಚಿಕ್ಕಪೇಟೆ",
+      "Chickpete"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · CHICKPETE#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · CHICKPETE"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಕೃಷ್ಣರಾಜೇಂದ್ರ ಮಾರುಕಟ್ಟೆ|Krishna Rajendra Market#2fae4a",
+    "text": [
+      "ಕೃಷ್ಣರಾಜೇಂದ್ರ ಮಾರುಕಟ್ಟೆ",
+      "Krishna Rajendra Market"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 7.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · KRISHNA RAJENDRA MARKET#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · KRISHNA RAJENDRA MARKET"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ನ್ಯಾಷನಲ್ ಕಾಲೇಜ್|NATIONAL COLLEGE#2fae4a",
+    "text": [
+      "ನ್ಯಾಷನಲ್ ಕಾಲೇಜ್",
+      "NATIONAL COLLEGE"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ನ್ಯಾಷನಲ್ ಕಾಲೇಜ್|National College#1a1a1a",
+    "text": [
+      "ನ್ಯಾಷನಲ್ ಕಾಲೇಜ್",
+      "National College"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · NATIONAL COLLEGE#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · NATIONAL COLLEGE"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಲಾಲ್‌ಬಾಗ್|LALBAGH#2fae4a",
+    "text": [
+      "ಲಾಲ್‌ಬಾಗ್",
+      "LALBAGH"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಲಾಲ್‌ಬಾಗ್|Lalbagh#1a1a1a",
+    "text": [
+      "ಲಾಲ್‌ಬಾಗ್",
+      "Lalbagh"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · LALBAGH#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · LALBAGH"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಸೌತ್ ಎಂಡ್ ವೃತ್ತ|SOUTH END CIRCLE#2fae4a",
+    "text": [
+      "ಸೌತ್ ಎಂಡ್ ವೃತ್ತ",
+      "SOUTH END CIRCLE"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಸೌತ್ ಎಂಡ್ ವೃತ್ತ|South End Circle#1a1a1a",
+    "text": [
+      "ಸೌತ್ ಎಂಡ್ ವೃತ್ತ",
+      "South End Circle"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SOUTH END CIRCLE#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SOUTH END CIRCLE"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಜಯನಗರ|JAYANAGAR#2fae4a",
+    "text": [
+      "ಜಯನಗರ",
+      "JAYANAGAR"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಜಯನಗರ|Jayanagar#1a1a1a",
+    "text": [
+      "ಜಯನಗರ",
+      "Jayanagar"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ರಾಷ್ಟ್ರೀಯ ವಿದ್ಯಾಲಯ ರಸ್ತೆ|RASHTREEYA VIDYALAYA ROAD#2fae4a",
+    "text": [
+      "ರಾಷ್ಟ್ರೀಯ ವಿದ್ಯಾಲಯ ರಸ್ತೆ",
+      "RASHTREEYA VIDYALAYA ROAD"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ರಾಷ್ಟ್ರೀಯ ವಿದ್ಯಾಲಯ ರಸ್ತೆ|Rashtreeya Vidyalaya Road#1a1a1a",
+    "text": [
+      "ರಾಷ್ಟ್ರೀಯ ವಿದ್ಯಾಲಯ ರಸ್ತೆ",
+      "Rashtreeya Vidyalaya Road"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · RASHTREEYA VIDYALAYA ROAD#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · RASHTREEYA VIDYALAYA ROAD"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಬನಶಂಕರಿ|BANASHANKARI#2fae4a",
+    "text": [
+      "ಬನಶಂಕರಿ",
+      "BANASHANKARI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಬನಶಂಕರಿ|Banashankari#1a1a1a",
+    "text": [
+      "ಬನಶಂಕರಿ",
+      "Banashankari"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · BANASHANKARI#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · BANASHANKARI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಜಯಪ್ರಕಾಶ್ ನಗರ|JAYA PRAKASH NAGAR#2fae4a",
+    "text": [
+      "ಜಯಪ್ರಕಾಶ್ ನಗರ",
+      "JAYA PRAKASH NAGAR"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಜಯಪ್ರಕಾಶ್ ನಗರ|Jaya Prakash Nagar#1a1a1a",
+    "text": [
+      "ಜಯಪ್ರಕಾಶ್ ನಗರ",
+      "Jaya Prakash Nagar"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · JAYA PRAKASH NAGAR#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · JAYA PRAKASH NAGAR"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಯಲಚೇನಹಳ್ಳಿ|YELACHENAHALLI#2fae4a",
+    "text": [
+      "ಯಲಚೇನಹಳ್ಳಿ",
+      "YELACHENAHALLI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಯಲಚೇನಹಳ್ಳಿ|Yelachenahalli#1a1a1a",
+    "text": [
+      "ಯಲಚೇನಹಳ್ಳಿ",
+      "Yelachenahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · YELACHENAHALLI#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · YELACHENAHALLI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ಕೋಣನಕುಂಟೆ ಕ್ರಾಸ್|KONANAKUNTE CROSS#2fae4a",
+    "text": [
+      "ಕೋಣನಕುಂಟೆ ಕ್ರಾಸ್",
+      "KONANAKUNTE CROSS"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ಕೋಣನಕುಂಟೆ ಕ್ರಾಸ್|Konanakunte Cross#1a1a1a",
+    "text": [
+      "ಕೋಣನಕುಂಟೆ ಕ್ರಾಸ್",
+      "Konanakunte Cross"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · KONANAKUNTE CROSS#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · KONANAKUNTE CROSS"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ದೊಡ್ಡಕಲ್ಲಸಂದ್ರ|DODDAKALLASANDRA#2fae4a",
+    "text": [
+      "ದೊಡ್ಡಕಲ್ಲಸಂದ್ರ",
+      "DODDAKALLASANDRA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ದೊಡ್ಡಕಲ್ಲಸಂದ್ರ|Doddakallasandra#1a1a1a",
+    "text": [
+      "ದೊಡ್ಡಕಲ್ಲಸಂದ್ರ",
+      "Doddakallasandra"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · DODDAKALLASANDRA#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · DODDAKALLASANDRA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ವಜ್ರಹಳ್ಳಿ|VAJARAHALLI#2fae4a",
+    "text": [
+      "ವಜ್ರಹಳ್ಳಿ",
+      "VAJARAHALLI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ವಜ್ರಹಳ್ಳಿ|Vajarahalli#1a1a1a",
+    "text": [
+      "ವಜ್ರಹಳ್ಳಿ",
+      "Vajarahalli"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · VAJARAHALLI#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · VAJARAHALLI"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ತಲಘಟ್ಟಪುರ|THALAGHATTAPURA#2fae4a",
+    "text": [
+      "ತಲಘಟ್ಟಪುರ",
+      "THALAGHATTAPURA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ತಲಘಟ್ಟಪುರ|Thalaghattapura#1a1a1a",
+    "text": [
+      "ತಲಘಟ್ಟಪುರ",
+      "Thalaghattapura"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · THALAGHATTAPURA#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · THALAGHATTAPURA"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
+  },
+  {
+    "key": "metro_ರೇಷ್ಮೆ ಸಂಸ್ಥೆ|SILK INSTITUTE#2fae4a",
+    "text": [
+      "ರೇಷ್ಮೆ ಸಂಸ್ಥೆ",
+      "SILK INSTITUTE"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 224
+  },
+  {
+    "key": "metro_ರೇಷ್ಮೆ ಸಂಸ್ಥೆ|Silk Institute#1a1a1a",
+    "text": [
+      "ರೇಷ್ಮೆ ಸಂಸ್ಥೆ",
+      "Silk Institute"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#ffffff",
+    "w": 6.0,
+    "texH": 205
+  },
+  {
+    "key": "metro_ನಮ್ಮ ಮೆಟ್ರೋ|NAMMA METRO · SILK INSTITUTE#2fae4a",
+    "text": [
+      "ನಮ್ಮ ಮೆಟ್ರೋ",
+      "NAMMA METRO · SILK INSTITUTE"
+    ],
+    "bg": "#2fae4a",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 209
   }
 ]

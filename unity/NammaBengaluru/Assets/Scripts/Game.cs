@@ -42,6 +42,9 @@ namespace NammaBengaluru
         public Garages garages;
         public AutoDuty autoDuty;
         public Rides rides;
+        public MetroWorld metro;
+        public MetroRide metroRide;
+        MetroRide.Entrance entranceNear;
         Rides.Shelter shelterNear;
         public int money = 1000; // START_MONEY
         public readonly List<Vehicle> dynamic = new List<Vehicle>(); // free vehicles and the police
@@ -182,6 +185,15 @@ namespace NammaBengaluru
             garages = new Garages(this, root);
             autoDuty = new AutoDuty(this, root);
             rides = new Rides(this, root);
+            metro = Metro.Build(layout, md, colliders, root);
+            metroRide = new MetroRide(this, metro);
+            city.rail.hitByTrain = (t, nx, nz) =>
+            {
+                if (player.vehicle != null || player.knock > 0) return;
+                player.Damage(70, player.x - nx, player.z - nz, this);
+                player.knock = 2; player.kx = nx * 8; player.kz = nz * 8;
+                Say("Indian Railways always wins.", 3);
+            };
             hud.onMapTap = (x, z, slop) =>
             {
                 if (gps.target != null && Math.Sqrt((gps.target.Value.x - x) * (gps.target.Value.x - x) + (gps.target.Value.z - z) * (gps.target.Value.z - z)) < Math.Max(25, slop)) { gps.Clear(); Say("Waypoint cleared", 1.5); return; }
@@ -324,14 +336,19 @@ namespace NammaBengaluru
                 if (screenT <= 0 && pending != null) Respawn();
             }
 
+            // Namma Metro: entrances on the street, and the ride itself.
+            entranceNear = player.vehicle == null && pending == null && !metroRide.Active && !rides.Active ? metroRide.NearEntrance(player.Pos) : null;
+            if (entranceNear != null && input.Hit("KeyE")) { input.pressed.Remove("KeyE"); metroRide.Open(entranceNear); }
             // BMTC shelters (E) and waving down an auto (H), on foot.
-            bool onFoot = player.vehicle == null && pending == null && !rides.Active && !player.InTransition && !garages.menu;
-            shelterNear = onFoot && !garages.nearStall ? rides.NearShelter(player.Pos) : null;
+            bool onFoot = player.vehicle == null && pending == null && !rides.Active && !metroRide.Active && !player.InTransition && !garages.menu;
+            shelterNear = onFoot && entranceNear == null && !garages.nearStall ? rides.NearShelter(player.Pos) : null;
             if (shelterNear != null && input.Hit("KeyE")) { input.pressed.Remove("KeyE"); rides.StopMenu(shelterNear); }
             if (onFoot && input.Hit("KeyH")) rides.HailAuto();
             // A ride's menus and boarding, or a garage menu, take the keys; otherwise you play on.
             Vehicle rideCam = null;
-            if (rides.Blocking) rideCam = rides.Update(dt, input);
+            bool metroCam = false;
+            if (metroRide.Active) metroCam = metroRide.Update(dt, input, rig.camera);
+            else if (rides.Blocking) rideCam = rides.Update(dt, input);
             else if (garages.menu) garages.Update(dt, input);
             else
             {
@@ -378,12 +395,15 @@ namespace NammaBengaluru
             gangs.Update(dt, this);
             pickups.Update(dt, this);
             SpawnRowdies(dt);
-            missions.busy = rides.Active;
+            missions.busy = rides.Active || metroRide.Active;
             missions.Update(dt, input, player);
             autoDuty.Update(dt, input, player);
             if (gps.Update(dt, player.Pos.x, player.Pos.z)) { Say("You have arrived.", 2.5); audio.Click(); }
             player.rigPitch = rig.pitch;
-            if (!freeCam) rig.Update(dt, input, player, colliders, rideCam);
+            if (!freeCam && !metroCam) rig.Update(dt, input, player, colliders, rideCam);
+            metro.Update(dt, focus.x, focus.z);
+            city.rail.Update(dt, focus.x, focus.z);
+            hud.SetTunnel(metroRide.tunnel);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
             UpdateHud(dt);
             if (player.vehicle != radioVehicle) { radioVehicle = player.vehicle; audio.Radio(radioVehicle != null && radioOn); }
@@ -580,9 +600,10 @@ namespace NammaBengaluru
                 hudVehicle = pv;
             }
             // What F (or H) would do here (main.js).
-            if (garages.menu || rides.Blocking) hud.Prompt("");
+            if (metroRide.Active || garages.menu || rides.Blocking) hud.Prompt("");
             else if (rides.Active) hud.Prompt("Q  Give up waiting");
             else if (garages.nearStall) { /* the garage set its own prompt */ }
+            else if (entranceNear != null) hud.Prompt($"E  Namma Metro · {entranceNear.st.en}");
             else if (shelterNear != null) hud.Prompt($"E  BMTC bus stop · {shelterNear.name}");
             else if (pv == null && !player.InTransition)
             {

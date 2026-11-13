@@ -49,6 +49,7 @@ namespace NammaBengaluru.Render
         static List<HumanModelDef> humans;
         static Dictionary<string, List<VehicleModelDef>> byType;
         static Material vehicleMat, decalMat, humanMat;
+        internal static void ResetStatics() { vbytes = hbytes = null; vehicles = null; humans = null; byType = null; vehicleMat = decalMat = humanMat = null; }
 
         public static List<VehicleModelDef> Vehicles { get { Load(); return vehicles; } }
         public static List<HumanModelDef> Humans { get { Load(); return humans; } }

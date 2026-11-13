@@ -45,7 +45,7 @@ builds.
 | `world/textures.js`, `signboards.js` | Baked to `Resources/Baked/*.png` by `tools/unity/bake` | Done (painted by the JS itself) |
 | `world/surface.js` | `Resources/Shaders/City.shader` (+ `Instanced`, `Glow`) | Done |
 | `world/city.js` | `Render/City.cs`, `Render/InstancedForest.cs`, `Render/CityMaterials.cs` | Mostly: see below |
-| `world/infrastructure.js` | in `Render/City.cs` | Done except the railway |
+| `world/infrastructure.js` | in `Render/City.cs` | Done |
 | `systems/colliders.js` | `World/Colliders.cs` | Done |
 | `world/ao.js` (baked ground shading) | | Not yet |
 | `entities/vehicle.js` | `Entities/Vehicle.cs` (physics, damage), `Entities/VehicleView.cs` (dents, smoke, fire, scorch) | Done |
@@ -55,7 +55,7 @@ builds.
 | `entities/player.js` | `Entities/Player.cs` | Done (on foot, driving, punching, kicking, weapons, aiming, the GUNDA cheat) |
 | `systems/cameraRig.js`, `input.js` | `Systems/CameraRig.cs`, `Systems/GameInput.cs` | Done |
 | `main.js` (start-up, parking, vehicle contacts, `__game.step`) | `Game.cs` | In part |
-| `entities/traffic.js` | `Entities/Traffic.cs` | Done (level crossings wait for the railway port) |
+| `entities/traffic.js` | `Entities/Traffic.cs` | Done |
 | `systems/signals.js` | `Systems/Signals.cs` | Done |
 | `systems/environment.js`, `world/sky.js` (colours) | `Systems/Environment.cs`, `Resources/Shaders/Sky.shader` | Done (live weather to come) |
 | `entities/pedestrians.js` | `Entities/StreetLife.cs` | Done (cows have square edges; bus-platform crowds wait for the landmarks) |
@@ -71,8 +71,11 @@ builds.
 | text signs (`buildTextSigns`, garage and metro boards) | `Render/TextSigns.cs`, baked by `tools/unity/bake/signs.mjs` | Done |
 | `systems/autoDuty.js` | `Systems/AutoDuty.cs` | Done |
 | `systems/rides.js` | `Systems/Rides.cs` (hired autos, BMTC buses and shelters) | Done |
-| `systems/story.js`, `metroRide.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 (next) |
-| `world/landmarks.js`, `metro.js`, `railway.js`, `signboards.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 2 and 6 |
+| `world/metro.js`, `path.js` | `World/MetroRoutes.cs` (routes, ramps), `Render/Metro.cs` (structures, trains) | Done |
+| `systems/metroRide.js` | `Systems/MetroRide.cs` | Done |
+| `world/railway.js` | `Render/City.Railway.cs` | Done |
+| `systems/story.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 (next) |
+| `world/landmarks.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 6 |
 
 ### Phase 1 check (world core)
 
@@ -210,3 +213,15 @@ See `docs/unity/garage.png`.
 - **BMTC buses.** There are nine real routes, run both ways, with 154 shelters along them (shared where routes overlap) and named after junctions and districts. E at a shelter shows the stops ahead and their fares. The bus comes up the route, stopping at every stop, and you ring the bell (E) or skip to your stop (T).
 
 See `docs/unity/auto-ride.png`.
+
+### Phase 6c (Namma Metro and the railway)
+
+- **Metro routes.** `World/MetroRoutes.cs` ports `metroRoutes()`. Stations sit on straight runs. The ramps between elevated and underground stretches are placed so their street-level part is on land, and where none fits, the line bends sideways into the next block. The city now keeps the ground clear under the viaducts, ramps and stations, as city.js does, which brings building placement there in line with the web game.
+- **Metro structures.** `Render/Metro.cs` builds the viaducts, the piers (kept out of junctions and traffic lanes), the covered ramps and tunnel portals, the elevated and underground stations, the 117 street entrances and the name boards.
+- **Metro trains.** Twelve three-car BEML trains run both ways, with an 11 s dwell at every station.
+- **Riding the metro.** Press E at an entrance to buy a token (change at Majestic for the other line), wait on the platform for a real train, then ride with the camera on the platform, alongside on the viaduct, or low in the tunnel, where the screen darkens. T skips the wait or the ride.
+- **The railway.** `Render/City.Railway.cs` ports railway.js: ballasted double track, overhead masts, boundary walls, five stations (KSR Bengaluru City with its clock tower), and WAP-7 rakes that run push-pull between the ends and honk.
+- **Level crossings.** The 28 level crossings drop their booms and flash when a train is near, and traffic now waits at them.
+- **Static caches.** The project enters Play mode without a domain reload, so `StaticReset.cs` clears the static caches of meshes, materials and textures as each session starts. Without it, the second session in an Editor run failed.
+
+See `docs/unity/metro-station.png`, `metro-ride.png` and `railway.png`.

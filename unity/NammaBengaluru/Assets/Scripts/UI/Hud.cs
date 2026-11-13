@@ -218,6 +218,8 @@ namespace NammaBengaluru.UI
             var TR = new Vector2(1, 1); var BL = Vector2.zero; var BR = new Vector2(1, 0); var TC = new Vector2(0.5f, 1); var BC = new Vector2(0.5f, 0);
             var full = new Vector2(1440, 0);
 
+            // The metro tunnel: the screen goes dark between underground stations.
+            tunnelImg = Img(Stretch(root, "Tunnel", Vector2.zero, Vector2.one), vignette, new Color(0, 0, 0, 0));
             // Damage vignette (inset red glow) under everything else.
             var dmg = Stretch(root, "Damage", Vector2.zero, Vector2.one);
             Img(dmg, vignette, new Color(0.78f, 0, 0, 0.75f));
@@ -582,6 +584,13 @@ namespace NammaBengaluru.UI
                 ((RectTransform)banner.transform).sizeDelta = new Vector2(w, 74);
             }
             if (!banner.activeSelf) banner.SetActive(true);
+        }
+        UnityEngine.UI.Image tunnelImg;
+        public void SetTunnel(double a)
+        {
+            float cur = tunnelImg.color.a, want = (float)a;
+            float next = Mathf.MoveTowards(cur, want, Time.unscaledDeltaTime / 0.8f);
+            if (next != cur) tunnelImg.color = new Color(0, 0, 0, next);
         }
         public void HideBanner() { if (banner.activeSelf) banner.SetActive(false); }
         public bool MenuOpen => menuPanel.activeSelf;

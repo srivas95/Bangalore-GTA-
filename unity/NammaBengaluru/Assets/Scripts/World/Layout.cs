@@ -48,7 +48,7 @@ namespace NammaBengaluru.World
         public double railDirX, railDirZ;
     }
 
-    public class LevelCrossing { public NetEdge edge; public double x, z; public Road rail; }
+    public class LevelCrossing { public NetEdge edge; public double x, z; public Road rail; public bool closed; }
 
     public class FlyoverArm { public double ux, uz, half; }
 

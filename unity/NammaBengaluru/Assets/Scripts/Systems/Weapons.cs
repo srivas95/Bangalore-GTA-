@@ -49,6 +49,7 @@ namespace NammaBengaluru.Systems
         // along -y, down the forearm, so an outstretched arm aims them.
         static Material weaponMat;
         static readonly Dictionary<string, Mesh> cache = new Dictionary<string, Mesh>();
+        internal static void ResetStatics() { weaponMat = null; cache.Clear(); }
 
         static Mesh Geometry(string key)
         {
@@ -221,6 +222,7 @@ namespace NammaBengaluru.Systems
         readonly Transform root;
         static Mesh ring;
         static Material ringMat, boxMat;
+        internal static void ResetStatics() { ring = null; ringMat = boxMat = null; }
 
         public Pickups(Transform parent)
         {

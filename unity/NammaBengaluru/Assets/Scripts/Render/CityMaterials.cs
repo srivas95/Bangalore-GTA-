@@ -9,6 +9,7 @@ namespace NammaBengaluru.Render
     {
         static Shader city, glow;
         static readonly Dictionary<string, Texture2D> texCache = new Dictionary<string, Texture2D>();
+        internal static void ResetStatics() { city = glow = instanced = null; texCache.Clear(); }
 
         public static Texture2D Tex(string name)
         {

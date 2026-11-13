@@ -3,9 +3,9 @@
 // Port of buildCity (src/world/city.js) and buildInfrastructure (src/world/infrastructure.js),
 // drawing from the same seeded RNG in the same order.
 // Not yet ported (their blocks are reserved, and nothing is drawn there): the landmark builders,
-// Cubbon Park's walks, the railway, metro clearances, Poly Haven street props and text signs
-// (collected in `signs`, not drawn). Each of those draws random numbers in the JS, so until they
-// land, building choices after the first of them differ from the web game's.
+// Cubbon Park's walks and Poly Haven street props. Each of those draws random numbers in the JS,
+// so until they land, building choices after the first of them differ from the web game's. Text
+// signs are collected in `signs` and put up by TextSigns; the railway is in City.Railway.cs.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,9 +41,10 @@ namespace NammaBengaluru.Render
         public List<PropSpot> props;
         public Dictionary<string, Material> materials;
         public Transform root;
+        public RailWorld rail;
     }
 
-    public class City
+    public partial class City
     {
         static readonly int[] PASTELS = { 0xf2ead8, 0xeedfc0, 0xe6cfa4, 0xe3c494, 0xd9ad84, 0xdba48a, 0xcdd2b4, 0xbccad4, 0xdcd8d0, 0xeac6b6, 0xe2d8e6, 0xd2e0d6, 0xf4eee2, 0xe8dcc8 };
         static readonly int[] BRIGHTS = { 0xe6a878, 0x9cc6b6, 0xe4cc6a, 0xa8c2e0, 0xd0aed2, 0xeaae9e, 0xa8cfa4, 0xe4b062, 0xd8846a };
@@ -145,6 +146,8 @@ namespace NammaBengaluru.Render
 
             Infrastructure();
             foreach (var r in layout.rails) AddSegs(r.pts, 0);
+            // Keep the ground under metro viaducts and stations clear too.
+            foreach (var m in MetroSegs()) AddSegs(m.pts, m.r - 9);
 
             // Park landmarks go to the largest blocks of each park.
             foreach (var p in layout.blocks.Where(b => b.park != null).Select(b => b.park).Distinct())
@@ -178,13 +181,45 @@ namespace NammaBengaluru.Render
             var forest = group.gameObject.AddComponent<InstancedForest>();
             forest.Init(trees.Where(t => !OnCarriageway(t.x, t.z, 0.6, false)).ToList(), tanks, mats, colliders);
 
-            return new CityResult { pois = pois, trees = trees, lamps = lamps, lampHeads = lampHeads, tanks = tanks, signs = signs, props = props, materials = mats, root = group };
+            return new CityResult { pois = pois, trees = trees, lamps = lamps, lampHeads = lampHeads, tanks = tanks, signs = signs, props = props, materials = mats, root = group, rail = rail };
         }
 
         // ---------- helpers shared with landmarks ----------
         static List<double[]> RectPoly(BBox r) => new List<double[]> { new[] { r.minX, r.minZ }, new[] { r.maxX, r.minZ }, new[] { r.maxX, r.maxZ }, new[] { r.minX, r.maxZ } };
         void Lawn(Block block, LinColor? color = null) => Geom.FillPoly(B.Get("grass"), block.innerPoly ?? RectPoly(block.inner), CURB_H + 0.01, color ?? LinColor.White, (x, z) => (x / 6, -z / 6));
         void Plaza(Block block, LinColor? color = null) => Geom.FillPoly(B.Get("plaza"), block.innerPoly ?? RectPoly(block.inner), CURB_H + 0.01, color ?? LinColor.White, (x, z) => (x / 5, -z / 5));
+
+        // The metro's footprint (city.js): along the track between any two stations that aren't
+        // both underground, the wider covered ramps, and the elevated station boxes.
+        List<(List<double[]> pts, double r)> MetroSegs()
+        {
+            var output = new List<(List<double[]>, double)>();
+            foreach (var line in MetroRoutes.Routes(layout, md))
+            {
+                for (int i = 0; i < line.stations.Count - 1; i++)
+                {
+                    var a = line.stations[i]; var b = line.stations[i + 1];
+                    if (a.underground && b.underground) continue;
+                    var pts = new List<double[]>();
+                    for (double s = a.s; s <= b.s + 1e-6; s += 10) { var p = line.path.AtS(Math.Min(s, b.s)); pts.Add(new[] { p.x, p.z }); }
+                    output.Add((pts, 5.5));
+                }
+                foreach (var r in line.ramps)
+                {
+                    var pts = new List<double[]>();
+                    for (double s = r.s1 - 20; s <= r.s1 + r.L + 20; s += 10) { var p = line.path.AtS(s); pts.Add(new[] { p.x, p.z }); }
+                    output.Add((pts, 9));
+                }
+                foreach (var st in line.stations)
+                {
+                    if (st.underground) continue;
+                    var a = line.path.AtS(st.s - 5); var b = line.path.AtS(st.s + 5);
+                    double dx = b.x - a.x, dz = b.z - a.z, l = Math.Sqrt(dx * dx + dz * dz); if (l == 0) l = 1;
+                    output.Add((new List<double[]> { new[] { st.x - dx / l * 38, st.z - dz / l * 38 }, new[] { st.x + dx / l * 38, st.z + dz / l * 38 } }, 13));
+                }
+            }
+            return output;
+        }
 
         void AddSegs(IList<double[]> pts, double pad)
         {
@@ -512,7 +547,11 @@ namespace NammaBengaluru.Render
             colliders.Add(Wd.maxX, Wd.maxX + 10, Wd.minZ - 10, Wd.maxZ + 10, 300, "bound");
             colliders.Add(Wd.minX - 10, Wd.maxX + 10, Wd.minZ - 10, Wd.minZ, 300, "bound");
             colliders.Add(Wd.minX - 10, Wd.maxX + 10, Wd.maxZ, Wd.maxZ + 10, 300, "bound");
+
+            // ---------- Railway ----------
+            rail = BuildRailway();
         }
+        RailWorld rail;
 
         // =====================================================================================
         // Blocks

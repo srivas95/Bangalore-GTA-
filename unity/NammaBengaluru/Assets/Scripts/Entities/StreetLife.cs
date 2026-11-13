@@ -89,6 +89,7 @@ namespace NammaBengaluru.Entities
         public readonly List<Stall> stalls = new List<Stall>();
         readonly List<Circle> tmpC = new List<Circle>();
         static Material cowMat;
+        internal static void ResetStatics() { cowMat = null; }
         int frame;
         double clock;
 
