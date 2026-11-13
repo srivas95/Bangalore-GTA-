@@ -64,6 +64,10 @@ namespace NammaBengaluru.Editor
         public static void Android()
         {
             EditorUserBuildSettings.buildAppBundle = false;
+            // Smaller generated C++ (shared generics): a smaller app, and a build that fits in less
+            // disk space; and no separate debug symbols package.
+            PlayerSettings.SetIl2CppCodeGeneration(UnityEditor.Build.NamedBuildTarget.Android, UnityEditor.Build.Il2CppCodeGeneration.OptimizeSize);
+            EditorUserBuildSettings.androidCreateSymbols = AndroidCreateSymbols.Disabled;
             Build(BuildTarget.Android, BuildTargetGroup.Android, Output("Builds/NammaBengaluru.apk"));
         }
     }
