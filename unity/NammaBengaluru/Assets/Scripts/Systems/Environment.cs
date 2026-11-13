@@ -88,7 +88,11 @@ namespace NammaBengaluru.Systems
             var em = rainFx.emission; em.rateOverTime = 0;
             var pr = rgo.GetComponent<ParticleSystemRenderer>();
             pr.renderMode = ParticleSystemRenderMode.Stretch; pr.velocityScale = 0.06f; pr.lengthScale = 1;
-            pr.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit")) { color = new Color(0.8f, 0.85f, 0.9f, 0.4f) };
+            // (From a material asset in Resources: a shader found only by name isn't included in builds.)
+            var rainBase = Resources.Load<Material>("Materials/Rain");
+            var rainMat = rainBase != null ? new Material(rainBase) : new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+            rainMat.color = new Color(0.8f, 0.85f, 0.9f, 0.4f);
+            pr.sharedMaterial = rainMat;
             // Lamp heads and lit signs brighten at night (the glow shader's _Boost).
             glowMat.SetFloat("_Boost", 1.5f);
             // The player's headlights.

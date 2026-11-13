@@ -589,7 +589,9 @@ namespace NammaBengaluru
             particles.Step(dt, rig.camera);
         }
 
-        const string BOOT_KEY = "namma-bengaluru-boot";
+        // (Renamed from "namma-bengaluru-boot": the first builds stopped during start-up for an
+        // unrelated reason and left that flag set, which would wrongly drop the city to minimum detail.)
+        const string BOOT_KEY = "namma-bengaluru-boot-2";
         bool fellBack, bootOk;
 
         void LateUpdate()

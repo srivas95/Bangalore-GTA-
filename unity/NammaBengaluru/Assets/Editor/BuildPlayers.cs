@@ -56,6 +56,10 @@ namespace NammaBengaluru.Editor
         [MenuItem("Tools/Namma Bengaluru/Build Windows")]
         public static void Windows() => Build(BuildTarget.StandaloneWindows64, BuildTargetGroup.Standalone, Output("Builds/Windows/NammaBengaluru.exe"));
 
+        // (A Linux player: handy for testing a build on a Linux machine or in CI.)
+        [MenuItem("Tools/Namma Bengaluru/Build Linux")]
+        public static void Linux() => Build(BuildTarget.StandaloneLinux64, BuildTargetGroup.Standalone, Output("Builds/Linux/NammaBengaluru.x86_64"));
+
         [MenuItem("Tools/Namma Bengaluru/Build Android APK")]
         public static void Android()
         {
