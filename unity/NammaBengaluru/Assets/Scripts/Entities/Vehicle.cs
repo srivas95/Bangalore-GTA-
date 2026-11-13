@@ -106,6 +106,8 @@ namespace NammaBengaluru.Entities
         public double radius, mass, inertia, slideF, slideR, hornPitch, waterDepth, health = 100, fireT, smokeT;
         public string driver; // "player" | "ai" | "police" | null
         public bool stalled, siren, engineDead, wrecked, temp, keep;
+        // A crash wreck being pushed off the road by passers-by (main.js clearWreck).
+        public bool cleared; public double restT; public (double x, double z)? clearTo;
         public double impact;
         public (double x, double z)? lastHit;
         public int touchT;

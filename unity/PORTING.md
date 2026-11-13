@@ -54,7 +54,7 @@ builds.
 | `entities/human.js` | Baked to `Resources/Models/humans.*`; poses in `Entities/Human.cs` | Done (78 people) |
 | `entities/player.js` | `Entities/Player.cs` | Done (on foot, driving, punching, kicking, weapons, aiming, the GUNDA cheat) |
 | `systems/cameraRig.js`, `input.js` | `Systems/CameraRig.cs`, `Systems/GameInput.cs` | Done |
-| `main.js` (start-up, parking, vehicle contacts, `__game.step`) | `Game.cs` | In part |
+| `main.js` (start-up, parking, vehicle contacts, wreck clearing, `__game.step`) | `Game.cs` | Done (the WebGL-only parts, such as GPU upload and context loss, have no counterpart) |
 | `entities/traffic.js` | `Entities/Traffic.cs` | Done |
 | `systems/signals.js` | `Systems/Signals.cs` | Done |
 | `systems/environment.js`, `world/sky.js` (colours) | `Systems/Environment.cs`, `Resources/Shaders/Sky.shader` | Done |

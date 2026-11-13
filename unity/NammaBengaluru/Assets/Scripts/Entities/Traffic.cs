@@ -616,6 +616,7 @@ namespace NammaBengaluru.Entities
         {
             world.Show(v, false);
             v.temp = false; v.siren = false; v.vx = v.vz = v.angVel = 0;
+            v.cleared = false; v.restT = 0; v.clearTo = null; // (a pooled vehicle may be a wreck again)
             v.Repair();
             if (!pool.TryGetValue(v.type, out var list)) pool[v.type] = list = new List<Vehicle>();
             if (list.Count < 30) list.Add(v);

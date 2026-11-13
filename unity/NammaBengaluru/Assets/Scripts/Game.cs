@@ -388,6 +388,42 @@ namespace NammaBengaluru
         }
 
         // Settings (settings.js onChange in main.js).
+        // A wreck left lying in the road is pushed to the side by passers-by once it has come to
+        // rest, so one crash doesn't stop a junction for as long as you're around. Straight out
+        // from the road to just past the kerb, at a walking pace. True while it's being moved.
+        bool ClearWreck(Vehicle v, double dt)
+        {
+            if (v.cleared || v.driver != null || v.y > 1) return false;
+            if (v.clearTo == null)
+            {
+                if (v.Speed > 0.3) { v.restT = 0; return false; }
+                if ((v.restT += dt) < 6) return false;
+                if (layout.RoadAt(v.x, v.z) == null) { v.cleared = true; return false; } // not on a carriageway
+                // The nearest spot clear of every carriageway (in a junction, one road's kerb can be
+                // another road's lane), with room for the vehicle and nothing built there.
+                double half = v.spec.width / 2 + 0.4;
+                (double x, double z)? best = null;
+                for (int d = 2; d <= 16 && best == null; d++)
+                    for (int k = 0; k < 16; k++)
+                    {
+                        double a = k / 16.0 * Math.PI * 2, x = v.x + Math.Cos(a) * d, z = v.z + Math.Sin(a) * d;
+                        if (layout.RoadAt(x, z) != null || layout.RoadAt(x + Math.Cos(a) * -half, z + Math.Sin(a) * -half) != null || colliders.PointBlocked(x, z, 1)) continue;
+                        best = (x, z); break;
+                    }
+                if (best == null) { v.cleared = true; return false; }
+                v.clearTo = best;
+            }
+            var to = v.clearTo.Value;
+            double dx = to.x - v.x, dz = to.z - v.z, dist = Math.Sqrt(dx * dx + dz * dz), step = Math.Min(dist, 2 * dt);
+            if (dist < 0.05) { v.clearTo = null; v.cleared = true; return false; }
+            v.x += dx / dist * step; v.z += dz / dist * step;
+            v.vx = v.vz = v.angVel = 0;
+            var view = (VehicleView)v.view;
+            view.SetVisible(true);
+            view.Sync(dt);
+            return true;
+        }
+
         // ---------- Dynamic resolution (main.js) ----------
         // When frames take clearly longer than the display's refresh interval for a while, render
         // fewer pixels (down to 80% of the chosen resolution: lower looked smeared when driving);
@@ -498,6 +534,7 @@ namespace NammaBengaluru
             var focus = player.Pos;
             foreach (var v in free)
             {
+                if (v != pv && v.temp && ClearWreck(v, dt)) continue;
                 if (v != pv && (v.Speed > 0.05 || Math.Abs(v.angVel) > 0.02)) v.Update(dt, null, this);
                 var view = (VehicleView)v.view;
                 view.SetVisible(Math.Abs(v.x - focus.x) < 300 && Math.Abs(v.z - focus.z) < 300);
