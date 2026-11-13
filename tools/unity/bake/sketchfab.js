@@ -266,6 +266,24 @@ export function reviewEnds(t, renderer) {
   return out;
 }
 
+// Side view from the vehicle's right (+x), front (+z) to the right of the picture, a blue arrow
+// ahead of it; the steering wheels red.
+export function reviewSide(t, renderer) {
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdddddd);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x666666, 2.2));
+  const tex = new THREE.CanvasTexture(t.atlas); tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace;
+  const g = t.geometry.clone(), c = g.attributes.color.clone(), si = g.attributes.skinIndex;
+  for (let i = 0; i < c.count; i++) if (si.getX(i) > 0 && t.wheels.find((w) => w.spinIdx === si.getX(i) && w.front)) c.setXYZ(i, 1, 0, 0);
+  g.setAttribute('color', c);
+  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, vertexColors: true, roughness: 0.6 })));
+  scene.add(new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0.1, t.length / 2 + 0.1), Math.max(0.6, t.length * 0.25), 0x0044ff, 0.3, 0.2));
+  const L = t.length * 1.25;
+  const cam = new THREE.OrthographicCamera(-L * 0.6, L * 0.6, L * 0.4, -L * 0.4, 0.1, 100);
+  cam.position.set(20, t.height * 0.5, 0); cam.lookAt(0, t.height * 0.5, 0);
+  renderer.setSize(360, 240); renderer.render(scene, cam);
+  return renderer.domElement.toDataURL('image/jpeg', 0.85);
+}
+
 export function reviewImage(t, renderer) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xdddddd);

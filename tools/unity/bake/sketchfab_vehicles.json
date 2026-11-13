@@ -111,7 +111,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-36d04d99171e4d59b540c25d8650dbd5",
   "faces": 24382,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "yaw": 180
  },
  {
   "uid": "06fac75c72ed4780a19034447c81e72c",
@@ -131,7 +132,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-2417ca0dab054765981cbd7ddc5efd1c",
   "faces": 3744,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "yaw": 180
  },
  {
   "uid": "07af5bfb6f484e3d93d97743ef04dfd0",
