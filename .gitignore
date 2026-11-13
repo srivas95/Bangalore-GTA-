@@ -8,3 +8,7 @@ tools/unity/.tmp/
 
 # Sketchfab downloads (the bake reads them; the baked output is committed)
 tools/unity/bake/sketchfab_cache/
+
+# Unity Asset Store packages: their licence allows shipping them in builds, not publishing them here
+unity/NammaBengaluru/Assets/StoreAssets/
+unity/NammaBengaluru/Assets/StoreAssets.meta
