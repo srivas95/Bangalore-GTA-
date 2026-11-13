@@ -53,8 +53,6 @@ The Unity version (`unity/`) adds these models from Sketchfab. Each is used unde
 - "Low Poly Car - BMW E46 1998" (<https://sketchfab.com/3d-models/d9bfd8126e754164b48ded833c017bbf>) by roh3d (<https://sketchfab.com/roh3d>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
 - "Kiri '10 - Low poly model" (<https://sketchfab.com/3d-models/7fd6e15785fa4aa9bfd6e31eb7c97ba6>) by DanielZhabotinsky (<https://sketchfab.com/DanielZhabotinsky>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
 - "MPV 2" (<https://sketchfab.com/3d-models/eff0a2db0bcf46c59c5bfe1c8804083d>) by Han66st (<https://sketchfab.com/Han66st>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
-- "Innova Reborn Low Poly" (<https://sketchfab.com/3d-models/3d84a9e315004b5591203e868c6b6f78>) by satriopemalang1210 (<https://sketchfab.com/satriopemalang1210>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
-- "Mahindra Thar (Prisma 3d)" (<https://sketchfab.com/3d-models/6e723690d42748ad9887ce2d7dfa1acc>) by X_BLADE. (<https://sketchfab.com/X_BLADE.>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
 - "Indian Bus 3" (<https://sketchfab.com/3d-models/5a8fc0b9fddc402298094b6819d9b602>) by playmode280513 (<https://sketchfab.com/playmode280513>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
 - "Indian Bus 5" (<https://sketchfab.com/3d-models/66af86a2c1c44464881a2cdccfc23ecc>) by playmode280513 (<https://sketchfab.com/playmode280513>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
 - "Indian Bus 1" (<https://sketchfab.com/3d-models/a76faa90aa424a44aa28449c11133ea2>) by playmode280513 (<https://sketchfab.com/playmode280513>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).

@@ -14,7 +14,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { VEHICLE_TYPES } from '/src/entities/vehicleModels.js';
 
-const ATLAS_MAX = 1024;
+// Atlas size: 1024 px, or 2048 for vehicles over 6 m (a bus's livery needs the pixels); each
+// texture keeps up to 1024 px.
+let ATLAS_MAX = 1024;
+const TEX_MAX = 1024;
 
 // Parts of a model, in model space: [{ geo (non-indexed, position/normal/uv/color), mat }].
 function collectParts(root) {
@@ -118,7 +121,7 @@ function averageColour(img) {
 function packAtlas(images) {
   for (let scale = 1; scale > 0.05; scale *= 0.8) {
     const items = images.map((img) => {
-      const k = Math.min(1, (ATLAS_MAX / 2) / Math.max(img.width, img.height)) * scale;
+      const k = Math.min(1, TEX_MAX / Math.max(img.width, img.height)) * scale;
       return { img, w: Math.max(8, Math.round(img.width * k)), h: Math.max(8, Math.round(img.height * k)) };
     }).sort((a, b) => b.h - a.h);
     items.push({ img: null, w: 8, h: 8 }); // white, for untextured parts
@@ -163,7 +166,10 @@ export function bakeMaterials(parts) {
     const col = new Float32Array(n * 3), uv = new Float32Array(n * 2), pbr = new Float32Array(n * 3);
     const [rx, ry, rw, rh] = useTex ? atlas.rects.get(img) : [0, 0, 0, 0];
     const eu = 0.5 / atlas.W, ev = 0.5 / atlas.H;
-    const glow = m.emissive ? Math.max(m.emissive.r, m.emissive.g, m.emissive.b) * (m.emissiveIntensity ?? 1) : 0;
+    // Glow only for lamps: an emissive material named like one (some models mark their whole body
+    // emissive, which would light the vehicle up white at night).
+    const lampName = /light|lamp|blink|indicat|beacon|siren|amber|brake|tail|head|lykta|strlkast/i.test(m.name || '');
+    const glow = lampName && m.emissive ? Math.max(m.emissive.r, m.emissive.g, m.emissive.b) * (m.emissiveIntensity ?? 1) : 0;
     for (let i = 0; i < n; i++) {
       const k = VC ? [VC.getX(i), VC.getY(i), VC.getZ(i)] : [1, 1, 1];
       col.set([base.r * k[0], base.g * k[1], base.b * k[2]], i * 3);
@@ -206,7 +212,9 @@ export async function bakeVehicle(cfg) {
   const vb = new THREE.Box3(); parts.forEach((p) => vb.union(p.geo.boundingBox));
   const vs = vb.getSize(new THREE.Vector3());
 
+  ATLAS_MAX = (cfg.length || spec.length) > 6 ? 2048 : 1024;
   const atlas = bakeMaterials(parts);
+  ATLAS_MAX = 1024;
 
   // Wheels -> bones (body 0; front wheels steer then spin; rear wheels spin).
   const wheels = findWheels(parts, vs.y, !!spec.twoWheeler);
@@ -237,6 +245,27 @@ export async function bakeVehicle(cfg) {
 }
 
 // A review picture of a template: three-quarter view from the front left, wheels tinted red.
+// End-on pictures: from the front (+z, left) and from the back (right), to check which way it faces.
+export function reviewEnds(t, renderer) {
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xdddddd);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x666666, 2.2));
+  const tex = new THREE.CanvasTexture(t.atlas); tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace;
+  const g = t.geometry.clone(), c = g.attributes.color.clone(), si = g.attributes.skinIndex;
+  for (let i = 0; i < c.count; i++) if (si.getX(i) > 0 && t.wheels.find((w) => w.spinIdx === si.getX(i) && w.front)) c.setXYZ(i, 1, 0, 0); // steering wheels red
+  g.setAttribute('color', c);
+  const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, vertexColors: true, roughness: 0.6 }));
+  scene.add(mesh);
+  const L = Math.max(t.width, t.height) * 1.6;
+  const out = [];
+  for (const z of [1, -1]) {
+    const cam = new THREE.PerspectiveCamera(40, 1, 0.1, 400);
+    cam.position.set(L * 0.35, t.height * 0.6, z * (t.length / 2 + L * 1.4)); cam.lookAt(0, t.height * 0.45, 0);
+    renderer.setSize(240, 240); renderer.render(scene, cam);
+    out.push(renderer.domElement.toDataURL('image/jpeg', 0.85));
+  }
+  return out;
+}
+
 export function reviewImage(t, renderer) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xdddddd);
