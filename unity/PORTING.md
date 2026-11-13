@@ -75,9 +75,10 @@ builds.
 | `systems/metroRide.js` | `Systems/MetroRide.cs` | Done |
 | `world/railway.js` | `Render/City.Railway.cs` | Done |
 | `systems/story.js` | `Systems/Story.cs`, missions exported by `tools/unity/export_story.mjs` to `Resources/Data/story.json` | Done |
-| `systems/settings.js`, the pause screen (`#help`) | `Systems/Settings.cs`, `UI/Menus.cs` | Done (world detail levels and dynamic resolution aren't ported) |
+| `systems/settings.js`, the pause screen (`#help`) | `Systems/Settings.cs`, `UI/Menus.cs` | Done |
 | `systems/liveWeather.js` | `Systems/LiveWeather.cs` | Done |
 | `ui/touch.js` | `UI/Menus.cs` (touch controls) | Done |
+| `world/detail.js`, dynamic resolution (`main.js`) | `World/Detail.cs`, `Game.cs` | Done |
 | `world/landmarks.js` | `Render/City.Landmarks.cs`, `Resources/Models/landmarks.json` | Done (baked from the JS builders, animations sampled) |
 | `world/props.js` | `Render/StreetProps.cs`, meshes baked by `tools/unity/bake/models.mjs` to `Resources/Models/props.json` | Done |
 | `world/halos.js`, `blobs.js` | `Render/Glows.cs`, `Resources/Shaders/Halo.shader`, `Blob.shader` | Done |
@@ -267,3 +268,9 @@ See `docs/unity/pause.png`, `settings.png` and `touch.png`.
 Both GLBs keep their licences (CC-BY-4.0 for the car pack, CC0 for the props): see `MODEL_CREDITS.md`.
 
 See `docs/unity/ground-shading.png`, `halos-night.png`, `pack-vehicle.png` and `street-props.png`. Re-bake after changing either GLB or the vehicle builders: `node --max-old-space-size=6144 tools/unity/bake/models.mjs`.
+
+### World detail and dynamic resolution
+
+- **World detail** (`detail.js`). Like the web game, the city can be built at three levels, picked in Settings → World detail (after a restart). Auto picks Full on computers and Lite on phones and on machines with less than 8 GB of memory. Lite drops roof parapets, railing pickets, median shrubs, sleepers and overhead cables, and uses cheaper trees and tanks, nearer props and a coarser ground-shading map. Minimum also halves the lamps and leaves out the rooftop tanks. None of this draws random numbers, so every level builds the same city.
+- **Crash fallback.** If a start never reaches the first frame (a phone running out of memory), the next one steps down a level, switches to the Low preset, and says so.
+- **Dynamic resolution.** As in main.js, the URP render scale drops in 10% steps to 80% of the chosen resolution while frames run long, and creeps back with headroom (Settings → Dynamic resolution).

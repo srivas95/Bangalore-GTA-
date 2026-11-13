@@ -119,6 +119,7 @@ namespace NammaBengaluru.UI
             var s = settings;
             Select("Quality", "quality", () => s.values.quality, new[] { "low", "medium", "high" }, new[] { "Low", "Medium", "High" }, v => s.Preset(v));
             Slider("Resolution", "resScale", () => s.values.resScale, 0.4f, 1, 0.05f, Pct);
+            Check("Dynamic resolution <size=11>(drops pixels to keep it smooth)</size>", "dynamicRes", () => s.values.dynamicRes);
             Select("Shadows", "shadows", () => s.values.shadows, new[] { "off", "near", "full" }, new[] { "Off", "Near you", "Full" });
             Check("Bloom (extra glow)", "bloom", () => s.values.bloom);
             Slider("Draw distance", "drawDist", () => s.values.drawDist, 0.4f, 1, 0.05f, Pct);
@@ -129,6 +130,7 @@ namespace NammaBengaluru.UI
             Check("Live weather <size=11>(Bengaluru, from Open-Meteo)</size>", "liveWeather", () => s.values.liveWeather);
             Slider("Volume", "volume", () => s.values.volume, 0, 1, 0.05f, Pct);
             Select("Touch controls", "touch", () => s.values.touch, new[] { "auto", "on", "off" }, new[] { "Auto", "On", "Off" });
+            Select("World detail <size=11>(after restart)</size>", "detail", () => s.values.detail, new[] { "auto", "full", "lite", "min" }, new[] { "Auto", "Full", "Lite (phones)", "Minimum" });
             Button(p, "Done", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-90, 22), new Vector2(160, 44), GOLD, Css(0x111111), () => ShowSettings(false), 18);
             TextMeshProUGUI resetLabel = null;
             var rb = Button(p, "Reset save game", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(90, 22), new Vector2(180, 44), new Color(1, 1, 1, 0.08f), Css(0xff8a7a), () =>

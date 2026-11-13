@@ -15,6 +15,7 @@ namespace NammaBengaluru.Systems
         public string shadows = "full"; // off | near (a small area round the player) | full
         public bool bloom, invertY, dynamicRes = true, liveWeather = true;
         public string touch = "auto"; // auto | on | off
+        public string detail = "auto"; // auto | full | lite | min: world detail for the next start
         public SettingsValues Clone() => (SettingsValues)MemberwiseClone();
     }
 
@@ -71,6 +72,18 @@ namespace NammaBengaluru.Systems
         }
 
         public void OnChange(Action<SettingsValues> f) { listeners.Add(f); f(values); }
+
+        // World detail for the next start: 'full' on computers, 'lite' on phones and on computers
+        // with less than 8 GB of memory (World/Detail.cs).
+        public string DetailLevel
+        {
+            get
+            {
+                string d = values.detail;
+                if (d == "full" || d == "lite" || d == "min") return d;
+                return IsTouchDevice || SystemInfo.systemMemorySize < 7800 ? "lite" : "full";
+            }
+        }
 
         public bool TouchEnabled => values.touch == "on" || (values.touch == "auto" && IsTouchDevice);
     }

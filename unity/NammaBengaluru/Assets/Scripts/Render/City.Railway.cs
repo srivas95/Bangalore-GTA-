@@ -192,7 +192,7 @@ namespace NammaBengaluru.Render
                         st.Box(0, CURB, 0, l + 0.05, 0.28, 10, 0x6e665e);
                         foreach (var tz in RAIL_TRACKS)
                         {
-                            for (double x = -l / 2 + 0.5; x < l / 2; x += 1.2) st.Box(x, CURB + 0.28, tz, 0.25, 0.12, 2.5, 0x5a4a3a, new BoxOpts { sides = false });
+                            if (!Detail.lite) for (double x = -l / 2 + 0.5; x < l / 2; x += 1.2) st.Box(x, CURB + 0.28, tz, 0.25, 0.12, 2.5, 0x5a4a3a, new BoxOpts { sides = false });
                             foreach (var o in new[] { -0.72, 0.72 }) metal.Box(0, CURB + 0.4, tz + o, l + 0.05, 0.14, 0.08, 0x8a8a8a);
                         }
                         foreach (var tz in RAIL_TRACKS) metal.Box(0, CURB + 6.3, tz, l + 0.05, 0.03, 0.03, 0x333333);

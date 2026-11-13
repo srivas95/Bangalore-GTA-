@@ -186,7 +186,7 @@ namespace NammaBengaluru.Render
             var lampHeads = new List<double[]>();
             BuildLamps(lampHeads);
             var forest = group.gameObject.AddComponent<InstancedForest>();
-            forest.Init(trees.Where(t => !OnCarriageway(t.x, t.z, 0.6, false)).ToList(), tanks, mats, colliders);
+            forest.Init(trees.Where(t => !OnCarriageway(t.x, t.z, 0.6, false)).ToList(), Detail.min ? new List<double[]>() : tanks, mats, colliders);
 
             return new CityResult { anims = anims, pois = pois, trees = trees, lamps = lamps, lampHeads = lampHeads, tanks = tanks, signs = signs, props = props, materials = mats, root = group, rail = rail };
         }
@@ -381,7 +381,7 @@ namespace NammaBengaluru.Render
                         B.xf = f;
                         sw.Box(0, 0, 0, mw, 0.35, l, 0xb0aaa0, new BoxOpts { tileW = 2, tileH = 2, topBuilder = grass, topTile = 4 });
                         colliders.Framed(f).AddCentered(0, 0, mw, l, 0.9, "median");
-                        for (double k = -l / 2 + 4; k < l / 2 - 3; k += 9) stone.Put(shrub, 0, 0.75, k, 0x4f7a32, k, 0.8, 0.55, 0.8);
+                        if (!Detail.lite) for (double k = -l / 2 + 4; k < l / 2 - 3; k += 9) stone.Put(shrub, 0, 0.75, k, 0x4f7a32, k, 0.8, 0.55, 0.8);
                         B.xf = null;
                     }
                     s = Math.Max(s, c[1]);
@@ -713,7 +713,8 @@ namespace NammaBengaluru.Render
                 var st = B.Get("stone");
                 // Parapets in a dirtier, greyer shade of the wall colour.
                 var pc = tint.Lerp(GREY, 0.35).Mul(0.82);
-                Parapet(st, lot, top, 0.9, 0.25, pc);
+                // Roof parapets: about a third of the city's triangles, so phones skip them.
+                if (!Detail.lite) Parapet(st, lot, top, 0.9, 0.25, pc);
                 // Black Sintex water tanks and the stair headroom: a Bengaluru skyline staple.
                 int n = rng.Next() < 0.8 ? 1 + (int)Math.Floor(Rand(0, 2.5)) : 0;
                 for (int k = 0; k < n; k++)
@@ -1217,10 +1218,13 @@ namespace NammaBengaluru.Render
         void BuildLamps(List<double[]> heads)
         {
             var b = new BuilderSet(CHUNK);
-            var pole = b.Get("metal"); var head = b.Get("glow"); var cable = b.Get("cable");
-            var cyl = Primitives.Cylinder(0.08, 0.12, 1, 6, 1, true);
+            var pole = b.Get("metal"); var head = b.Get("glow");
+            // Overhead cables at full detail only.
+            var cable = Detail.lite ? null : b.Get("cable");
+            var cyl = Primitives.Cylinder(0.08, 0.12, 1, Detail.lite ? 4 : 6, 1, true);
+            var lamps = Detail.min ? this.lamps.Where((_, k) => k % 2 == 0).ToList() : this.lamps;
             var r = new Mulberry32(91);
-            for (int k = 1; k < lamps.Count; k++)
+            for (int k = 1; cable != null && k < lamps.Count; k++)
             {
                 double x1 = lamps[k - 1][0], z1 = lamps[k - 1][1], ax = lamps[k - 1][2], az = lamps[k - 1][3], run1 = lamps[k - 1][4];
                 double x2 = lamps[k][0], z2 = lamps[k][1], run2 = lamps[k][4];

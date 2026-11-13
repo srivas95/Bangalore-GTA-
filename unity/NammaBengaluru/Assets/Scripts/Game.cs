@@ -165,6 +165,20 @@ namespace NammaBengaluru
             layout = new Layout(md, cfg);
             long tLayout = sw.ElapsedMilliseconds;
             colliders = new Colliders();
+            // World detail is fixed at build time. If the last start never got as far as drawing the
+            // city (a phone running out of memory kills the app), step down a level (main.js).
+            settings = new Settings();
+            string level = settings.DetailLevel;
+            if (PlayerPrefs.GetString(BOOT_KEY, "") == "starting" && level != "min")
+            {
+                level = level == "full" ? "lite" : "min";
+                fellBack = true;
+                settings.Preset("low");
+                settings.Set("detail", level);
+            }
+            PlayerPrefs.SetString(BOOT_KEY, "starting");
+            PlayerPrefs.Save();
+            Detail.Set(level);
             city = City.Build(layout, colliders, md, cfg, transform);
             long tCity = sw.ElapsedMilliseconds - tLayout;
             SetupEnvironment();
@@ -202,11 +216,10 @@ namespace NammaBengaluru
             metroRide = new MetroRide(this, metro);
             // Baked ground shading next to buildings, walls, trees and under the metro viaducts.
             halos = new Halos(city.lampHeads);
-            props = new StreetProps(city.props, Settings.IsTouchDevice);
-            GroundShading.Bake(layout.world, colliders.all, city.trees, GroundShading.MetroStrips(metro.routes), Settings.IsTouchDevice ? 3 : 2.5);
+            props = new StreetProps(city.props, Detail.lite);
+            GroundShading.Bake(layout.world, colliders.all, city.trees, GroundShading.MetroStrips(metro.routes), Detail.lite ? 3 : 2.5);
             story = new Story(this, root);
             // Settings, the pause screen and the touch controls.
-            settings = new Settings();
             liveWeather = new LiveWeather(env, settings, this);
             hud.BuildMenus(settings);
             hud.touchInput = input;
@@ -361,6 +374,7 @@ namespace NammaBengaluru
 
         public void Play()
         {
+            if (!started && fellBack) Say($"The last start ran out of memory, so the city is now built with {(Detail.min ? "minimum" : "lite")} detail (Settings → World detail).", 6);
             started = true; paused = false;
             hud.ShowPause(false, true);
             if (!settings.TouchEnabled && !freeCam) input.Lock(true);
@@ -374,11 +388,35 @@ namespace NammaBengaluru
         }
 
         // Settings (settings.js onChange in main.js).
+        // ---------- Dynamic resolution (main.js) ----------
+        // When frames take clearly longer than the display's refresh interval for a while, render
+        // fewer pixels (down to 80% of the chosen resolution: lower looked smeared when driving);
+        // creep back up when there's headroom again.
+        double dynScale = 1, frameAvg = 1 / 60.0, frameTarget = 1 / 60.0, winMin = 1, winT, resT, slowT, fastT;
+        bool dynRes = true;
+
+        void AdaptResolution(double raw)
+        {
+            if (!dynRes || paused || raw > 0.25 || raw <= 0 || urp == null) return;
+            frameAvg += (raw - frameAvg) * 0.05;
+            // Aim for the display's refresh rate (the shortest frames seen in a 5 s window), but
+            // never above 60 fps.
+            winMin = Math.Min(winMin, raw); winT += raw;
+            if (winT > 5) { frameTarget = Math.Min(1 / 50.0, Math.Max(1 / 61.0, winMin)); winMin = 1; winT = 0; }
+            resT -= raw;
+            if (frameAvg > frameTarget * 1.45) { slowT += raw; fastT = 0; } else if (frameAvg < frameTarget * 1.12) { fastT += raw; slowT = 0; } else { slowT = Math.Max(0, slowT - raw); fastT = 0; }
+            if (resT > 0) return;
+            if (slowT > 2.5 && dynScale > 0.8) { dynScale = Math.Max(0.8, dynScale - 0.1); urp.renderScale = (float)(settings.values.resScale * dynScale); resT = 4; slowT = 0; }
+            else if (fastT > 5 && dynScale < 1) { dynScale = Math.Min(1, dynScale + 0.1); urp.renderScale = (float)(settings.values.resScale * dynScale); resT = 4; fastT = 0; }
+        }
+
         void ApplySettings(SettingsValues v)
         {
             if (urp != null)
             {
-                urp.renderScale = v.resScale;
+                dynRes = v.dynamicRes;
+                if (!dynRes) dynScale = 1;
+                urp.renderScale = (float)(v.resScale * dynScale);
                 urp.shadowDistance = v.shadows == "near" ? 60 : urpShadowDist;
             }
             var cam = Camera.main;
@@ -514,8 +552,14 @@ namespace NammaBengaluru
             particles.Step(dt, rig.camera);
         }
 
+        const string BOOT_KEY = "namma-bengaluru-boot";
+        bool fellBack, bootOk;
+
         void LateUpdate()
         {
+            // The city got drawn: this start didn't run out of memory.
+            if (!bootOk) { bootOk = true; PlayerPrefs.DeleteKey(BOOT_KEY); PlayerPrefs.Save(); }
+            AdaptResolution(Time.unscaledDeltaTime);
             particles?.Draw();
             var cam = Camera.main;
             BlobShadows.Draw(cam);

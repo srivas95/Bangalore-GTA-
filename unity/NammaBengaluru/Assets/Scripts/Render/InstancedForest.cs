@@ -1,6 +1,7 @@
 // Trees and rooftop water tanks, GPU-instanced per type and 320 m chunk (port of
 // buildInstancedTrees and buildTanks in src/world/city.js). Canopies are clusters of
 // alpha-tested leaf cards on an ellipsoid shell, with a cheaper canopy for distant chunks.
+using System;
 using System.Collections.Generic;
 using NammaBengaluru.World;
 using UnityEngine;
@@ -10,7 +11,9 @@ namespace NammaBengaluru.Render
 {
     public class InstancedForest : MonoBehaviour
     {
-        const float CHUNK = 320, NEAR_RANGE = 140, FAR = 900 + CHUNK * 0.7f, TANK_RANGE = 450;
+        const float CHUNK = 320, FAR = 900 + CHUNK * 0.7f;
+        static float NEAR_RANGE => Detail.lite ? 40 : 140;
+        static float TANK_RANGE => Detail.lite ? 260 : 450;
 
         class Batch
         {
@@ -94,7 +97,8 @@ namespace NammaBengaluru.Render
 
         public void Init(List<TreeSpec> trees, List<double[]> tanks, Dictionary<string, Material> mats, Colliders colliders)
         {
-            var hi = new[] { Canopy(3.4, 1.8, 64, 24, 3, 1.1), Canopy(2.6, 2.0, 64, 24, 9, 0.95), Canopy(1.9, 1.6, 45, 17, 11, 0.8) };
+            int NH = Detail.lite ? 32 : 64, IH = Detail.lite ? 12 : 24;
+            var hi = new[] { Canopy(3.4, 1.8, NH, IH, 3, Detail.lite ? 1.4 : 1.1), Canopy(2.6, 2.0, NH, IH, 9, Detail.lite ? 1.2 : 0.95), Canopy(1.9, 1.6, (int)Math.Round(NH * 0.7, MidpointRounding.AwayFromZero), (int)Math.Round(IH * 0.7, MidpointRounding.AwayFromZero), 11, Detail.lite ? 1.0 : 0.8) };
             var lo = new[] { Canopy(3.4, 1.8, 16, 6, 4, 2.1), Canopy(2.6, 2.0, 16, 6, 10, 1.8), Canopy(1.9, 1.6, 12, 4, 12, 1.5) };
             double[] trunkH = { 4.2, 3.2, 1.8 };
             int[][] colours = { new[] { 0x3f6a2a, 0x4a7a30, 0x557d33, 0x3a5f28, 0x5e8a3a }, new[] { 0xd8452a, 0xe25a2a, 0xc93a22, 0xe86a30 }, new[] { 0x4c8a3a, 0x5a9a40, 0xa04aa0, 0x8a5ac8 } };
@@ -144,7 +148,7 @@ namespace NammaBengaluru.Render
             }
 
             // Black Sintex tanks on the roofs: tens of thousands, drawn only near the camera.
-            var tankMesh = FromPrim(Primitives.Cylinder(0.6, 0.6, 1.3, 8), 0.65, "tank");
+            var tankMesh = FromPrim(Primitives.Cylinder(0.6, 0.6, 1.3, Detail.lite ? 6 : 8), 0.65, "tank");
             var tankOrder = new List<(long, long)>();
             var tankLists = new Dictionary<(long, long), List<Matrix4x4>>();
             foreach (var t in tanks)

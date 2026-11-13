@@ -245,7 +245,7 @@ namespace NammaBengaluru.Render
                         metal.Box(0, CURB_H + 0.25, 0, 0.05, 0.05, l, 0x1a1a1a);
                         metal.Box(0, CURB_H + 1.05, 0, 0.05, 0.05, l, 0x1a1a1a);
                         metal.Box(0, CURB_H, -l / 2, 0.09, 1.25, 0.09, 0x1a1a1a);
-                        for (double b = -l / 2 + 0.25; b < l / 2; b += 0.25) metal.Box(0, CURB_H, b, 0.02, 1.1, 0.02, 0x1a1a1a);
+                        if (!Detail.lite) for (double b = -l / 2 + 0.25; b < l / 2; b += 0.25) metal.Box(0, CURB_H, b, 0.02, 1.1, 0.02, 0x1a1a1a);
                         B.xf = null;
                         colliders.AddSegment(x0, z0, x1, z1, 0.1, 1.2, "wall");
                     }
