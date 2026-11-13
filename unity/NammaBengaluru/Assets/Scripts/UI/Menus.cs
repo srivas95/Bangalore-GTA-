@@ -71,7 +71,7 @@ namespace NammaBengaluru.UI
             playLabel = play.GetComponentInChildren<TextMeshProUGUI>();
             Button(card, "Settings", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(200, 58), new Vector2(150, 52), new Color(1, 1, 1, 0.08f), Color.white, () => ShowSettings(true), 18);
             var credits = Text(Rect(card, "Credits", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0, 12), new Vector2(580, 34)), 11, Css(0x8a8a8a), TextAlignmentOptions.Bottom, null, sansFont);
-            credits.text = "Textures and props from Poly Haven (CC0) · sounds: see SOUND_CREDITS.md · weather: Open-Meteo (CC BY 4.0)"; credits.textWrappingMode = TextWrappingModes.Normal;
+            credits.text = "Textures and props from Poly Haven (CC0) · vehicles and people from Sketchfab (CC BY: see MODEL_CREDITS.md) · sounds: see SOUND_CREDITS.md · weather: Open-Meteo (CC BY 4.0)"; credits.textWrappingMode = TextWrappingModes.Normal;
             pausePanel = panel.gameObject;
             BuildSettings(panel);
             BuildTouch();
