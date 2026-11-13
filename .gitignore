@@ -5,3 +5,6 @@ dist/
 out/
 __pycache__/
 tools/unity/.tmp/
+
+# Sketchfab downloads (the bake reads them; the baked output is committed)
+tools/unity/bake/sketchfab_cache/

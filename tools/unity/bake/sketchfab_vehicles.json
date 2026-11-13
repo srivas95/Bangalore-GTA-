@@ -1,0 +1,518 @@
+[
+ {
+  "uid": "5775d012693741008acff9dad410e92d",
+  "type": "auto",
+  "name": "Autorikshaw - Indian Tuk Tuk",
+  "author": "bhagathartworks",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-5775d012693741008acff9dad410e92d",
+  "faces": 8128,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "44776bcb34e04c1a8b9c18a70376304e",
+  "type": "auto",
+  "name": "Auto Rickshaw",
+  "author": "rSquare",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-44776bcb34e04c1a8b9c18a70376304e",
+  "faces": 12604,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "c7c87455ad014b3f9fc8c9fb2d164a61",
+  "type": "auto",
+  "name": "Low Poly Autorickshaw aka TukTuk",
+  "author": "Nirmal.Justin",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-c7c87455ad014b3f9fc8c9fb2d164a61",
+  "faces": 4800,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "5f4e470139354ec294d5ea867570fb88",
+  "type": "auto",
+  "name": "Auto rickshaw 3d fts",
+  "author": "sunnykhude",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-5f4e470139354ec294d5ea867570fb88",
+  "faces": 15000,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "6c67aa3f3c60455ba12780f442c65a81",
+  "type": "scooter",
+  "name": "Vario PSX Style - Han66st",
+  "author": "Han66st",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-6c67aa3f3c60455ba12780f442c65a81",
+  "faces": 1354,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "0162842f5bda4ef3b30972fd634c10bb",
+  "type": "scooter",
+  "name": "Indian Scooter 3d model low poly",
+  "author": "Shiveloper",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-0162842f5bda4ef3b30972fd634c10bb",
+  "faces": 11832,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "53474287ff1045e49f82819f50b8736f",
+  "type": "scooter",
+  "name": "Scooter Motorcycle",
+  "author": "norberto3d",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-53474287ff1045e49f82819f50b8736f",
+  "faces": 3143,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "d8d0022e70d048b4a87f7248655f73bf",
+  "type": "scooter",
+  "name": "Vespa px125",
+  "author": "alban",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-d8d0022e70d048b4a87f7248655f73bf",
+  "faces": 29152,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "f121301624174b179ca4d50158797b03",
+  "type": "bike",
+  "name": "Honda CB 750 F Super Sport 1970💛",
+  "author": "Alex.Ka.",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-f121301624174b179ca4d50158797b03",
+  "faces": 37041,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "9c7c9fd320844828a597320a71c31f81",
+  "type": "bike",
+  "name": "Vivian's Bike",
+  "author": "Mace121",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-9c7c9fd320844828a597320a71c31f81",
+  "faces": 1428,
+  "licenseSlug": "by",
+  "drop": "too crude"
+ },
+ {
+  "uid": "36d04d99171e4d59b540c25d8650dbd5",
+  "type": "sportBike",
+  "name": "pulsar 135 ls",
+  "author": "EmanuelRestrepoVelez",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-36d04d99171e4d59b540c25d8650dbd5",
+  "faces": 24382,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "06fac75c72ed4780a19034447c81e72c",
+  "type": "sportBike",
+  "name": "Bajaj pulsar 150",
+  "author": "shreyanshchaurasia13",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-06fac75c72ed4780a19034447c81e72c",
+  "faces": 14140,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "2417ca0dab054765981cbd7ddc5efd1c",
+  "type": "sportBike",
+  "name": "[Mobile Optimized] Suzuki PV 50",
+  "author": "Rysky",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-2417ca0dab054765981cbd7ddc5efd1c",
+  "faces": 3744,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "07af5bfb6f484e3d93d97743ef04dfd0",
+  "type": "hatch",
+  "name": "PS1-Style Maruti 800 - Game Ready",
+  "author": "projektsansstudios",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-07af5bfb6f484e3d93d97743ef04dfd0",
+  "faces": 2934,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "055ff8a21b8d4d279debca089e2fafcd",
+  "type": "hatch",
+  "name": "Ace '11 - Low Poly model",
+  "author": "DanielZhabotinsky",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-055ff8a21b8d4d279debca089e2fafcd",
+  "faces": 18442,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "e3bbb96f7a61412086868ea3b136de2c",
+  "type": "hatch",
+  "name": "1997 Renault Clio Mk.2",
+  "author": "ImperialBlue3D",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-e3bbb96f7a61412086868ea3b136de2c",
+  "faces": 2728,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "d7ac4672e23c4705b6bb3050fa3a6bbe",
+  "type": "hatch",
+  "name": "Hatchback",
+  "author": "MaG80",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-d7ac4672e23c4705b6bb3050fa3a6bbe",
+  "faces": 17724,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "a96e3b803a144b44ab4b08d484ad844d",
+  "type": "sedan",
+  "name": "Maruti Suzuki Dzire",
+  "author": "rmihir560",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-a96e3b803a144b44ab4b08d484ad844d",
+  "faces": 14199,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "6254cf268d9b46f79dd2a6511e153891",
+  "type": "sedan",
+  "name": "low-poly Toyota Corolla E80 Sedan",
+  "author": "DU1701",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-6254cf268d9b46f79dd2a6511e153891",
+  "faces": 4492,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "6ed25676dd3e460d849dfce9beb73972",
+  "type": "sedan",
+  "name": "1995 Toyota Corolla DX (E100)",
+  "author": "ImperialBlue3D",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-6ed25676dd3e460d849dfce9beb73972",
+  "faces": 5152,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "d9bfd8126e754164b48ded833c017bbf",
+  "type": "sedan",
+  "name": "Low Poly Car - BMW E46 1998",
+  "author": "roh3d",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-d9bfd8126e754164b48ded833c017bbf",
+  "faces": 18447,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "7fd6e15785fa4aa9bfd6e31eb7c97ba6",
+  "type": "sedan",
+  "name": "Kiri '10 - Low poly model",
+  "author": "DanielZhabotinsky",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-7fd6e15785fa4aa9bfd6e31eb7c97ba6",
+  "faces": 13035,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "1159454471404c9397f6288aef0014f7",
+  "type": "suv",
+  "name": "Mahindara Scropio",
+  "author": "maregajavier",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-1159454471404c9397f6288aef0014f7",
+  "faces": 1284,
+  "licenseSlug": "by",
+  "drop": "untextured, blocky"
+ },
+ {
+  "uid": "eff0a2db0bcf46c59c5bfe1c8804083d",
+  "type": "suv",
+  "name": "MPV 2",
+  "author": "Han66st",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-eff0a2db0bcf46c59c5bfe1c8804083d",
+  "faces": 2122,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "3d84a9e315004b5591203e868c6b6f78",
+  "type": "suv",
+  "name": "Innova Reborn Low Poly",
+  "author": "satriopemalang1210",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-3d84a9e315004b5591203e868c6b6f78",
+  "faces": 8494,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "6e723690d42748ad9887ce2d7dfa1acc",
+  "type": "suv",
+  "name": "Mahindra Thar (Prisma 3d)",
+  "author": "X_BLADE.",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-6e723690d42748ad9887ce2d7dfa1acc",
+  "faces": 6796,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "192f7e81dce84c6780434f692a0f96c5",
+  "type": "suv",
+  "name": "Jeep Renegade 2016",
+  "author": "pinceladas3d",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-192f7e81dce84c6780434f692a0f96c5",
+  "faces": 4734,
+  "licenseSlug": "by",
+  "drop": "untextured"
+ },
+ {
+  "uid": "5a8fc0b9fddc402298094b6819d9b602",
+  "type": "bus",
+  "name": "Indian Bus 3",
+  "author": "playmode280513",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-5a8fc0b9fddc402298094b6819d9b602",
+  "faces": 4044,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "66af86a2c1c44464881a2cdccfc23ecc",
+  "type": "bus",
+  "name": "Indian Bus 5",
+  "author": "playmode280513",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-66af86a2c1c44464881a2cdccfc23ecc",
+  "faces": 4076,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "a76faa90aa424a44aa28449c11133ea2",
+  "type": "bus",
+  "name": "Indian Bus 1",
+  "author": "playmode280513",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-a76faa90aa424a44aa28449c11133ea2",
+  "faces": 4076,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "050e8acd0bbc4da0902a8a874ef10fca",
+  "type": "cityBus",
+  "name": "Isuzu Erga Mio bus",
+  "author": "own.guest",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-050e8acd0bbc4da0902a8a874ef10fca",
+  "faces": 3434,
+  "licenseSlug": "by",
+  "drop": "untextured"
+ },
+ {
+  "uid": "d1b260bf1af646d5a1f81921c7eae6f3",
+  "type": "cityBus",
+  "name": "City bus",
+  "author": "MaG80",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-d1b260bf1af646d5a1f81921c7eae6f3",
+  "faces": 14233,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "ed309d476edc4200925c2cfd887ef6e9",
+  "type": "ksrtc",
+  "name": "Ksrtc bus",
+  "author": "Meshmill",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-ed309d476edc4200925c2cfd887ef6e9",
+  "faces": 1649,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "3cad9be97ed74e19b3ffd2926fde3cee",
+  "type": "ksrtc",
+  "name": "tnstc old  bus",
+  "author": "Meshmill",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-3cad9be97ed74e19b3ffd2926fde3cee",
+  "faces": 583,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "942312003f09498c8bb26e2711ce8af4",
+  "type": "schoolBus",
+  "name": "Indian Bus 4",
+  "author": "playmode280513",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-942312003f09498c8bb26e2711ce8af4",
+  "faces": 4088,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "ce4b577795074646a374190d85b39360",
+  "type": "bus",
+  "name": "Indian Bus 2",
+  "author": "playmode280513",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-ce4b577795074646a374190d85b39360",
+  "faces": 4056,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "86953a02719f42f1bd2278b20c8807ac",
+  "type": "lorry",
+  "name": "Ashok Leyland Truck",
+  "author": "Meshmill",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-86953a02719f42f1bd2278b20c8807ac",
+  "faces": 4872,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "fac003e9f66242c4b5a5ea168a14cd9f",
+  "type": "lorry",
+  "name": "Low poly Tata truck 3d model free",
+  "author": "iGauravRajput",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-fac003e9f66242c4b5a5ea168a14cd9f",
+  "faces": 17393,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "b86c47f6a28347b3a942e33dae1af6f5",
+  "type": "lorry",
+  "name": "Indian Truck | Tata SE Lorry 3D Model",
+  "author": "apv004",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-b86c47f6a28347b3a942e33dae1af6f5",
+  "faces": 18560,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "4cfa825dc40b470c8352f459adea6394",
+  "type": "lorry",
+  "name": "IBD INDIAN TRUCK",
+  "author": "rmihir560",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-4cfa825dc40b470c8352f459adea6394",
+  "faces": 2451,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "2984eb6da4f0471091875207b1cf4a81",
+  "type": "tanker",
+  "name": "Indian Oil Tanker Truck",
+  "author": "playmode280513",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-2984eb6da4f0471091875207b1cf4a81",
+  "faces": 1578,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "e6a13185a7394eb38ab0b064d25e4d59",
+  "type": "tanker",
+  "name": "Indian Low-Poly Truck | 3D Game Asset",
+  "author": "akverse_official",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-e6a13185a7394eb38ab0b064d25e4d59",
+  "faces": 25864,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "7c38805b6a314ba38920c673cbd6586b",
+  "type": "miniTruck",
+  "name": "ashok leyland dost",
+  "author": "mohammadimrangojer100",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-7c38805b6a314ba38920c673cbd6586b",
+  "faces": 4413,
+  "licenseSlug": "by",
+  "drop": "missing body panels, no separate wheels"
+ },
+ {
+  "uid": "688b7c17a0e54a05b0b2d51a8aee061b",
+  "type": "fireTruck",
+  "name": "Low Poly Fire Truck",
+  "author": "jg-3d",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-688b7c17a0e54a05b0b2d51a8aee061b",
+  "faces": 14338,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "4ad7ea26b90f40338802a5dac2a32a0d",
+  "type": "van",
+  "name": "Maruti Suzuki Omni",
+  "author": "arjun.sajin28",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-4ad7ea26b90f40338802a5dac2a32a0d",
+  "faces": 3608,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "c213330eb27d472e81fe7afdaf25bebf",
+  "type": "van",
+  "name": "MARUTI SUZUKI EECO",
+  "author": "rmihir560",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-c213330eb27d472e81fe7afdaf25bebf",
+  "faces": 3496,
+  "licenseSlug": "by"
+ },
+ {
+  "uid": "6957d4e4124448c8b6b74f82e80d0989",
+  "type": "van",
+  "name": "maruti omni Car",
+  "author": "dkdatta1983",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-6957d4e4124448c8b6b74f82e80d0989",
+  "faces": 5596,
+  "licenseSlug": "by",
+  "drop": "missing body panels"
+ },
+ {
+  "uid": "e2427c68f2f14b1aa4abe104cfad6496",
+  "type": "van",
+  "name": "Small Van",
+  "author": "Nirmal.Justin",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-e2427c68f2f14b1aa4abe104cfad6496",
+  "faces": 3612,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "25392b75045946f7a4c9a03e3bea969e",
+  "type": "ambulance",
+  "name": "AMBULANCE CAR - LOW POLY",
+  "author": "jasmin.daniel",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-25392b75045946f7a4c9a03e3bea969e",
+  "faces": 3654,
+  "licenseSlug": "by",
+  "yaw": 180
+ },
+ {
+  "uid": "f3daf79ea4e843c8a159e8ead7af6e74",
+  "type": "ambulance",
+  "name": "ГАЗ-3221 Скорая помощь / GAZ-3221 Ambulance R.2",
+  "author": "grox777",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/none-f3daf79ea4e843c8a159e8ead7af6e74",
+  "faces": 7556,
+  "licenseSlug": "by"
+ }
+]

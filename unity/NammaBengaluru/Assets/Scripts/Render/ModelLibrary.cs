@@ -23,7 +23,8 @@ namespace NammaBengaluru.Render
         public int? color;
         public bool garage; // garage stock (one per model Chikka Motors sells, in base paint 0xb01c22): never in traffic
         public string pack; // a vehicle of the traffic-cars GLB pack (packVehicles.js), by its name
-        public int atlas;   // ... and which of the pack's texture atlases it uses
+        public int atlas;   // ... and which texture atlas it uses (Baked/pack_atlas<n>)
+        public string source; // "sketchfab": a model from Sketchfab (tools/unity/bake/sketchfab_vehicles.json)
         public VehicleSpec spec;
         public double[] driverSeat;
         public LightBarDef lightBar;
@@ -49,10 +50,13 @@ namespace NammaBengaluru.Render
         static byte[] vbytes, hbytes;
         static List<VehicleModelDef> vehicles;
         static List<HumanModelDef> humans;
-        static Dictionary<string, List<VehicleModelDef>> byType, byPack;
+        static Dictionary<string, List<VehicleModelDef>> byType, byPack, bySketchfab;
         static Material vehicleMat, decalMat, humanMat;
         static readonly Dictionary<int, Material> packMats = new Dictionary<int, Material>();
-        internal static void ResetStatics() { vbytes = hbytes = null; vehicles = null; humans = null; byType = byPack = null; vehicleMat = decalMat = humanMat = null; packMats.Clear(); }
+        internal static void ResetStatics() { vbytes = hbytes = null; vehicles = null; humans = null; byType = byPack = bySketchfab = null; vehicleMat = decalMat = humanMat = null; packMats.Clear(); }
+
+        // How often a type with Sketchfab models gets one (the rest go on to the pack and the procedural models).
+        const double SKETCHFAB_SHARE = 0.75;
 
         // packVehicles.js PACK_SHARE: how often a type the pack covers gets a pack vehicle (the
         // rest of the time its own procedural model; types missing here always take the pack's).
@@ -82,7 +86,8 @@ namespace NammaBengaluru.Render
             vehicles = JsonConvert.DeserializeObject<List<VehicleModelDef>>(Resources.Load<TextAsset>("Models/vehicles_index").text);
             humans = JsonConvert.DeserializeObject<List<HumanModelDef>>(Resources.Load<TextAsset>("Models/humans_index").text);
             byType = vehicles.Where(v => !v.garage && v.pack == null).GroupBy(v => v.type).ToDictionary(g => g.Key, g => g.ToList());
-            byPack = vehicles.Where(v => v.pack != null).GroupBy(v => v.type).ToDictionary(g => g.Key, g => g.ToList());
+            byPack = vehicles.Where(v => v.pack != null && v.source == null).GroupBy(v => v.type).ToDictionary(g => g.Key, g => g.ToList());
+            bySketchfab = vehicles.Where(v => v.source == "sketchfab").GroupBy(v => v.type).ToDictionary(g => g.Key, g => g.ToList());
             // Two-wheelers are flagged in the JS by their spec; the baked spec carries the flag.
             var vs = Resources.Load<Shader>("Shaders/Vehicle") ?? Shader.Find("NammaBengaluru/Vehicle");
             vehicleMat = new Material(vs) { name = "vehicle", enableInstancing = true };
@@ -199,6 +204,12 @@ namespace NammaBengaluru.Render
         public static VehicleModelDef Pick(string type, Func<double> rng)
         {
             Load();
+            // The Sketchfab models first: most of each type they cover (phones skip the heaviest).
+            if (bySketchfab.TryGetValue(type, out var sf))
+            {
+                var ok = World.Detail.lite ? sf.Where(d => d.body.indices <= 3 * 15000).ToList() : sf;
+                if (ok.Count > 0 && rng() < SKETCHFAB_SHARE) return ok[(int)Math.Floor(rng() * ok.Count) % ok.Count];
+            }
             // The traffic-cars pack: a share of each type it covers (vehicleModels.js).
             if (byPack.TryGetValue(type, out var pack) && (!PACK_SHARE.TryGetValue(type, out double share) || rng() < share))
                 return pack[(int)Math.Floor(rng() * pack.Count) % pack.Count];

@@ -1,5 +1,5 @@
 // Builds the web game's vehicle models with its own procedural builders (several seeded variants
-// per type, then every vehicle of the traffic-cars GLB pack) and packs them
+// per type, then every vehicle of the traffic-cars GLB pack and the Sketchfab picks) and packs them
 // for Unity: vertices de-duplicated, positions float32, normals int8, colour and PBR uint8, one
 // rigid bone per vertex. models.mjs writes the result.
 import { buildVehicleModel, VEHICLE_TYPES } from '/src/entities/vehicleModels.js';
@@ -9,6 +9,7 @@ import { mulberry32 } from '/src/world/textures.js';
 import { loadPackVehicles, packTemplates, buildPackModel, PACK_TYPES } from '/src/entities/packVehicles.js';
 import { loadProps, PropField, PROP_KINDS } from '/src/world/props.js';
 import * as THREE from 'three';
+import { bakeVehicle } from './sketchfab.js';
 
 // garages.js FOR_SALE: [type, model].
 const GARAGE = [['scooter', 'activa'], ['scooter', 'ola'], ['scooter', 'ather'], ['bike', null], ['sportBike', null], ['auto', null], ['van', 'omni'], ['van', 'eeco'],
@@ -80,6 +81,16 @@ window.bake = async () => {
       if (!atlasOf.has(t.material)) { atlasOf.set(t.material, atlases.length); atlases.push(t.material.map ? toPng(t.material.map) : null); }
       add(type, 0, buildPackModel(t, VEHICLE_TYPES[type]), { pack: t.name, atlas: atlasOf.get(t.material), packOpts: { flipV: true, pbr: [0.5, 0.15, 0] } });
     }
+  }
+  // Sketchfab vehicles (CC0 / CC BY; picked in sketchfab_vehicles.json, downloaded by
+  // sketchfab_fetch.py, turned into pack-style templates by sketchfab.js), each with its own atlas.
+  const sfPicks = await (await fetch('/tools/unity/bake/sketchfab_vehicles.json')).json();
+  for (const cfg of sfPicks) {
+    if (cfg.skip || cfg.drop) continue;
+    const t = await bakeVehicle(cfg);
+    const atlasIdx = atlases.length;
+    atlases.push(t.atlas.toDataURL('image/png'));
+    add(cfg.type, 0, buildPackModel(t, VEHICLE_TYPES[cfg.type]), { pack: t.name, atlas: atlasIdx, source: 'sketchfab', packOpts: { flipV: true } });
   }
   // Street props (props.js): each kind's merged mesh, centred and standing on y = 0.
   await loadProps('/models/street-props.glb');
