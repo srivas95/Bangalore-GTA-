@@ -44,6 +44,7 @@ namespace NammaBengaluru
         public Rides rides;
         public MetroWorld metro;
         public MetroRide metroRide;
+        public Story story;
         MetroRide.Entrance entranceNear;
         Rides.Shelter shelterNear;
         public int money = 1000; // START_MONEY
@@ -106,7 +107,7 @@ namespace NammaBengaluru
             {
                 var humans = ModelLibrary.Humans;
                 bool two = v.spec.twoWheeler;
-                var hd = two && r() < 0.85 ? ModelLibrary.HumanNamed("helmet" + (int)Math.Floor(r() * 4)) : humans[1 + (int)Math.Floor(r() * 48)];
+                var hd = two && r() < 0.85 ? ModelLibrary.HumanNamed("helmet" + (int)Math.Floor(r() * 4)) : ModelLibrary.Ped((int)Math.Floor(r() * 48));
                 view.SetRider(new Human(hd, r));
             }
             return v;
@@ -187,6 +188,7 @@ namespace NammaBengaluru
             rides = new Rides(this, root);
             metro = Metro.Build(layout, md, colliders, root);
             metroRide = new MetroRide(this, metro);
+            story = new Story(this, root);
             city.rail.hitByTrain = (t, nx, nz) =>
             {
                 if (player.vehicle != null || player.knock > 0) return;
@@ -398,6 +400,7 @@ namespace NammaBengaluru
             missions.busy = rides.Active || metroRide.Active;
             missions.Update(dt, input, player);
             autoDuty.Update(dt, input, player);
+            story.Update(dt, input);
             if (gps.Update(dt, player.Pos.x, player.Pos.z)) { Say("You have arrived.", 2.5); audio.Click(); }
             player.rigPitch = rig.pitch;
             if (!freeCam && !metroCam) rig.Update(dt, input, player, colliders, rideCam);
@@ -537,6 +540,8 @@ namespace NammaBengaluru
             if (player.vehicle != null) player.ExitVehicle(this, true);
             rides.Abort();
             player.Respawn(p.x, p.z, this);
+            if (missions.job != null) missions.Fail("You missed the job.");
+            if (story.IsActive) story.Fail(hospital ? "You were wasted." : "You were busted.");
             police.Reset(this);
             rig.first = true;
             Reseed();
@@ -618,6 +623,7 @@ namespace NammaBengaluru
             else hud.Prompt(pv != null && pv.Speed <= 8 ? (pv.spec.police || pv.spec.siren ? "F  Get out  ·  G  Siren" : "F  Get out") : "");
             markers.Clear();
             markers.AddRange(missions.Markers);
+            markers.AddRange(story.Markers);
             markers.AddRange(autoDuty.MapMarkers);
             if (pv == null && !rides.Active) markers.AddRange(rides.MapMarkers(player.x, player.z));
             if (gps.target != null) markers.Add(new UI.MapMarker { x = gps.target.Value.x, z = gps.target.Value.z, color = UI.Hud.CssColor(0xc050ff) });

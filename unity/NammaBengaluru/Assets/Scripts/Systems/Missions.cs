@@ -120,7 +120,7 @@ namespace NammaBengaluru.Systems
             CleanupJob();
         }
 
-        void CleanupJob()
+        public void CleanupJob()
         {
             job = null;
             marker.Hide();

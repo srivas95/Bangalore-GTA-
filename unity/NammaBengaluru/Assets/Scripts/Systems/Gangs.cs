@@ -15,7 +15,7 @@ namespace NammaBengaluru.Systems
         public string weapon, crew, name;
         public double maxHealth, heading, fireCd, reloadT, accuracy, staggerT, taunt, homeX, homeZ;
         public int clip;
-        public bool hostile;
+        public bool hostile, boss;
     }
 
     public class Gangs
@@ -38,7 +38,7 @@ namespace NammaBengaluru.Systems
             weapon ??= Pick(new[] { "machete", "machete", "chain", "knife", "sickle", "bat" });
             // createHuman({ outfit: lungi | shirt | tshirt, female: false }): one of the baked men.
             var men = ModelLibrary.Humans.Where(h => !h.female && h.name.StartsWith("ped") && (h.outfit == "lungi" || h.outfit == "shirt" || h.outfit == "tshirt")).ToList();
-            var def = look != null ? ModelLibrary.HumanNamed(look) : men.Count > 0 ? Pick(men) : ModelLibrary.Humans[1];
+            var def = look != null ? ModelLibrary.HumanNamed(look) : men.Count > 0 ? Pick(men) : ModelLibrary.Ped(0);
             var h = new Human(def, Rnd);
             h.go.transform.SetParent(world.Root, false);
             Weapons.Equip(h, weapon);

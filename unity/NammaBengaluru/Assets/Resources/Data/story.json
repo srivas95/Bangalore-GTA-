@@ -1,0 +1,1509 @@
+{
+ "places": {
+  "babu": [
+   12.9795,
+   77.5772
+  ],
+  "den": [
+   12.9672,
+   77.5768
+  ],
+  "shop1": [
+   12.9688,
+   77.5745
+  ],
+  "shop2": [
+   12.9662,
+   77.5752
+  ],
+  "shop3": [
+   12.9655,
+   77.578
+  ],
+  "shop4": [
+   12.9645,
+   77.5758
+  ],
+  "krMarket": [
+   12.9618,
+   77.5772
+  ],
+  "apmc": [
+   13.0305,
+   77.5345
+  ],
+  "godown": [
+   13.0335,
+   77.5185
+  ],
+  "chikka": [
+   12.9765,
+   77.5786
+  ],
+  "site": [
+   12.9758,
+   77.5585
+  ],
+  "hanu": [
+   12.9915,
+   77.5545
+  ],
+  "lakebed": [
+   12.9135,
+   77.487
+  ],
+  "nayandahalli": [
+   12.941,
+   77.523
+  ],
+  "lakshmi": [
+   12.942,
+   77.5735
+  ],
+  "darshini1": [
+   12.948,
+   77.573
+  ],
+  "darshini2": [
+   12.929,
+   77.583
+  ],
+  "darshini3": [
+   13.0035,
+   77.57
+  ],
+  "informer": [
+   12.9705,
+   77.5935
+  ],
+  "kia": [
+   13.1986,
+   77.7066
+  ],
+  "hub": [
+   12.979,
+   77.576
+  ],
+  "court": [
+   12.9769,
+   77.581
+  ]
+ },
+ "missions": [
+  {
+   "id": "delivery",
+   "title": "Fast Delivery",
+   "act": "Act I · Majestic",
+   "giver": "babu",
+   "reward": 500,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Babu",
+       "text": "Raghu! You do deliveries, no? One parcel, Chickpete. Cash on the spot, no app commission."
+      },
+      {
+       "who": "Raghu",
+       "text": "What's in it?"
+      },
+      {
+       "who": "Babu",
+       "text": "Mobile covers. Very fragile mobile covers. Two and a half minutes, or the customer gets angry."
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "den",
+     "text": "Get the parcel to the lodge in Chickpete.",
+     "radius": 3.5,
+     "timer": 167,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": "The parcel was late. Kotte Kumar doesn't like late."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Kotte Kumar",
+       "text": "So you're the delivery boy. Babu says you're fast."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "Fast is good. Quiet is better. You know who I am?"
+      },
+      {
+       "who": "Raghu",
+       "text": "Everyone in Chickpete knows who you are, sir."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "Good answer. Come back tomorrow. I have proper work."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "collection",
+   "title": "Collection Day",
+   "act": "Act I · Majestic",
+   "giver": "den",
+   "reward": 900,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Kotte Kumar",
+       "text": "Every Friday the shops on Avenue Road pay for... let's call it security."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "Four shops. Smile, take the envelope, don't count it in front of them."
+      }
+     ]
+    },
+    {
+     "type": "collect",
+     "places": [
+      "shop1",
+      "shop2",
+      "shop3",
+      "shop4"
+     ],
+     "text": "Collect from the shops",
+     "each": [
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Shopkeeper: \"Here. Tell Kumar-avaru namaskara.\"",
+        "d": 3
+       }
+      ],
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Shopkeeper: \"Every week more. Every week!\"",
+        "d": 3
+       }
+      ],
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Shopkeeper: \"Take it and go before my wife sees.\"",
+        "d": 3
+       }
+      ],
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Shopkeeper: \"This shop has been here since 1962. And now this?\"",
+        "d": 3
+       }
+      ]
+     ]
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Shopkeeper's nephew",
+       "text": "Oye! You're the new boy? My uncle doesn't pay anyone any more."
+      },
+      {
+       "who": "Raghu",
+       "text": "Take it up with Kumar."
+      },
+      {
+       "who": "Shopkeeper's nephew",
+       "text": "I'll take it up with you."
+      }
+     ]
+    },
+    {
+     "type": "fight",
+     "place": "shop4",
+     "text": "Deal with the nephew and his friends.",
+     "crew": "nephew",
+     "members": [
+      {
+       "weapon": "fists",
+       "name": "Nephew",
+       "health": 120
+      },
+      {
+       "weapon": "bat",
+       "name": "Friend"
+      },
+      {
+       "weapon": "fists",
+       "name": "Friend"
+      }
+     ]
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police, if anyone called them."
+    },
+    {
+     "type": "go",
+     "place": "den",
+     "text": "Take the money back to Kumar.",
+     "radius": 3.5,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Kotte Kumar",
+       "text": "All four. And the nephew won't be a problem, I hear."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "Keep a little for yourself. Not too much. I count."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "market",
+   "title": "Market Turf",
+   "act": "Act I · Majestic",
+   "giver": "den",
+   "reward": 1500,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Kotte Kumar",
+       "text": "Seenu's boys are unloading at K.R. Market like they own it. They don't."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "Take this. Don't bring it back clean."
+      }
+     ]
+    },
+    {
+     "type": "act",
+     "ops": [
+      {
+       "op": "give",
+       "key": "machete",
+       "n": 0
+      },
+      {
+       "op": "say",
+       "text": "You got a machete (\"Long\"). Tab to switch weapons.",
+       "d": 3
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "krMarket",
+     "text": "Go to K.R. Market.",
+     "radius": 25,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "fight",
+     "place": "krMarket",
+     "text": "Take out Seenu's boys.",
+     "crew": "seenu",
+     "members": [
+      {
+       "weapon": "machete",
+       "name": "Seenu's boy"
+      },
+      {
+       "weapon": "chain",
+       "name": "Seenu's boy"
+      },
+      {
+       "weapon": "sickle",
+       "name": "Seenu's boy"
+      },
+      {
+       "weapon": "knife",
+       "name": "Seenu's boy"
+      },
+      {
+       "weapon": "bat",
+       "name": "Seenu's boy"
+      }
+     ]
+    },
+    {
+     "type": "wanted",
+     "stars": 2,
+     "reason": "Market brawl"
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Kotte Kumar",
+       "text": "(on the phone) Seenu called me. He was crying. Very nice."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "Lie low tonight. Tomorrow I need a driver."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "lorry",
+   "title": "The Lorry",
+   "act": "Act I · Majestic",
+   "giver": "den",
+   "reward": 2500,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Kotte Kumar",
+       "text": "There's a lorry at the Yeshwanthpur APMC yard. Its papers are... optional."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "Take it to the godown in Peenya. If the Hoysalas see you, don't lead them to my door."
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "apmc",
+     "text": "Go to the Yeshwanthpur APMC yard.",
+     "radius": 20,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "act",
+     "ops": [
+      {
+       "op": "park",
+       "type": "lorry",
+       "place": "apmc",
+       "var": "lorry"
+      }
+     ]
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Yard watchman",
+       "text": "Keys are inside. I was having tea. I saw nothing."
+      }
+     ]
+    },
+    {
+     "type": "getIn",
+     "vehicleVar": "lorry",
+     "text": "Get in the lorry."
+    },
+    {
+     "type": "wanted",
+     "stars": 2,
+     "reason": "Stolen lorry"
+    },
+    {
+     "type": "escape",
+     "text": "A patrol saw you. Lose the police, and keep the lorry in one piece."
+    },
+    {
+     "type": "go",
+     "place": "godown",
+     "text": "Deliver the lorry to the godown in Peenya.",
+     "radius": 6,
+     "timer": null,
+     "vehicleVar": "lorry",
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Godown man",
+       "text": "Kumar's lorry? Leave it. Go out the back."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "(on the phone) Everyone is talking about you, Raghu. Everyone."
+      },
+      {
+       "who": "Raghu",
+       "text": "Is that good, sir?"
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "...Come to the site on Magadi Road tomorrow night. We'll talk about your future."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "majestic",
+   "title": "Majestic Is Mine",
+   "act": "Act I · Majestic",
+   "giver": "chikka",
+   "reward": 6000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Chikka",
+       "text": "A \"meeting\" at a half-built site at night? Raghu, that's not a meeting."
+      },
+      {
+       "who": "Chikka",
+       "text": "Take this. It was my uncle's. Six rounds. Don't ask what he used it for."
+      }
+     ]
+    },
+    {
+     "type": "act",
+     "ops": [
+      {
+       "op": "give",
+       "key": "revolver",
+       "n": 18
+      },
+      {
+       "op": "setHour",
+       "h": 21.5
+      },
+      {
+       "op": "say",
+       "text": "You got a revolver. Right mouse to aim.",
+       "d": 3
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "site",
+     "text": "Go to the site off Magadi Road.",
+     "radius": 8,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Kotte Kumar",
+       "text": "Raghu. Shopkeepers ask for you now. Not me. You."
+      },
+      {
+       "who": "Kotte Kumar",
+       "text": "Majestic has room for only one name."
+      },
+      {
+       "who": "Raghu",
+       "text": "Then it should be the one they're already saying."
+      }
+     ]
+    },
+    {
+     "type": "fight",
+     "place": "site",
+     "text": "Survive the ambush. Finish Kotte Kumar.",
+     "crew": "kumar",
+     "members": [
+      {
+       "weapon": "revolver",
+       "name": "Kotte Kumar",
+       "health": 260,
+       "boss": true,
+       "accuracy": 0.35,
+       "r": 12
+      },
+      {
+       "weapon": "katta",
+       "name": "Kumar's man",
+       "accuracy": 0.3
+      },
+      {
+       "weapon": "machete",
+       "name": "Kumar's man"
+      },
+      {
+       "weapon": "machete",
+       "name": "Kumar's man"
+      },
+      {
+       "weapon": "chain",
+       "name": "Kumar's man"
+      },
+      {
+       "weapon": "katta",
+       "name": "Kumar's man",
+       "accuracy": 0.25
+      }
+     ]
+    },
+    {
+     "type": "wanted",
+     "stars": 3,
+     "reason": "Shootout on Magadi Road"
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Chikka",
+       "text": "(on the phone) It's all over Majestic already. The shops want to know who to pay now."
+      },
+      {
+       "who": "Raghu",
+       "text": "Tell them nothing changes. Except the name."
+      }
+     ]
+    }
+   ],
+   "after": {
+    "title": "ACT I COMPLETE",
+    "sub": "Majestic is yours. Collections come in every day."
+   }
+  },
+  {
+   "id": "lakebed",
+   "title": "The Lake Bed",
+   "act": "Act II · Empire",
+   "giver": "hanu",
+   "reward": 4000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Hanu Anna",
+       "text": "So this is the boy who took Majestic. Sit, sit. Coffee?"
+      },
+      {
+       "who": "Hanu Anna",
+       "text": "There is a lake bed in Kengeri. Dry, mostly. A builder friend wants it, and some people have built sheds on it."
+      },
+      {
+       "who": "Hanu Anna",
+       "text": "The people are not the problem. The problem is the boys the other builder has put there. Clear them out."
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "lakebed",
+     "text": "Go to the lake bed in Kengeri.",
+     "radius": 30,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "fight",
+     "place": "lakebed",
+     "text": "Clear out the other builder's boys.",
+     "crew": "builder",
+     "members": [
+      {
+       "weapon": "bat",
+       "name": "Builder's boy"
+      },
+      {
+       "weapon": "chain",
+       "name": "Builder's boy"
+      },
+      {
+       "weapon": "machete",
+       "name": "Builder's boy"
+      },
+      {
+       "weapon": "knife",
+       "name": "Builder's boy"
+      },
+      {
+       "weapon": "katta",
+       "name": "Their foreman",
+       "accuracy": 0.25,
+       "health": 160
+      }
+     ]
+    },
+    {
+     "type": "wanted",
+     "stars": 2,
+     "reason": "Riot on the lake bed"
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Hanu Anna",
+       "text": "(on the phone) The sheds came down by themselves this afternoon. Amazing. Must be the rain."
+      },
+      {
+       "who": "Hanu Anna",
+       "text": "You and I are going to do great things for this city, Raghu."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "godowns",
+   "title": "Nayandahalli Nights",
+   "act": "Act II · Empire",
+   "giver": "chikka",
+   "reward": 5000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Chikka",
+       "text": "Seenu hit our collections in K.R. Market again. Three of our boys are in Victoria Hospital."
+      },
+      {
+       "who": "Chikka",
+       "text": "His stock sits in the godowns at the Nayandahalli junction. If the godowns burn, he can't pay his boys."
+      }
+     ]
+    },
+    {
+     "type": "act",
+     "ops": [
+      {
+       "op": "setHour",
+       "h": 22
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "nayandahalli",
+     "text": "Get to Seenu's godowns at Nayandahalli.",
+     "radius": 25,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "fight",
+     "place": "nayandahalli",
+     "text": "Take out the godown guards.",
+     "crew": "seenuGodown",
+     "members": [
+      {
+       "weapon": "sickle",
+       "name": "Seenu's guard"
+      },
+      {
+       "weapon": "sickle",
+       "name": "Seenu's guard"
+      },
+      {
+       "weapon": "machete",
+       "name": "Seenu's guard"
+      },
+      {
+       "weapon": "katta",
+       "name": "Seenu's guard",
+       "accuracy": 0.25
+      },
+      {
+       "weapon": "chain",
+       "name": "Seenu's guard"
+      },
+      {
+       "weapon": "katta",
+       "name": "Godown manager",
+       "accuracy": 0.3,
+       "health": 180
+      }
+     ]
+    },
+    {
+     "type": "wanted",
+     "stars": 3,
+     "reason": "Godown fire at Nayandahalli"
+    },
+    {
+     "type": "escape",
+     "text": "The fire brigade and the police are coming. Lose the police."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Seenu",
+       "text": "(on the phone) You burnt my godowns? Majestic boy, you just started a war you can't afford."
+      },
+      {
+       "who": "Raghu",
+       "text": "Then don't send your bill to me."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "ledger",
+   "title": "Lakshmi Akka's Ledger",
+   "act": "Act II · Empire",
+   "giver": "lakshmi",
+   "reward": 6000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Lakshmi Akka",
+       "text": "Raghu, money that comes in envelopes has to come out of somewhere respectable."
+      },
+      {
+       "who": "Lakshmi Akka",
+       "text": "My darshinis take cash all day. Bring the week's takings from three of them, and we'll make your envelopes into idli and coffee."
+      }
+     ]
+    },
+    {
+     "type": "collect",
+     "places": [
+      "darshini1",
+      "darshini2",
+      "darshini3"
+     ],
+     "text": "Pick up the takings from Lakshmi Akka's darshinis",
+     "each": [
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Manager: \"Akka said you'd come. It's all there, counted twice.\"",
+        "d": 3
+       }
+      ],
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Manager: \"Busy week. Very busy week. Somehow.\"",
+        "d": 3
+       }
+      ],
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Manager: \"Tell Akka the new filter coffee machine is a success.\"",
+        "d": 3
+       }
+      ]
+     ]
+    },
+    {
+     "type": "go",
+     "place": "lakshmi",
+     "text": "Take the money to Lakshmi Akka in Basavanagudi.",
+     "radius": 3.5,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Lakshmi Akka",
+       "text": "Good. Now it's clean money from a very successful chain of restaurants."
+      },
+      {
+       "who": "Lakshmi Akka",
+       "text": "One more thing. There's a new lady at the Crime Branch. Shalini Rao. She doesn't take coffee."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "informer",
+   "title": "The Informer",
+   "act": "Act II · Empire",
+   "giver": "chikka",
+   "reward": 7000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Chikka",
+       "text": "One of our own is talking to ACP Shalini Rao. Murali, from the Avenue Road collections."
+      },
+      {
+       "who": "Chikka",
+       "text": "He's meeting her man at a tea stall on Kasturba Road. If he gets there, she has everything."
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "informer",
+     "text": "Get to the tea stall on Kasturba Road.",
+     "radius": 20,
+     "timer": 183,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": "Murali made the meeting. Shalini Rao has everything now."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Tea stall owner",
+       "text": "Murali? He saw you coming and jumped in a cab!"
+      }
+     ]
+    },
+    {
+     "type": "stop",
+     "place": "informer",
+     "vtype": "taxi",
+     "text": "Stop Murali's cab before he reaches the Crime Branch."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Murali",
+       "text": "Raghu-anna, she was going to put my brother inside! I had no choice!"
+      },
+      {
+       "who": "Raghu",
+       "text": "Go home to Mysuru, Murali. Tonight. Don't come back."
+      }
+     ]
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police."
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "dawn",
+   "title": "Airport Road Before Dawn",
+   "act": "Act II · Empire",
+   "giver": "hanu",
+   "reward": 12000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Hanu Anna",
+       "text": "Raghu, I am an MLA now. An MLA cannot have friends like you."
+      },
+      {
+       "who": "Hanu Anna",
+       "text": "There is a warrant with your name on it, signed this evening. I didn't stop it. I'm giving you a head start."
+      },
+      {
+       "who": "Hanu Anna",
+       "text": "Faizal Bhai has a ticket for you. Dubai, the 6 a.m. flight. Be on it."
+      }
+     ]
+    },
+    {
+     "type": "act",
+     "ops": [
+      {
+       "op": "setHour",
+       "h": 4.2
+      }
+     ]
+    },
+    {
+     "type": "wanted",
+     "stars": 4,
+     "reason": "Wanted on a warrant"
+    },
+    {
+     "type": "escape",
+     "text": "Every Hoysala in the city has your number. Lose them."
+    },
+    {
+     "type": "go",
+     "place": "kia",
+     "text": "Get to Kempegowda International Airport before the flight.",
+     "radius": 40,
+     "timer": 700,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": "The flight left without you."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Faizal Bhai",
+       "text": "(on the phone) Raghu-bhai, welcome to the family. Don't worry about Bengaluru. Bengaluru will wait for you."
+      },
+      {
+       "who": "Raghu",
+       "text": "It had better."
+      }
+     ]
+    }
+   ],
+   "after": {
+    "title": "ACT II COMPLETE",
+    "sub": "Raghu flies to Dubai. Back home, someone has to keep his name alive."
+   }
+  },
+  {
+   "id": "vinay",
+   "title": "A Call from Dubai",
+   "act": "Act III · Exile",
+   "giver": "hub",
+   "reward": 3000,
+   "steps": [
+    {
+     "type": "become",
+     "who": "vinay"
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Raghu",
+       "text": "(on the phone, from Dubai) Vinay? It's Raghu. Don't say my name out loud."
+      },
+      {
+       "who": "Raghu",
+       "text": "With me gone, the Avenue Road shops are paying Seenu. Go and remind them who Majestic belongs to."
+      },
+      {
+       "who": "Vinay",
+       "text": "Anna, I deliver biryani."
+      },
+      {
+       "who": "Raghu",
+       "text": "Today you deliver a message."
+      }
+     ]
+    },
+    {
+     "type": "collect",
+     "places": [
+      "shop1",
+      "shop2",
+      "shop3",
+      "shop4"
+     ],
+     "text": "Remind the Avenue Road shops who they pay",
+     "each": [
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Shopkeeper: \"Raghu's boy? We thought he was finished!\"",
+        "d": 3
+       }
+      ],
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Shopkeeper: \"Seenu's men take double. Fine, fine. Take it.\"",
+        "d": 3
+       }
+      ],
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Shopkeeper: \"Tell Raghu-avaru we never stopped praying for him.\"",
+        "d": 3
+       }
+      ],
+      [
+       {
+        "op": "cash"
+       },
+       {
+        "op": "say",
+        "text": "Shopkeeper: \"Seenu's men are here! Run!\"",
+        "d": 3
+       }
+      ]
+     ]
+    },
+    {
+     "type": "fight",
+     "place": "shop4",
+     "text": "Seenu's collectors want a word. Deal with them.",
+     "crew": "collectors",
+     "members": [
+      {
+       "weapon": "bat",
+       "name": "Seenu's collector"
+      },
+      {
+       "weapon": "chain",
+       "name": "Seenu's collector"
+      },
+      {
+       "weapon": "fists",
+       "name": "Seenu's collector"
+      }
+     ]
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Raghu",
+       "text": "(on the phone) I heard. Good boy. Now they'll remember."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "darshiniFire",
+   "title": "Coffee and Kerosene",
+   "act": "Act III · Exile",
+   "giver": "lakshmi",
+   "reward": 5000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Lakshmi Akka",
+       "text": "Vinay, Seenu's men came this morning. They said the next visit, they bring kerosene."
+      },
+      {
+       "who": "Lakshmi Akka",
+       "text": "They're at my VV Puram branch now. I don't want a fire in my kitchen, child."
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "darshini1",
+     "text": "Get to the VV Puram darshini before they light it.",
+     "radius": 20,
+     "timer": 150,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": "The darshini went up in flames."
+    },
+    {
+     "type": "fight",
+     "place": "darshini1",
+     "text": "Stop Seenu's arsonists.",
+     "crew": "arson",
+     "members": [
+      {
+       "weapon": "machete",
+       "name": "Arsonist"
+      },
+      {
+       "weapon": "sickle",
+       "name": "Arsonist"
+      },
+      {
+       "weapon": "katta",
+       "name": "Arsonist",
+       "accuracy": 0.25
+      },
+      {
+       "weapon": "chain",
+       "name": "Arsonist"
+      }
+     ]
+    },
+    {
+     "type": "wanted",
+     "stars": 2,
+     "reason": "Brawl in VV Puram"
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police."
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Lakshmi Akka",
+       "text": "(on the phone) My cook says you fought like Raghu. That's not a compliment, Vinay. Be careful."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "tail",
+   "title": "Shalini's Shadow",
+   "act": "Act III · Exile",
+   "giver": "hub",
+   "reward": 6000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Chikka",
+       "text": "(on the phone) Vinay, ACP Shalini Rao's people have been following you since the darshini."
+      },
+      {
+       "who": "Chikka",
+       "text": "Shake them off and come to the garage. Do NOT lead them here."
+      }
+     ]
+    },
+    {
+     "type": "wanted",
+     "stars": 3,
+     "reason": "Under surveillance by the Crime Branch"
+    },
+    {
+     "type": "escape",
+     "text": "Shake off the Crime Branch."
+    },
+    {
+     "type": "go",
+     "place": "chikka",
+     "text": "Get to Chikka's garage in Gandhinagar.",
+     "radius": 3.5,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Chikka",
+       "text": "She came to the garage herself yesterday. Asked about the revolver. My uncle's revolver."
+      },
+      {
+       "who": "Chikka",
+       "text": "Raghu needs to come home soon, Vinay, or there won't be anything left to come home to."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "mlaLorry",
+   "title": "The MLA's Cash",
+   "act": "Act III · Exile",
+   "giver": "chikka",
+   "reward": 9000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Raghu",
+       "text": "(on the phone) Hanu Anna sold my people to Seenu. Now he's moving his election cash in a lorry out of Peenya."
+      },
+      {
+       "who": "Raghu",
+       "text": "Bring it to Chikka. Hanu Anna is going to help me come home, whether he likes it or not."
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "godown",
+     "text": "Go to the godown in Peenya.",
+     "radius": 20,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "act",
+     "ops": [
+      {
+       "op": "park",
+       "type": "lorry",
+       "place": "godown",
+       "var": "lorry"
+      }
+     ]
+    },
+    {
+     "type": "fight",
+     "place": "godown",
+     "text": "Hanu Anna's men are guarding it. Take them out.",
+     "crew": "mla",
+     "members": [
+      {
+       "weapon": "katta",
+       "name": "MLA's gunman",
+       "accuracy": 0.3
+      },
+      {
+       "weapon": "machete",
+       "name": "MLA's man"
+      },
+      {
+       "weapon": "bat",
+       "name": "MLA's man"
+      },
+      {
+       "weapon": "revolver",
+       "name": "MLA's gunman",
+       "accuracy": 0.3,
+       "health": 150
+      }
+     ]
+    },
+    {
+     "type": "getIn",
+     "vehicleVar": "lorry",
+     "text": "Get in the lorry."
+    },
+    {
+     "type": "wanted",
+     "stars": 3,
+     "reason": "Hijacked an MLA's lorry"
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police, and keep the lorry in one piece."
+    },
+    {
+     "type": "go",
+     "place": "chikka",
+     "text": "Deliver the lorry to Chikka's garage.",
+     "radius": 8,
+     "timer": null,
+     "vehicleVar": "lorry",
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Chikka",
+       "text": "Four crore. In vegetable crates. In a lorry. Hanu Anna has no imagination."
+      },
+      {
+       "who": "Raghu",
+       "text": "(on the phone) Tell him I have his crates. He'll call me."
+      }
+     ]
+    }
+   ],
+   "after": null
+  },
+  {
+   "id": "deal",
+   "title": "The Deal",
+   "act": "Act III · Exile",
+   "giver": "hub",
+   "reward": 15000,
+   "steps": [
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Raghu",
+       "text": "(on the phone) It's done. Hanu Anna made calls. I fly in tomorrow and surrender at the City Civil Court."
+      },
+      {
+       "who": "Raghu",
+       "text": "My lawyer lands tonight. Seenu knows. Pick her up at the airport and get her to the court alive."
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "kia",
+     "text": "Get to Kempegowda International Airport.",
+     "radius": 40,
+     "timer": null,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": null
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Advocate Meera",
+       "text": "You're Vinay? You look about twelve. Drive. Fast."
+      }
+     ]
+    },
+    {
+     "type": "go",
+     "place": "court",
+     "text": "Get Advocate Meera to the City Civil Court.",
+     "radius": 15,
+     "timer": 650,
+     "vehicleVar": null,
+     "slow": true,
+     "failText": "The hearing went ahead without her. The deal is off."
+    },
+    {
+     "type": "fight",
+     "place": "court",
+     "text": "Seenu's men are waiting at the court. Hold them off.",
+     "crew": "courtAmbush",
+     "members": [
+      {
+       "weapon": "katta",
+       "name": "Seenu's shooter",
+       "accuracy": 0.3
+      },
+      {
+       "weapon": "katta",
+       "name": "Seenu's shooter",
+       "accuracy": 0.3
+      },
+      {
+       "weapon": "machete",
+       "name": "Seenu's man"
+      },
+      {
+       "weapon": "sickle",
+       "name": "Seenu's man"
+      },
+      {
+       "weapon": "revolver",
+       "name": "Seenu \"Sickle\" Srinivas",
+       "boss": true,
+       "health": 260,
+       "accuracy": 0.35,
+       "r": 12
+      }
+     ]
+    },
+    {
+     "type": "wanted",
+     "stars": 3,
+     "reason": "Shootout at the City Civil Court"
+    },
+    {
+     "type": "escape",
+     "text": "Lose the police."
+    },
+    {
+     "type": "become",
+     "who": "raghu"
+    },
+    {
+     "type": "talk",
+     "lines": [
+      {
+       "who": "Raghu",
+       "text": "Vinay. I heard what you did at the court."
+      },
+      {
+       "who": "Raghu",
+       "text": "The surrender, the trial... it will go nowhere. Hanu Anna made sure of that."
+      },
+      {
+       "who": "ACP Shalini Rao",
+       "text": "Welcome home, Raghavendra. Enjoy it. I'm not finished with you."
+      }
+     ]
+    }
+   ],
+   "after": {
+    "title": "ACT III COMPLETE",
+    "sub": "Raghu is home, \"reformed\". Act IV: Return is coming."
+   }
+  }
+ ]
+}

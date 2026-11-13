@@ -35,7 +35,7 @@ namespace NammaBengaluru.Entities
         public bool Attacking => attack != null;
         public double rigPitch = 0.3;
 
-        public readonly Human human;
+        public Human human;
         public double x, z, y, vy, heading, r = 0.35, health = 100, hurtCooldown, knock, kx, kz, speed;
         public Vehicle vehicle;
         public bool grounded = true, dead, aiming;
@@ -67,6 +67,24 @@ namespace NammaBengaluru.Entities
                 kx = Math.Sin(a) * 3; kz = Math.Cos(a) * 3;
             }
             if (health <= 0) (world as Game)?.OnPlayerDown();
+        }
+
+        // Become someone else (the story's Act III is played as Vinay): a new body in the old one's
+        // place, still holding whatever was in hand and sitting in whatever we were sitting in.
+        public void SetLook(string name)
+        {
+            var old = human;
+            var h = new Human(ModelLibrary.HumanNamed(name));
+            h.go.transform.SetParent(old.go.transform.parent, false);
+            h.go.transform.localPosition = old.go.transform.localPosition;
+            h.go.transform.localRotation = old.go.transform.localRotation;
+            h.x = old.x; h.y = old.y; h.z = old.z; h.heading = old.heading; h.tiltX = old.tiltX;
+            h.go.SetActive(old.go.activeSelf);
+            UnityEngine.Object.Destroy(old.go);
+            human = h;
+            if (vehicle != null) h.PoseSit();
+            h.Apply(vehicle == null);
+            Select(weapon);
         }
 
         // ---------- weapons ----------

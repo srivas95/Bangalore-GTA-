@@ -68,6 +68,8 @@ window.bake = async () => {
     humans.push({ name, outfit: h.outfit, female: h.female, gait: h.gait, bones: sk.bones.map((b) => ({ parent: sk.bones.indexOf(b.parent), p: [b.position.x, b.position.y, b.position.z] })), boneNames: Object.keys(BONES), body: pack(h.mesh.geometry, false, true) });
   };
   bakeHuman('player', { outfit: 'shirt', top: 0x3a6ea5, bottom: 0x22304a, skin: 0xa8693c, shoes: 0xeeeeee, female: false }, 1);
+  // Vinay, the delivery rider you play in the story's Act III (story.js VINAY).
+  bakeHuman('vinay', { outfit: 'tshirt', top: 0xe8601a, bottom: 0x2a2a30, skin: 0x8a5530, shoes: 0x222222, female: false }, 2);
   for (let k = 0; k < 48; k++) bakeHuman('ped' + k, {}, 5000 + k * 104729);
   for (const outfit of ['shirt', 'tshirt', 'kurta', 'saree', 'lungi', 'office', 'churidar']) for (let k = 0; k < 3; k++) bakeHuman(`${outfit}${k}`, { outfit }, 9000 + k * 31 + outfit.length);
   for (let k = 0; k < 4; k++) bakeHuman('police' + k, { outfit: 'police', lathi: k % 2 === 0 }, 12000 + k);

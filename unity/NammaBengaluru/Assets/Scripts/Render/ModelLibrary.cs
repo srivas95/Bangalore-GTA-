@@ -200,6 +200,8 @@ namespace NammaBengaluru.Render
             return new HumanRig { go = go, bones = bones, named = named, def = def, renderer = smr };
         }
 
+        // Passer-by k (0..47) of the baked crowd.
+        public static HumanModelDef Ped(int k) => HumanNamed("ped" + k);
         public static HumanModelDef HumanNamed(string name) { Load(); return humans.FirstOrDefault(h => h.name == name) ?? humans[0]; }
     }
 }

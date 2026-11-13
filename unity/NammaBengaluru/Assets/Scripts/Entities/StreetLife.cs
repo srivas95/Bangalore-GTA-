@@ -167,7 +167,7 @@ namespace NammaBengaluru.Entities
             {
                 // createHuman({}, rng) draws a random person; here, one of the 48 baked passers-by.
                 var humans = ModelLibrary.Humans;
-                h = new Human(humans[1 + (int)Math.Floor(rng.Next() * 48)], rng.Next);
+                h = new Human(ModelLibrary.Ped((int)Math.Floor(rng.Next() * 48)), rng.Next);
                 h.go.transform.SetParent(root, false);
             }
             h.go.SetActive(true);
@@ -263,7 +263,7 @@ namespace NammaBengaluru.Entities
         // A carjacked driver bolts away from the player.
         public Ped SpawnFleeing(double x, double z, double fromX, double fromZ, HumanModelDef who = null)
         {
-            var h = new Human(who ?? ModelLibrary.Humans[1 + (int)Math.Floor(rng.Next() * 48)], rng.Next);
+            var h = new Human(who ?? ModelLibrary.Ped((int)Math.Floor(rng.Next() * 48)), rng.Next);
             h.go.transform.SetParent(root, false);
             double a = Math.Atan2(x - fromX, z - fromZ);
             var p = NewPed(h, new Ped { kind = "temp", temp = true, state = "flee", vx = Math.Sin(a) * 4.5, vz = Math.Cos(a) * 4.5, timer = 7 });

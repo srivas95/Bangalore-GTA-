@@ -74,7 +74,8 @@ builds.
 | `world/metro.js`, `path.js` | `World/MetroRoutes.cs` (routes, ramps), `Render/Metro.cs` (structures, trains) | Done |
 | `systems/metroRide.js` | `Systems/MetroRide.cs` | Done |
 | `world/railway.js` | `Render/City.Railway.cs` | Done |
-| `systems/story.js`, `settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 (next) |
+| `systems/story.js` | `Systems/Story.cs`, missions exported by `tools/unity/export_story.mjs` to `Resources/Data/story.json` | Done |
+| `systems/settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 (next) |
 | `world/landmarks.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 6 |
 
 ### Phase 1 check (world core)
@@ -225,3 +226,12 @@ See `docs/unity/auto-ride.png`.
 - **Static caches.** The project enters Play mode without a domain reload, so `StaticReset.cs` clears the static caches of meshes, materials and textures as each session starts. Without it, the second session in an Editor run failed.
 
 See `docs/unity/metro-station.png`, `metro-ride.png` and `railway.png`.
+
+### Phase 6d (the story)
+
+- **The missions.** All 15 story missions across the three acts are ported: Fast Delivery to The Deal, Majestic to the airport and back.
+- **How they're exported.** `tools/unity/export_story.mjs` evaluates story.js's own MISSIONS table with the step helpers swapped for recording ones. It runs every callback (handing over a machete, setting the clock to 9:30 pm, parking the lorry at the APMC yard, the shopkeepers' lines) against a fake context and writes the result to `Resources/Data/story.json`. Every line and action is therefore exactly the web game's. `Systems/Story.cs` runs the steps as story.js does: talk (E skips a line), go (with timers and "get back in the lorry"), collect, fight a crew (bosses marked on the map), wanted, escape, stop a getaway cab, get in, and become.
+- **Around the missions.** Mission givers wait at their markers, and MISSION PASSED or FAILED shows when a mission ends. Collections come in from Majestic once Act I is done. Progress saves to PlayerPrefs, and being wasted or busted fails the mission.
+- **Act III.** Act III is played as Vinay, who is baked with the other people now. Passers-by are looked up by name (`ModelLibrary.Ped(k)`).
+
+See `docs/unity/mission-passed.png`. Re-export after editing the story: `node tools/unity/export_story.mjs`.
