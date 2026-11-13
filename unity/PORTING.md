@@ -58,7 +58,7 @@ builds.
 | `entities/traffic.js` | `Entities/Traffic.cs` | Done |
 | `systems/signals.js` | `Systems/Signals.cs` | Done |
 | `systems/environment.js`, `world/sky.js` (colours) | `Systems/Environment.cs`, `Resources/Shaders/Sky.shader` | Done |
-| `entities/pedestrians.js` | `Entities/StreetLife.cs` | Done (cows have square edges; bus-platform crowds wait for the landmarks) |
+| `entities/pedestrians.js` | `Entities/StreetLife.cs` | Done (cows have square edges) |
 | `ui/hud.js` | `UI/Hud.cs` (uGUI + TextMeshPro; Oswald and DejaVu Sans in `Resources/Fonts`) | Done (metro and railway lines, GPS route and garages join the map with their ports) |
 | `systems/audio.js`, `audioSynth.js` (cues and radio), `soundBank.json` | `Systems/GameAudio.cs`, the 261 recordings in `Resources/Audio` | Done (no convolution reverb) |
 | `systems/particles.js` | `Systems/Particles.cs`, `Resources/Shaders/Particle.shader` | Done |
@@ -78,7 +78,7 @@ builds.
 | `systems/settings.js`, the pause screen (`#help`) | `Systems/Settings.cs`, `UI/Menus.cs` | Done (world detail levels and dynamic resolution aren't ported) |
 | `systems/liveWeather.js` | `Systems/LiveWeather.cs` | Done |
 | `ui/touch.js` | `UI/Menus.cs` (touch controls) | Done |
-| `world/landmarks.js` | `Render/City.Landmarks.cs`, `Resources/Models/landmarks.json` | Done (baked from the JS builders; airport and air-force animations not replayed) |
+| `world/landmarks.js` | `Render/City.Landmarks.cs`, `Resources/Models/landmarks.json` | Done (baked from the JS builders, animations sampled) |
 | `world/props.js` | `Render/StreetProps.cs`, meshes baked by `tools/unity/bake/models.mjs` to `Resources/Models/props.json` | Done |
 | `world/halos.js`, `blobs.js` | `Render/Glows.cs`, `Resources/Shaders/Halo.shader`, `Blob.shader` | Done |
 
@@ -240,7 +240,8 @@ See `docs/unity/mission-passed.png`. Re-export after editing the story: `node to
 - **How they're replayed.** `Render/City.Landmarks.cs` replays each call by key and call index: meshes (mirrored into Unity space), colliders, text signs and the tree scatters, which go through the ported `ScatterTrees`. The RNG therefore advances exactly as in the JS, and the buildings after a landmark match the web game's. All 25 landmarks are in: the Vidhana Soudha, the High Court, the cathedral, the towers, the stadium, the temples, the airport terminal and the rest.
 - **Cubbon Park.** Cubbon Park's walks, lamps, benches, bamboo, canopy and railing are a direct port of its builder.
 - **Signs.** The landmark signs were added to the text-sign bake (331 boards now).
-- **Not yet.** The airport's and air-force station's moving parts (taxiing planes, the radar) are drawn still.
+- **The moving landmarks.** The bake records the groups the airport and the air force station animate (`ctx.anims`), and samples their animation functions over one period. The airport's departing jet is sampled every 0.1 s of its 90 s cycle, with each airline's livery. The Surya Kiran formation is sampled at 512 points round its loop. `LandmarkAnim` plays them back with the same clocks.
+- **Majestic.** The bus stand's POI carries its bays and platform crowds, as in the JS. Buses nose into every third bay, and people wait on the platforms (`docs/unity/bus-station.png`, `airport-departure.png`, `surya-kiran.png`).
 
 See `docs/unity/vidhana-soudha.png`. Re-bake after editing landmarks.js: `node tools/unity/bake/landmarks.mjs`, then export and re-bake the text signs.
 

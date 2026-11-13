@@ -16,10 +16,41 @@ namespace NammaBengaluru.Render
 {
     public partial class City
     {
-        class LmChunk { public int n; public string pos, nor, col, uv, idx; }
+        internal class LmChunk { public int n; public string pos, nor, col, uv, idx; }
         class LmBox { public double minX, maxX, minZ, maxZ, h, y0; public string tag; public OrientedBox rot; }
         class LmSign { public string key, bg, fg, font; public string[] text, fonts; public double x, y, z, w, h, rotY; }
-        class LmRecord { public string key; public int call; public List<JToken> args; public List<List<JToken>> trees; public List<LmSign> signs; public List<LmBox> cols; public Dictionary<string, List<LmChunk>> geo; public Poi poi; }
+        class LmRecord { public string key; public int call; public List<JToken> args; public List<List<JToken>> trees; public List<LmSign> signs; public List<LmBox> cols; public Dictionary<string, List<LmChunk>> geo; public Poi poi; public LmAnim anim; }
+        internal class LmAnim { public List<LmChunk> meshes; public double period, t0, step, rough, metal; public string samples; public List<List<string>> liveries; }
+        readonly List<LandmarkAnim> anims = new List<LandmarkAnim>();
+
+        internal static Mesh LmMeshPublic(LmChunk ch, string name) => LmMesh(ch, name);
+        static Mesh LmMesh(LmChunk ch, string name)
+        {
+            var pos = Convert.FromBase64String(ch.pos); var nor = Convert.FromBase64String(ch.nor);
+            var col = Convert.FromBase64String(ch.col); var uvb = Convert.FromBase64String(ch.uv); var idb = Convert.FromBase64String(ch.idx);
+            int n = ch.n;
+            var v = new Vector3[n]; var nn = new Vector3[n]; var cc = new Color32[n]; var uu = new Vector2[n];
+            for (int i = 0; i < n; i++)
+            {
+                v[i] = new Vector3(BitConverter.ToSingle(pos, i * 12), BitConverter.ToSingle(pos, i * 12 + 4), -BitConverter.ToSingle(pos, i * 12 + 8));
+                nn[i] = new Vector3((sbyte)nor[i * 3] / 127f, (sbyte)nor[i * 3 + 1] / 127f, -(sbyte)nor[i * 3 + 2] / 127f);
+                cc[i] = new Color32(col[i * 3], col[i * 3 + 1], col[i * 3 + 2], 255);
+                uu[i] = new Vector2(BitConverter.ToSingle(uvb, i * 8), BitConverter.ToSingle(uvb, i * 8 + 4));
+            }
+            int ni = idb.Length / 4;
+            var idx = new int[ni];
+            for (int i = 0; i < ni; i += 3)
+            {
+                idx[i] = BitConverter.ToInt32(idb, i * 4);
+                idx[i + 1] = BitConverter.ToInt32(idb, (i + 2) * 4);
+                idx[i + 2] = BitConverter.ToInt32(idb, (i + 1) * 4);
+            }
+            var mesh = new Mesh { name = name };
+            if (n > 65535) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.vertices = v; mesh.normals = nn; mesh.colors32 = cc; mesh.uv = uu; mesh.triangles = idx;
+            mesh.RecalculateBounds();
+            return mesh;
+        }
 
         static List<LmRecord> landmarkRecords;
         readonly Dictionary<string, int> landmarkCalls = new Dictionary<string, int>();
@@ -56,29 +87,7 @@ namespace NammaBengaluru.Render
                 }
                 foreach (var ch in kv.Value)
                 {
-                    var pos = Convert.FromBase64String(ch.pos); var nor = Convert.FromBase64String(ch.nor);
-                    var col = Convert.FromBase64String(ch.col); var uvb = Convert.FromBase64String(ch.uv); var idb = Convert.FromBase64String(ch.idx);
-                    int n = ch.n;
-                    var v = new Vector3[n]; var nn = new Vector3[n]; var cc = new Color32[n]; var uu = new Vector2[n];
-                    for (int i = 0; i < n; i++)
-                    {
-                        v[i] = new Vector3(BitConverter.ToSingle(pos, i * 12), BitConverter.ToSingle(pos, i * 12 + 4), -BitConverter.ToSingle(pos, i * 12 + 8));
-                        nn[i] = new Vector3((sbyte)nor[i * 3] / 127f, (sbyte)nor[i * 3 + 1] / 127f, -(sbyte)nor[i * 3 + 2] / 127f);
-                        cc[i] = new Color32(col[i * 3], col[i * 3 + 1], col[i * 3 + 2], 255);
-                        uu[i] = new Vector2(BitConverter.ToSingle(uvb, i * 8), BitConverter.ToSingle(uvb, i * 8 + 4));
-                    }
-                    int ni = idb.Length / 4;
-                    var idx = new int[ni];
-                    for (int i = 0; i < ni; i += 3)
-                    {
-                        idx[i] = BitConverter.ToInt32(idb, i * 4);
-                        idx[i + 1] = BitConverter.ToInt32(idb, (i + 2) * 4);
-                        idx[i + 2] = BitConverter.ToInt32(idb, (i + 1) * 4);
-                    }
-                    var mesh = new Mesh { name = key + "_" + kv.Key };
-                    if (n > 65535) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-                    mesh.vertices = v; mesh.normals = nn; mesh.colors32 = cc; mesh.uv = uu; mesh.triangles = idx;
-                    mesh.RecalculateBounds();
+                    var mesh = LmMesh(ch, key + "_" + kv.Key);
                     var mg = new GameObject(kv.Key);
                     mg.transform.SetParent(go.transform, false);
                     mg.isStatic = true;
@@ -102,6 +111,7 @@ namespace NammaBengaluru.Render
                 Block tb = a.Count > 4 && a[4].Type == JTokenType.Object ? layout.blocks.First(q => q.id == a[4]["block"].Value<int>()) : null;
                 ScatterTrees(A(0), A(1), A(2), (int)A(3), tb);
             }
+            if (rec.anim != null) anims.Add(new LandmarkAnim(key, rec.anim, group));
             return rec.poi;
         }
 
@@ -242,6 +252,78 @@ namespace NammaBengaluru.Render
                 }
             }
             pois.parking.Add(new Poi { x = block.poly[0][0], z = block.poly[0][1] });
+        }
+    }
+
+    // A landmark that moves (landmarks.js ctx.anims): its group, played back from the samples
+    // the bake took of the web game's own animation over one period.
+    public class LandmarkAnim
+    {
+        readonly GameObject go;
+        readonly Mesh[] meshes;
+        readonly float[] s;
+        readonly double period, t0, step;
+        readonly List<Color32[]> liveries = new List<Color32[]>();
+        readonly int n;
+        double time;
+        int livery;
+
+        internal LandmarkAnim(string key, City.LmAnim a, Transform parent)
+        {
+            period = a.period; t0 = a.t0; step = a.step;
+            go = new GameObject("anim_" + key);
+            go.transform.SetParent(parent, false);
+            var mat = CityMaterials.Make("anim_" + key, new CityMaterials.Spec { roughness = (float)a.rough, metallic = (float)a.metal });
+            mat.SetFloat("_AO", 0);
+            meshes = new Mesh[a.meshes.Count];
+            for (int i = 0; i < meshes.Length; i++)
+            {
+                meshes[i] = City.LmMeshPublic(a.meshes[i], key + "_anim");
+                var mg = new GameObject("m");
+                mg.transform.SetParent(go.transform, false);
+                mg.AddComponent<MeshFilter>().sharedMesh = meshes[i];
+                var mr = mg.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = mat;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            var b = Convert.FromBase64String(a.samples);
+            s = new float[b.Length / 4];
+            Buffer.BlockCopy(b, 0, s, 0, b.Length);
+            n = s.Length / 8;
+            // (One mesh per landmark that moves; a livery is that mesh's colours.)
+            if (a.liveries.Count > 1)
+                foreach (var l in a.liveries)
+                {
+                    var c = Convert.FromBase64String(l[0]);
+                    var cc = new Color32[c.Length / 3];
+                    for (int i = 0; i < cc.Length; i++) cc[i] = new Color32(c[i * 3], c[i * 3 + 1], c[i * 3 + 2], 255);
+                    liveries.Add(cc);
+                }
+            Update(0);
+        }
+
+        public void Update(double dt)
+        {
+            time += dt;
+            double clock = t0 + time;
+            double t = clock % period;
+            if (liveries.Count > 1)
+            {
+                int l = (int)Math.Floor(clock / period) % liveries.Count;
+                if (l != livery) { livery = l; meshes[0].colors32 = liveries[l]; }
+            }
+            double f = t / step;
+            int i0 = Math.Min(n - 1, (int)Math.Floor(f)), i1 = (i0 + 1) % n;
+            float u = (float)(f - Math.Floor(f));
+            bool vis = s[i0 * 8 + 7] > 0.5f;
+            if (go.activeSelf != vis) go.SetActive(vis);
+            if (!vis) return;
+            Vector3 P(int k) => new Vector3(s[k * 8], s[k * 8 + 1], -s[k * 8 + 2]);
+            Quaternion Q(int k) => new Quaternion(-s[k * 8 + 3], -s[k * 8 + 4], s[k * 8 + 5], s[k * 8 + 6]); // mirrored into Unity space
+            // Don't blend across a jump (the jet reappearing at the start of the taxiway).
+            bool jump = i1 == 0 || (P(i1) - P(i0)).sqrMagnitude > 2500;
+            go.transform.localPosition = jump ? P(i0) : Vector3.Lerp(P(i0), P(i1), u);
+            go.transform.localRotation = jump ? Q(i0) : Quaternion.Slerp(Q(i0), Q(i1), u);
         }
     }
 }

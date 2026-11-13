@@ -176,6 +176,9 @@ namespace NammaBengaluru
             signals = new Signals(layout, root, city.materials);
             traffic = new Traffic(layout, signals);
             streetLife = new StreetLife(layout, colliders, signals, cfg, root, city.materials);
+            // Majestic: crowds waiting on the bus station's platforms (main.js).
+            foreach (var lm in city.pois.landmarks)
+                if (lm.crowds != null) foreach (var c in lm.crowds) streetLife.stalls.Add(new Stall { x = c.x, z = c.z, n = c.n, spread = c.spread, face = c.face });
             traffic.Prewarm(150, hour, this);
             input = new GameInput();
             hud = new UI.Hud(layout, city.pois);
@@ -324,6 +327,9 @@ namespace NammaBengaluru
                 var p = city.pois.industrial[i];
                 Park(r.Next() < 0.6 ? "lorry" : "miniTruck", p.x, p.z, p.heading);
             }
+            // Majestic: BMTC buses nosed into the bus station's bays.
+            foreach (var lm in city.pois.landmarks)
+                if (lm.busBays != null) for (int k = 0; k < lm.busBays.Count; k++) if (k % 3 == 1) Park("bus", lm.busBays[k].x, lm.busBays[k].z, lm.busBays[k].heading);
         }
 
         void Update()
@@ -495,6 +501,7 @@ namespace NammaBengaluru
             player.rigPitch = rig.pitch;
             if (!freeCam && !metroCam) rig.Update(dt, input, player, colliders, rideCam);
             metro.Update(dt, focus.x, focus.z);
+            foreach (var a in city.anims) a.Update(dt);
             { var cp = Camera.main.transform.position; props.Update(dt, cp.x, -cp.z); }
             city.rail.Update(dt, focus.x, focus.z);
             hud.SetTunnel(metroRide.tunnel);

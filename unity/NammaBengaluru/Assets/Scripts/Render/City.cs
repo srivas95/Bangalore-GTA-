@@ -23,7 +23,13 @@ namespace NammaBengaluru.Render
         public float emissive = 0.05f; // MeshStandardMaterial emissiveIntensity
         public bool basic;           // MeshBasicMaterial (metro boards): unlit
     }
-    public class Poi { public string name, district; public double x, z, heading; }
+    public class Poi
+    {
+        public string name, district; public double x, z, heading;
+        public List<Poi> busBays;       // the bus stand: bays a parked bus can nose into
+        public List<CrowdSpot> crowds;  // ... and people waiting on its platforms
+    }
+    public class CrowdSpot { public double x, z; public int n; public double[] spread; public double? face; }
     public class Pois
     {
         public List<Poi> food = new List<Poi>(), homes = new List<Poi>(), landmarks = new List<Poi>(), parking = new List<Poi>(), industrial = new List<Poi>(), fuel = new List<Poi>(), garages = new List<Poi>();
@@ -32,6 +38,7 @@ namespace NammaBengaluru.Render
 
     public class CityResult
     {
+        public List<LandmarkAnim> anims; // the landmarks that move (the airport's jet, the Surya Kiran)
         public Pois pois;
         public List<TreeSpec> trees;
         public List<double[]> lamps; // x, z, armX, armZ, run
@@ -181,7 +188,7 @@ namespace NammaBengaluru.Render
             var forest = group.gameObject.AddComponent<InstancedForest>();
             forest.Init(trees.Where(t => !OnCarriageway(t.x, t.z, 0.6, false)).ToList(), tanks, mats, colliders);
 
-            return new CityResult { pois = pois, trees = trees, lamps = lamps, lampHeads = lampHeads, tanks = tanks, signs = signs, props = props, materials = mats, root = group, rail = rail };
+            return new CityResult { anims = anims, pois = pois, trees = trees, lamps = lamps, lampHeads = lampHeads, tanks = tanks, signs = signs, props = props, materials = mats, root = group, rail = rail };
         }
 
         // ---------- helpers shared with landmarks ----------
