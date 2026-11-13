@@ -274,3 +274,23 @@ See `docs/unity/ground-shading.png`, `halos-night.png`, `pack-vehicle.png` and `
 - **World detail** (`detail.js`). Like the web game, the city can be built at three levels, picked in Settings → World detail (after a restart). Auto picks Full on computers and Lite on phones and on machines with less than 8 GB of memory. Lite drops roof parapets, railing pickets, median shrubs, sleepers and overhead cables, and uses cheaper trees and tanks, nearer props and a coarser ground-shading map. Minimum also halves the lamps and leaves out the rooftop tanks. None of this draws random numbers, so every level builds the same city.
 - **Crash fallback.** If a start never reaches the first frame (a phone running out of memory), the next one steps down a level, switches to the Low preset, and says so.
 - **Dynamic resolution.** As in main.js, the URP render scale drops in 10% steps to 80% of the chosen resolution while frames run long, and creeps back with headroom (Settings → Dynamic resolution).
+
+### Beyond the web game: Sketchfab models
+
+The Unity version swaps much of the game's low-poly look for free models from Sketchfab, licensed CC0 or CC BY. Each one is credited in `MODEL_CREDITS.md`; `tools/unity/bake/sketchfab_credits.py` regenerates that list.
+
+- **Picking and downloading.** The picks are in `tools/unity/bake/sketchfab_vehicles.json` and `sketchfab_people.json`, with the reason for each dropped model. `sketchfab_fetch.py` downloads them into the gitignored `sketchfab_cache/`. It re-checks each licence and skips anything that isn't CC0 or CC BY. It needs a Sketchfab API token.
+- **Vehicles** (`sketchfab.js`). There are 44: Bengaluru autos, Indian scooters and bikes, Maruti 800, Omni and Eeco, a Dzire, an Innova, a Thar, Indian buses (BMTC style, KSRTC, TNSTC, school), Tata and Ashok Leyland lorries, an Indian Oil tanker, a fire engine and ambulances. Each is turned to face forward and scaled to its type's length. Its wheels are found by shape and made bones, so they spin and steer. Its textures go into one atlas. They then take the car pack's path through the bake, so physics, dents, fire, halos and the light bars all apply. Traffic and parking choose them for 75% of the types they cover. Phones skip models over 15k triangles.
+- **People** (`sketchfab_people.js`). There are 19, including the player. Each rig (Mixamo, Rigify, Character Creator or custom) is mapped onto the game's 13-bone skeleton and re-posed to its rest pose, with the hips at 0.92 m. The mesh is then re-skinned with four weights per vertex, so Human.cs animates them exactly like the game's own people. Two in three passers-by are Sketchfab people. Police, riders' helmets and the story characters stay the game's own.
+- **Review pictures:** `node tools/unity/bake/sfreview.mjs tools/unity/bake/sketchfab_vehicles.json <dir>`, and the same with `sketchfab_people.json`.
+
+See `docs/unity/sketchfab-vehicles.png`, `sketchfab-player.png` and `sketchfab-pedestrian.png`.
+
+### Player builds
+
+`Assets/Editor/BuildPlayers.cs` builds a Windows player, a Linux player and an Android APK. Use Tools → Namma Bengaluru, or the command line:
+
+    unity build --target StandaloneWindows64 --execute-method NammaBengaluru.Editor.BuildPlayers.Windows --output-path Builds/Windows/NammaBengaluru.exe
+    unity build --target Android --execute-method NammaBengaluru.Editor.BuildPlayers.Android --output-path Builds/NammaBengaluru.apk
+
+Shaders that code finds only by name aren't included in builds. Give them a material in `Resources` (as `Resources/Materials/Rain.mat` does), or load them from `Resources/Shaders`.

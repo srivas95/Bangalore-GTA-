@@ -10,6 +10,7 @@ import { loadPackVehicles, packTemplates, buildPackModel, PACK_TYPES } from '/sr
 import { loadProps, PropField, PROP_KINDS } from '/src/world/props.js';
 import * as THREE from 'three';
 import { bakeVehicle } from './sketchfab.js';
+import { bakePerson } from './sketchfab_people.js';
 
 // garages.js FOR_SALE: [type, model].
 const GARAGE = [['scooter', 'activa'], ['scooter', 'ola'], ['scooter', 'ather'], ['bike', null], ['sportBike', null], ['auto', null], ['van', 'omni'], ['van', 'eeco'],
@@ -20,23 +21,26 @@ const VARIANTS = { default: 4, hatch: 8, sedan: 8, taxi: 4, suv: 6, scooter: 6, 
 
 function pack(geo, withPbr, withSkin, opts = {}) {
   if (geo.index) geo = geo.toNonIndexed(); // (the pack's meshes are indexed; the builders' aren't)
-  const P = geo.attributes.position, N = geo.attributes.normal, C = geo.attributes.color, U = geo.attributes.uv, R = geo.attributes.pbr, S = geo.attributes.skinIndex;
-  const map = new Map(), pos = [], nor = [], col = [], uv = [], pbr = [], bone = [], idx = [];
+  const P = geo.attributes.position, N = geo.attributes.normal, C = geo.attributes.color, U = geo.attributes.uv, R = geo.attributes.pbr, S = geo.attributes.skinIndex, Wt = geo.attributes.skinWeight;
+  const map = new Map(), pos = [], nor = [], col = [], uv = [], pbr = [], bone = [], wt = [], idx = [];
   for (let i = 0; i < P.count; i++) {
     const v = [P.getX(i), P.getY(i), P.getZ(i)], n = [N.getX(i), N.getY(i), N.getZ(i)];
     const c = C ? [C.getX(i), C.getY(i), C.getZ(i)] : [1, 1, 1], t = U ? [U.getX(i), opts.flipV ? 1 - U.getY(i) : U.getY(i)] : [0, 0];
     const p = withPbr && R ? [R.getX(i), R.getY(i), R.getZ(i)] : opts.pbr || [0.6, 0, 0], b = withSkin && S ? S.getX(i) : 0;
-    const key = [...v, ...n, ...c, ...t, ...p, b].map((x) => Math.round(x * 4096)).join(',');
+    // (Four bones and weights per vertex for the Sketchfab people; one rigid bone otherwise.)
+    const b4 = opts.weights ? [0, 1, 2, 3].map((c) => S.getComponent(i, c)) : null, w4 = opts.weights ? [0, 1, 2, 3].map((c) => Math.round(Wt.getComponent(i, c) * 255)) : null;
+    const key = [...v, ...n, ...c, ...t, ...p, b, ...(b4 || []), ...(w4 || [])].map((x) => Math.round(x * 4096)).join(',');
     let k = map.get(key);
     if (k === undefined) {
       k = pos.length / 3; map.set(key, k);
       pos.push(...v); nor.push(...n.map((x) => Math.round(Math.max(-1, Math.min(1, x)) * 127)));
       col.push(...c.map((x) => Math.round(Math.max(0, Math.min(1, x)) * 255)));
-      uv.push(...t); pbr.push(Math.round(p[0] * 255), Math.round(p[1] * 255), Math.round(Math.min(2, p[2]) / 2 * 255)); bone.push(b);
+      uv.push(...t); pbr.push(Math.round(p[0] * 255), Math.round(p[1] * 255), Math.round(Math.min(2, p[2]) / 2 * 255));
+      if (b4) { bone.push(...b4); wt.push(...w4); } else bone.push(b);
     }
     idx.push(k);
   }
-  return { pos, nor, col, uv, pbr, bone, idx };
+  return opts.weights ? { pos, nor, col, uv, pbr, bone, wt, idx, w4: true } : { pos, nor, col, uv, pbr, bone, idx };
 }
 
 window.bake = async () => {
@@ -122,7 +126,21 @@ window.bake = async () => {
   for (const outfit of ['shirt', 'tshirt', 'kurta', 'saree', 'lungi', 'office', 'churidar']) for (let k = 0; k < 3; k++) bakeHuman(`${outfit}${k}`, { outfit }, 9000 + k * 31 + outfit.length);
   for (let k = 0; k < 4; k++) bakeHuman('police' + k, { outfit: 'police', lathi: k % 2 === 0 }, 12000 + k);
   for (let k = 0; k < 4; k++) bakeHuman('helmet' + k, { helmet: true }, 13000 + k * 7);
+  // Sketchfab people (CC0 / CC BY; sketchfab_people.json), retargeted onto the game skeleton by
+  // sketchfab_people.js; each with its own atlas, skinned with up to four weights per vertex.
+  const pplPicks = await (await fetch('/tools/unity/bake/sketchfab_people.json')).json();
+  const people = [];
+  for (const cfg of pplPicks) {
+    if (cfg.skip || cfg.drop) continue;
+    try {
+      const t = await bakePerson(cfg);
+      const atlasIdx = atlases.length;
+      atlases.push(t.atlas.toDataURL('image/png'));
+      humans.push({ name: 'sf_' + cfg.uid, source: 'sketchfab', role: cfg.role || 'walker', atlas: atlasIdx, outfit: 'sketchfab', female: !!cfg.female, gait: 1, bones: t.bones, boneNames: Object.keys(BONES), body: pack(t.geometry, false, true, { flipV: true, weights: true }) });
+      people.push({ uid: cfg.uid, ok: true, map: t.map, height: t.height });
+    } catch (e) { people.push({ uid: cfg.uid, ok: false, error: String(e && e.message || e) }); }
+  }
   const mat = decalAtlas();
-  return { models, humans, atlases, props, propAtlas, decalAtlas: mat.map.image.toDataURL('image/png'), decalGlow: mat.emissiveMap ? mat.emissiveMap.image.toDataURL('image/png') : null };
+  return { models, humans, people, atlases, props, propAtlas, decalAtlas: mat.map.image.toDataURL('image/png'), decalGlow: mat.emissiveMap ? mat.emissiveMap.image.toDataURL('image/png') : null };
 };
 window.ready = true;

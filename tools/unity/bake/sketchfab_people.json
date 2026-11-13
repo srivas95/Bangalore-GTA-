@@ -7,7 +7,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-7d601a034c1c45e68151bddf386e48b3",
   "faces": 4090,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "7b93db2d46d847f191cf5e841b322856",
@@ -17,7 +18,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-7b93db2d46d847f191cf5e841b322856",
   "faces": 2544,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "9fb0869f873a4e839882294d5e87c496",
@@ -27,7 +29,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-9fb0869f873a4e839882294d5e87c496",
   "faces": 2596,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "textures missing (all black)"
  },
  {
   "uid": "5718a53d18a142f686b1d9f02a637773",
@@ -37,7 +40,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-5718a53d18a142f686b1d9f02a637773",
   "faces": 3480,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "f658b9e1bb324f2ab1e9f00d7d6b4065",
@@ -47,7 +51,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-f658b9e1bb324f2ab1e9f00d7d6b4065",
   "faces": 3296,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "rig not recognised (no upper arms by name)"
  },
  {
   "uid": "4a834adf1e33405c979e94555e7955c6",
@@ -57,7 +62,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-4a834adf1e33405c979e94555e7955c6",
   "faces": 2706,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "8ea0cf8ee8604777900a32d1ecdf1c41",
@@ -67,7 +73,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-8ea0cf8ee8604777900a32d1ecdf1c41",
   "faces": 2908,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "1e3307732bbf4453b30f021bfec5bcaf",
@@ -77,7 +84,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-1e3307732bbf4453b30f021bfec5bcaf",
   "faces": 13259,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "4cf10e2dde6d4b12b6dccd25a4cf3b77",
@@ -87,7 +95,9 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-4cf10e2dde6d4b12b6dccd25a4cf3b77",
   "faces": 2469,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "female": true,
+  "baked": true
  },
  {
   "uid": "341f934134d041c581b590cedff26d88",
@@ -97,7 +107,9 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-341f934134d041c581b590cedff26d88",
   "faces": 3124,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "female": true,
+  "baked": true
  },
  {
   "uid": "b026b514c7254f399238b22a1f94fe0a",
@@ -107,7 +119,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-b026b514c7254f399238b22a1f94fe0a",
   "faces": 3128,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "rig and mesh disagree"
  },
  {
   "uid": "752778128b9a4b578586dbce40c0366f",
@@ -117,7 +130,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-752778128b9a4b578586dbce40c0366f",
   "faces": 2564,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "untextured (all white)"
  },
  {
   "uid": "5cc4ee1d81354cde9c96d0ad4c290ce4",
@@ -127,7 +141,9 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-5cc4ee1d81354cde9c96d0ad4c290ce4",
   "faces": 3157,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "female": true,
+  "baked": true
  },
  {
   "uid": "5e53d56931c84a169b14a5a5d2bc4635",
@@ -137,7 +153,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-5e53d56931c84a169b14a5a5d2bc4635",
   "faces": 3112,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "ff828a1bb4674856840d9da5bde4f562",
@@ -147,7 +164,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-ff828a1bb4674856840d9da5bde4f562",
   "faces": 1604,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "not rigged"
  },
  {
   "uid": "5fb800ec587046f68a5f281d50b57150",
@@ -157,7 +175,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-5fb800ec587046f68a5f281d50b57150",
   "faces": 10000,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "not rigged"
  },
  {
   "uid": "b6f6740f883b4749abac47af0045a9dd",
@@ -167,17 +186,19 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-b6f6740f883b4749abac47af0045a9dd",
   "faces": 4574,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "textures missing (grey)"
  },
  {
   "uid": "304bad7d4e9b4addacb68c83e1a322cb",
-  "role": "walker",
+  "role": "player",
   "name": "Casual Man -RIGGED-",
   "author": "NABEEL619",
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-304bad7d4e9b4addacb68c83e1a322cb",
   "faces": 12296,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "2cb8c4b198e64a92b4bc9d32a0f2973d",
@@ -187,7 +208,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-2cb8c4b198e64a92b4bc9d32a0f2973d",
   "faces": 2700,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "264cac3d9fdd41378ed7ea3ff817e75f",
@@ -197,7 +219,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-264cac3d9fdd41378ed7ea3ff817e75f",
   "faces": 5252,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  },
  {
   "uid": "07eeb124d210402bbc061e543d0b97a1",
@@ -207,7 +230,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-07eeb124d210402bbc061e543d0b97a1",
   "faces": 4384,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "clothing unsuited to a street crowd"
  },
  {
   "uid": "3e79fef9da5f4db7b6a46f3e0ff89328",
@@ -217,7 +241,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-3e79fef9da5f4db7b6a46f3e0ff89328",
   "faces": 2046,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "untextured (all white)"
  },
  {
   "uid": "b71bf9a6065c4836b291258f1d8587b9",
@@ -227,7 +252,9 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-b71bf9a6065c4836b291258f1d8587b9",
   "faces": 2704,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "female": true,
+  "baked": true
  },
  {
   "uid": "7b127f7a90e645eca0a3a48f056fc928",
@@ -237,7 +264,9 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-7b127f7a90e645eca0a3a48f056fc928",
   "faces": 2714,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "female": true,
+  "baked": true
  },
  {
   "uid": "dca00a109a6a40bf86219c39d48a3a52",
@@ -247,7 +276,9 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-dca00a109a6a40bf86219c39d48a3a52",
   "faces": 5330,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "female": true,
+  "baked": true
  },
  {
   "uid": "187cc3d5af4341d58615d7201f49ecab",
@@ -257,7 +288,9 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-187cc3d5af4341d58615d7201f49ecab",
   "faces": 1873,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "female": true,
+  "baked": true
  },
  {
   "uid": "5c01b6072fc64da38e939b8793ba427d",
@@ -267,7 +300,9 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-5c01b6072fc64da38e939b8793ba427d",
   "faces": 1833,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "female": true,
+  "baked": true
  },
  {
   "uid": "cdb4d27bd4154712968eb3f0961bb375",
@@ -277,7 +312,8 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-cdb4d27bd4154712968eb3f0961bb375",
   "faces": 8109,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "drop": "two characters in one rig"
  },
  {
   "uid": "7b62e6e1b58c476f8b421dd007a4ff90",
@@ -287,6 +323,7 @@
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/none-7b62e6e1b58c476f8b421dd007a4ff90",
   "faces": 7180,
-  "licenseSlug": "by"
+  "licenseSlug": "by",
+  "baked": true
  }
 ]

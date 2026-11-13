@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace NammaBengaluru.Render
 {
-    public class MeshRef { public int offset, verts, indices; }
+    public class MeshRef { public int offset, verts, indices; public bool w4; } // w4: four bones and weights per vertex
     public class BoneDef { public int parent; public double[] p; }
     public class WheelDef { public int steer, spin; public double r; }
     public class LightBarDef { public double w, y, z; }
@@ -37,6 +37,8 @@ namespace NammaBengaluru.Render
     public class HumanModelDef
     {
         public string name, outfit;
+        public string source, role; // "sketchfab": a retargeted Sketchfab character; role: walker | player
+        public int atlas;           // ... and its texture atlas (Baked/pack_atlas<n>)
         public bool female;
         public double gait;
         public List<BoneDef> bones;
@@ -52,8 +54,8 @@ namespace NammaBengaluru.Render
         static List<HumanModelDef> humans;
         static Dictionary<string, List<VehicleModelDef>> byType, byPack, bySketchfab;
         static Material vehicleMat, decalMat, humanMat;
-        static readonly Dictionary<int, Material> packMats = new Dictionary<int, Material>();
-        internal static void ResetStatics() { vbytes = hbytes = null; vehicles = null; humans = null; byType = byPack = bySketchfab = null; vehicleMat = decalMat = humanMat = null; packMats.Clear(); }
+        static readonly Dictionary<int, Material> packMats = new Dictionary<int, Material>(), personMats = new Dictionary<int, Material>();
+        internal static void ResetStatics() { vbytes = hbytes = null; vehicles = null; humans = null; byType = byPack = bySketchfab = null; vehicleMat = decalMat = humanMat = null; packMats.Clear(); personMats.Clear(); }
 
         // How often a type with Sketchfab models gets one (the rest go on to the pack and the procedural models).
         const double SKETCHFAB_SHARE = 0.75;
@@ -124,8 +126,23 @@ namespace NammaBengaluru.Render
             o += Align(vc * 8);
             for (int i = 0; i < vc; i++) pbr[i] = new Vector4(data[o + i * 3] / 255f, data[o + i * 3 + 1] / 255f, data[o + i * 3 + 2] / 255f * 2, 0);
             o += Align(vc * 3);
-            if (skinned) for (int i = 0; i < vc; i++) bw[i] = new BoneWeight { boneIndex0 = data[o + i], weight0 = 1 };
-            o += Align(vc);
+            if (r.w4)
+            {
+                // Four bones per vertex, then four weights (0..255), for the Sketchfab people.
+                int wo = o + Align(vc * 4);
+                for (int i = 0; i < vc; i++)
+                {
+                    int b = o + i * 4, w = wo + i * 4;
+                    float t = data[w] + data[w + 1] + data[w + 2] + data[w + 3]; if (t <= 0) t = 1;
+                    bw[i] = new BoneWeight { boneIndex0 = data[b], boneIndex1 = data[b + 1], boneIndex2 = data[b + 2], boneIndex3 = data[b + 3], weight0 = data[w] / t, weight1 = data[w + 1] / t, weight2 = data[w + 2] / t, weight3 = data[w + 3] / t };
+                }
+                o = wo + Align(vc * 4);
+            }
+            else
+            {
+                if (skinned) for (int i = 0; i < vc; i++) bw[i] = new BoneWeight { boneIndex0 = data[o + i], weight0 = 1 };
+                o += Align(vc);
+            }
             var idx = new int[ic];
             for (int i = 0; i < ic; i += 3)
             {
@@ -229,15 +246,39 @@ namespace NammaBengaluru.Render
             def.mesh ??= ReadMesh(hbytes, def.body, true, def.name);
             def.mesh.bindposes = BindPoses(skin, bones);
             var smr = skin.gameObject.AddComponent<SkinnedMeshRenderer>();
-            smr.sharedMesh = def.mesh; smr.bones = bones; smr.rootBone = bones[0]; smr.sharedMaterial = humanMat;
+            smr.sharedMesh = def.mesh; smr.bones = bones; smr.rootBone = bones[0]; smr.sharedMaterial = def.source == "sketchfab" ? PersonMaterial(def.atlas) : humanMat;
             smr.localBounds = new Bounds(new Vector3(0, 1, 0), new Vector3(2.5f, 3, 2.5f));
             var named = new Dictionary<string, Transform>();
             for (int i = 0; i < bones.Length && i < def.boneNames.Count; i++) named[def.boneNames[i]] = bones[i];
             return new HumanRig { go = go, bones = bones, named = named, def = def, renderer = smr };
         }
 
-        // Passer-by k (0..47) of the baked crowd.
-        public static HumanModelDef Ped(int k) => HumanNamed("ped" + k);
-        public static HumanModelDef HumanNamed(string name) { Load(); return humans.FirstOrDefault(h => h.name == name) ?? humans[0]; }
+        // Passer-by k (0..47) of the crowd: two in three are Sketchfab people (when there are any),
+        // the rest the game's own.
+        public static HumanModelDef Ped(int k)
+        {
+            Load();
+            var sf = humans.Where(h => h.source == "sketchfab" && h.role == "walker").ToList();
+            return sf.Count > 0 && k % 3 != 0 ? sf[k % sf.Count] : HumanNamed("ped" + k);
+        }
+
+        // A named person; "player" is the Sketchfab character picked for the player, if there is one.
+        public static HumanModelDef HumanNamed(string name)
+        {
+            Load();
+            if (name == "player") { var p = humans.FirstOrDefault(h => h.source == "sketchfab" && h.role == "player"); if (p != null) return p; }
+            return humans.FirstOrDefault(h => h.name == name) ?? humans[0];
+        }
+
+        // A Sketchfab person's material: the human shader with its texture atlas.
+        static Material PersonMaterial(int atlas)
+        {
+            if (personMats.TryGetValue(atlas, out var m) && m != null) return m;
+            m = new Material(humanMat) { name = "person" + atlas };
+            m.SetTexture("_BaseMap", CityMaterials.Tex("pack_atlas" + atlas));
+            m.SetFloat("_Albedo", 1);
+            m.EnableKeyword("_BASEMAP");
+            return personMats[atlas] = m;
+        }
     }
 }

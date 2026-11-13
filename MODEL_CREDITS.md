@@ -76,4 +76,26 @@ The Unity version (`unity/`) adds these models from Sketchfab. Each is used unde
 - "AMBULANCE CAR - LOW POLY" (<https://sketchfab.com/3d-models/25392b75045946f7a4c9a03e3bea969e>) by jasmin.daniel (<https://sketchfab.com/jasmin.daniel>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
 - "ГАЗ-3221 Скорая помощь / GAZ-3221 Ambulance R.2" (<https://sketchfab.com/3d-models/f3daf79ea4e843c8a159e8ead7af6e74>) by grox777 (<https://sketchfab.com/grox777>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
 
+### People
+
+- "Low Poly Male" (<https://sketchfab.com/3d-models/7d601a034c1c45e68151bddf386e48b3>) by Loves_Art (<https://sketchfab.com/Loves_Art>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low-poly Man" (<https://sketchfab.com/3d-models/7b93db2d46d847f191cf5e841b322856>) by razvansavescu (<https://sketchfab.com/razvansavescu>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Bearded man - Low poly animated" (<https://sketchfab.com/3d-models/5718a53d18a142f686b1d9f02a637773>) by Agor_ (<https://sketchfab.com/Agor_>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low-poly Man Casual Clothes 2" (<https://sketchfab.com/3d-models/4a834adf1e33405c979e94555e7955c6>) by razvansavescu (<https://sketchfab.com/razvansavescu>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low Poly Man - Rigged" (<https://sketchfab.com/3d-models/8ea0cf8ee8604777900a32d1ecdf1c41>) by mhkstudio (<https://sketchfab.com/mhkstudio>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Security Guard – Rigged 3D Model" (<https://sketchfab.com/3d-models/1e3307732bbf4453b30f021bfec5bcaf>) by qsardor57913 (<https://sketchfab.com/qsardor57913>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Girl with clothes. Worker set" (<https://sketchfab.com/3d-models/4cf10e2dde6d4b12b6dccd25a4cf3b77>) by cattleya (<https://sketchfab.com/cattleya>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Sunset Walking Low Poly Girl [Rigged]" (<https://sketchfab.com/3d-models/341f934134d041c581b590cedff26d88>) by micaelsampaio (<https://sketchfab.com/micaelsampaio>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low Poly Woman - Rigged" (<https://sketchfab.com/3d-models/5cc4ee1d81354cde9c96d0ad4c290ce4>) by mhkstudio (<https://sketchfab.com/mhkstudio>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low Poly Teenager - Rigged" (<https://sketchfab.com/3d-models/5e53d56931c84a169b14a5a5d2bc4635>) by mhkstudio (<https://sketchfab.com/mhkstudio>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Casual Man -RIGGED-" (<https://sketchfab.com/3d-models/304bad7d4e9b4addacb68c83e1a322cb>) by NABEEL619 (<https://sketchfab.com/NABEEL619>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low-poly Man Casual Clothes 5" (<https://sketchfab.com/3d-models/2cb8c4b198e64a92b4bc9d32a0f2973d>) by razvansavescu (<https://sketchfab.com/razvansavescu>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Lowpoly casual boy - Game character" (<https://sketchfab.com/3d-models/264cac3d9fdd41378ed7ea3ff817e75f>) by maryssoul24 (<https://sketchfab.com/maryssoul24>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low-poly Woman Casual 3" (<https://sketchfab.com/3d-models/b71bf9a6065c4836b291258f1d8587b9>) by razvansavescu (<https://sketchfab.com/razvansavescu>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low-poly Woman Casual 2" (<https://sketchfab.com/3d-models/7b127f7a90e645eca0a3a48f056fc928>) by razvansavescu (<https://sketchfab.com/razvansavescu>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Lowpoly casual girl - Game character" (<https://sketchfab.com/3d-models/dca00a109a6a40bf86219c39d48a3a52>) by maryssoul24 (<https://sketchfab.com/maryssoul24>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Business Female_3_ Low Poly Style" (<https://sketchfab.com/3d-models/187cc3d5af4341d58615d7201f49ecab>) by PolytricityLtd (<https://sketchfab.com/PolytricityLtd>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Business Female_1_ Low Poly Style" (<https://sketchfab.com/3d-models/5c01b6072fc64da38e939b8793ba427d>) by PolytricityLtd (<https://sketchfab.com/PolytricityLtd>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+- "Low-Poly Construction workers (animated)" (<https://sketchfab.com/3d-models/7b62e6e1b58c476f8b421dd007a4ff90>) by jungle_jim (<https://sketchfab.com/jungle_jim>), CC BY 4.0 (<https://creativecommons.org/licenses/by/4.0/>).
+
 <!-- sketchfab:end -->

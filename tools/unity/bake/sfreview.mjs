@@ -14,9 +14,9 @@ try {
   page.on('pageerror', (e) => console.error('page error:', e.message));
   await page.goto('http://localhost:5201/tools/unity/bake/sfreview.html');
   await page.waitForFunction(() => window.ready, null, { timeout: 120000 });
-  const res = await page.evaluate((p) => window.review(p), picks);
+  const res = await page.evaluate((p) => (p.people ? window.reviewPeople(p.list) : window.review(p.list)), { people: picksPath.includes('people'), list: picks });
   res.forEach((r, i) => {
     if (r.img) writeFileSync(`${outDir}/${String(i).padStart(2, '0')}_${r.type}.jpg`, Buffer.from(r.img.split(',')[1], 'base64'));
-    console.log(i, r.type, r.name.slice(0, 30), r.error ? 'ERROR ' + r.error.split('\n')[0] : `wheels ${r.wheels} (front ${r.front}) tris ${r.tris} size ${r.size} atlas ${r.atlas}`);
+    console.log(i, r.type, r.name.slice(0, 30), r.error ? 'ERROR ' + r.error.split('\n')[0] : r.map ? `height ${r.height} tris ${r.tris} ${JSON.stringify(r.map)}` : `wheels ${r.wheels} (front ${r.front}) tris ${r.tris} size ${r.size} atlas ${r.atlas}`);
   });
 } finally { await browser.close(); await server.close(); }

@@ -144,32 +144,9 @@ function packAtlas(images) {
   throw new Error('atlas packing failed');
 }
 
-// One model -> a template for buildPackModel. cfg: { uid, type, yaw (degrees, after the automatic
-// turn that lays the length along z), lift }.
-export async function bakeVehicle(cfg) {
-  const spec = VEHICLE_TYPES[cfg.type];
-  const gltf = await new GLTFLoader().loadAsync(`/tools/unity/bake/sketchfab_cache/${cfg.uid}.glb`);
-  let parts = collectParts(gltf.scene);
-  // Drop display stands and ground planes: flat pieces covering most of the footprint.
-  const full = new THREE.Box3(); parts.forEach((p) => full.union(boxOf(p.geo)));
-  const fs = full.getSize(new THREE.Vector3());
-  parts = parts.filter((p) => { const s = boxOf(p.geo).getSize(new THREE.Vector3()); return !(s.y < 0.01 * Math.max(s.x, s.z) && s.x * s.z > 0.6 * fs.x * fs.z); });
-  // Into the vehicle frame: length along z (turned automatically), then the configured turn, scaled to the type's length.
-  const box = new THREE.Box3(); parts.forEach((p) => box.union(boxOf(p.geo)));
-  let size = box.getSize(new THREE.Vector3());
-  const M = new THREE.Matrix4();
-  if (size.x > size.z) M.premultiply(new THREE.Matrix4().makeRotationY(Math.PI / 2));
-  if (cfg.yaw) M.premultiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(cfg.yaw)));
-  parts.forEach((p) => p.geo.applyMatrix4(M));
-  const b2 = new THREE.Box3(); parts.forEach((p) => b2.union(boxOf(p.geo)));
-  size = b2.getSize(new THREE.Vector3());
-  const s = (cfg.length || spec.length) / size.z;
-  const T = new THREE.Matrix4().makeScale(s, s, s).multiply(new THREE.Matrix4().makeTranslation(-(b2.min.x + b2.max.x) / 2, -b2.min.y + (cfg.lift || 0), -(b2.min.z + b2.max.z) / 2));
-  parts.forEach((p) => { p.geo.applyMatrix4(T); p.geo.computeBoundingBox(); });
-  const vb = new THREE.Box3(); parts.forEach((p) => vb.union(p.geo.boundingBox));
-  const vs = vb.getSize(new THREE.Vector3());
-
-  // Textures into one atlas.
+// Every texture the parts use into one atlas, and per vertex: colour (material colour, times the
+// texture's average where its coordinates tile), atlas coordinates, and roughness / metalness / glow.
+export function bakeMaterials(parts) {
   const imgs = [...new Set(parts.map((p) => imageOf(p.mat.map)).filter(Boolean))];
   const uvInRange = (geo) => { const U = geo.attributes.uv; if (!U) return false; for (let i = 0; i < U.count; i++) { const u = U.getX(i), v = U.getY(i); if (u < -0.02 || u > 1.02 || v < -0.02 || v > 1.02) return false; } return true; };
   const atlased = imgs.filter((img) => parts.some((p) => imageOf(p.mat.map) === img && uvInRange(p.geo)));
@@ -200,6 +177,36 @@ export async function bakeVehicle(cfg) {
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     g.setAttribute('pbr', new THREE.BufferAttribute(pbr, 3));
   }
+
+  return atlas;
+}
+
+// One model -> a template for buildPackModel. cfg: { uid, type, yaw (degrees, after the automatic
+// turn that lays the length along z), lift }.
+export async function bakeVehicle(cfg) {
+  const spec = VEHICLE_TYPES[cfg.type];
+  const gltf = await new GLTFLoader().loadAsync(`/tools/unity/bake/sketchfab_cache/${cfg.uid}.glb`);
+  let parts = collectParts(gltf.scene);
+  // Drop display stands and ground planes: flat pieces covering most of the footprint.
+  const full = new THREE.Box3(); parts.forEach((p) => full.union(boxOf(p.geo)));
+  const fs = full.getSize(new THREE.Vector3());
+  parts = parts.filter((p) => { const s = boxOf(p.geo).getSize(new THREE.Vector3()); return !(s.y < 0.01 * Math.max(s.x, s.z) && s.x * s.z > 0.6 * fs.x * fs.z); });
+  // Into the vehicle frame: length along z (turned automatically), then the configured turn, scaled to the type's length.
+  const box = new THREE.Box3(); parts.forEach((p) => box.union(boxOf(p.geo)));
+  let size = box.getSize(new THREE.Vector3());
+  const M = new THREE.Matrix4();
+  if (size.x > size.z) M.premultiply(new THREE.Matrix4().makeRotationY(Math.PI / 2));
+  if (cfg.yaw) M.premultiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(cfg.yaw)));
+  parts.forEach((p) => p.geo.applyMatrix4(M));
+  const b2 = new THREE.Box3(); parts.forEach((p) => b2.union(boxOf(p.geo)));
+  size = b2.getSize(new THREE.Vector3());
+  const s = (cfg.length || spec.length) / size.z;
+  const T = new THREE.Matrix4().makeScale(s, s, s).multiply(new THREE.Matrix4().makeTranslation(-(b2.min.x + b2.max.x) / 2, -b2.min.y + (cfg.lift || 0), -(b2.min.z + b2.max.z) / 2));
+  parts.forEach((p) => { p.geo.applyMatrix4(T); p.geo.computeBoundingBox(); });
+  const vb = new THREE.Box3(); parts.forEach((p) => vb.union(p.geo.boundingBox));
+  const vs = vb.getSize(new THREE.Vector3());
+
+  const atlas = bakeMaterials(parts);
 
   // Wheels -> bones (body 0; front wheels steer then spin; rear wheels spin).
   const wheels = findWheels(parts, vs.y, !!spec.twoWheeler);
