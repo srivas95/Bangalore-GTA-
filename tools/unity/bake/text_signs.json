@@ -627,6 +627,97 @@
     "texH": 475
   },
   {
+    "key": "ibcGate",
+    "text": [
+      "IBC PLATINUM CITY",
+      "ಐಬಿಸಿ ಪ್ಲಾಟಿನಂ ಸಿಟಿ"
+    ],
+    "bg": "#1d2a44",
+    "fg": "#e8d8a8",
+    "w": 16.0,
+    "texH": 83
+  },
+  {
+    "key": "ibcA",
+    "text": [
+      "A BLOCK"
+    ],
+    "bg": "#b5523a",
+    "fg": "#fff8e8",
+    "w": 5.0,
+    "texH": 328
+  },
+  {
+    "key": "ibcB",
+    "text": [
+      "B BLOCK"
+    ],
+    "bg": "#b5523a",
+    "fg": "#fff8e8",
+    "w": 5.0,
+    "texH": 328
+  },
+  {
+    "key": "ibcC",
+    "text": [
+      "C BLOCK"
+    ],
+    "bg": "#b5523a",
+    "fg": "#fff8e8",
+    "w": 5.0,
+    "texH": 328
+  },
+  {
+    "key": "ibcD",
+    "text": [
+      "D BLOCK"
+    ],
+    "bg": "#b5523a",
+    "fg": "#fff8e8",
+    "w": 5.0,
+    "texH": 328
+  },
+  {
+    "key": "ibcF",
+    "text": [
+      "F BLOCK"
+    ],
+    "bg": "#b5523a",
+    "fg": "#fff8e8",
+    "w": 5.0,
+    "texH": 328
+  },
+  {
+    "key": "ibcG",
+    "text": [
+      "G BLOCK"
+    ],
+    "bg": "#b5523a",
+    "fg": "#fff8e8",
+    "w": 5.0,
+    "texH": 328
+  },
+  {
+    "key": "ibcH",
+    "text": [
+      "H BLOCK"
+    ],
+    "bg": "#b5523a",
+    "fg": "#fff8e8",
+    "w": 5.0,
+    "texH": 328
+  },
+  {
+    "key": "ibcI",
+    "text": [
+      "I BLOCK"
+    ],
+    "bg": "#b5523a",
+    "fg": "#fff8e8",
+    "w": 5.0,
+    "texH": 328
+  },
+  {
     "key": "fuel_iocl_fascia",
     "text": [
       "IndianOil"
@@ -653,6 +744,28 @@
     ],
     "w": 1.6,
     "texH": 1792
+  },
+  {
+    "key": "wtc",
+    "text": [
+      "WORLD TRADE CENTER",
+      "BENGALURU"
+    ],
+    "bg": "#1a2a40",
+    "fg": "#e8f0ff",
+    "w": 16.0,
+    "texH": 192
+  },
+  {
+    "key": "gatewayMall",
+    "text": [
+      "GATEWAY MALL",
+      "ಮಾಲ್"
+    ],
+    "bg": "#c0182a",
+    "fg": "#fff",
+    "w": 18.0,
+    "texH": 142
   },
   {
     "key": "brand_SHERATON GRAND_25",
@@ -685,6 +798,17 @@
     "texH": 465
   },
   {
+    "key": "iskcon",
+    "text": [
+      "ISKCON SRI RADHA KRISHNA TEMPLE",
+      "ಇಸ್ಕಾನ್"
+    ],
+    "bg": "#7a1a1a",
+    "fg": "#f8e0a0",
+    "w": 18.0,
+    "texH": 114
+  },
+  {
     "key": "brand_MANTRI SQUARE_22",
     "text": [
       "MANTRI SQUARE",
@@ -715,6 +839,149 @@
     "texH": 410
   },
   {
+    "key": "iisc",
+    "text": [
+      "ಭಾರತೀಯ ವಿಜ್ಞಾನ ಸಂಸ್ಥೆ",
+      "INDIAN INSTITUTE OF SCIENCE"
+    ],
+    "bg": "#2a2a2a",
+    "fg": "#f0e6c8",
+    "w": 12.6,
+    "texH": 102
+  },
+  {
+    "key": "kbs",
+    "text": [
+      "ಕೆಂಪೇಗೌಡ ಬಸ್ ನಿಲ್ದಾಣ",
+      "KEMPEGOWDA BUS STATION · MAJESTIC"
+    ],
+    "bg": "#9a2a2a",
+    "fg": "#fff6d8",
+    "w": 26.0,
+    "texH": 126
+  },
+  {
+    "key": "kbsN",
+    "text": [
+      "ಕೆಂಪೇಗೌಡ ಬಸ್ ನಿಲ್ದಾಣ",
+      "KEMPEGOWDA BUS STATION"
+    ],
+    "bg": "#9a2a2a",
+    "fg": "#fff6d8",
+    "w": 22.0,
+    "texH": 140
+  },
+  {
+    "key": "kbsP0",
+    "text": [
+      "PLATFORM 1–2",
+      "ವೇದಿಕೆ"
+    ],
+    "bg": "#1a3a6a",
+    "fg": "#fff",
+    "w": 3.2,
+    "texH": 288
+  },
+  {
+    "key": "kbsLed0",
+    "text": [
+      "500D  HEBBAL   1",
+      "335E  WHITEFIELD   2"
+    ],
+    "bg": "#0a0a0a",
+    "fg": "#ff9a1a",
+    "w": 7.0,
+    "texH": 176
+  },
+  {
+    "key": "kbsP1",
+    "text": [
+      "PLATFORM 3–4",
+      "ವೇದಿಕೆ"
+    ],
+    "bg": "#1a3a6a",
+    "fg": "#fff",
+    "w": 3.2,
+    "texH": 288
+  },
+  {
+    "key": "kbsLed1",
+    "text": [
+      "13  BANASHANKARI   3",
+      "401  YELAHANKA   4"
+    ],
+    "bg": "#0a0a0a",
+    "fg": "#ff9a1a",
+    "w": 7.0,
+    "texH": 176
+  },
+  {
+    "key": "kbsP2",
+    "text": [
+      "PLATFORM 5–6",
+      "ವೇದಿಕೆ"
+    ],
+    "bg": "#1a3a6a",
+    "fg": "#fff",
+    "w": 3.2,
+    "texH": 288
+  },
+  {
+    "key": "kbsLed2",
+    "text": [
+      "KBS-8  JAYANAGAR   5",
+      "G-3  ELECTRONIC CITY   6"
+    ],
+    "bg": "#0a0a0a",
+    "fg": "#ff9a1a",
+    "w": 7.0,
+    "texH": 176
+  },
+  {
+    "key": "kbsKNANDINI MILK",
+    "text": [
+      "ನಂದಿನಿ",
+      "NANDINI MILK"
+    ],
+    "bg": "#0a5cad",
+    "fg": "#ffffff",
+    "w": 3.6,
+    "texH": 228
+  },
+  {
+    "key": "kbsKTEA · COFFEE · SNACKS",
+    "text": [
+      "ಚಹಾ · ಕಾಫಿ",
+      "TEA · COFFEE · SNACKS"
+    ],
+    "bg": "#ffd200",
+    "fg": "#3a1d0f",
+    "w": 3.6,
+    "texH": 228
+  },
+  {
+    "key": "lalbagh",
+    "text": [
+      "LALBAGH GLASS HOUSE",
+      "ಲಾಲ್‌ಬಾಗ್ ಗಾಜಿನ ಮನೆ"
+    ],
+    "bg": "#1f5a2a",
+    "fg": "#fff",
+    "w": 10.0,
+    "texH": 164
+  },
+  {
+    "key": "tipuPalace",
+    "text": [
+      "ಟಿಪ್ಪು ಸುಲ್ತಾನನ ಬೇಸಿಗೆ ಅರಮನೆ",
+      "TIPU SULTAN'S SUMMER PALACE"
+    ],
+    "bg": "#4a2a14",
+    "fg": "#f4e2b0",
+    "w": 9.2,
+    "texH": 178
+  },
+  {
     "key": "fuel_bpcl_fascia",
     "text": [
       "BHARAT PETROLEUM"
@@ -743,6 +1010,39 @@
     "texH": 1792
   },
   {
+    "key": "vsInscription",
+    "text": [
+      "ಸರ್ಕಾರದ ಕೆಲಸ ದೇವರ ಕೆಲಸ",
+      "GOVERNMENT WORK IS GOD'S WORK"
+    ],
+    "bg": "#2a2622",
+    "fg": "#f2e6c8",
+    "w": 30.0,
+    "texH": 89
+  },
+  {
+    "key": "palace",
+    "text": [
+      "ಬೆಂಗಳೂರು ಅರಮನೆ",
+      "BANGALORE PALACE"
+    ],
+    "bg": "#3a2a1a",
+    "fg": "#f0deb0",
+    "w": 10.0,
+    "texH": 195
+  },
+  {
+    "key": "stadium",
+    "text": [
+      "M. CHINNASWAMY STADIUM",
+      "ಚಿನ್ನಸ್ವಾಮಿ ಕ್ರೀಡಾಂಗಣ"
+    ],
+    "bg": "#b8323a",
+    "fg": "#f2e6c8",
+    "w": 24.0,
+    "texH": 171
+  },
+  {
     "key": "brand_JW MARRIOTT_25",
     "text": [
       "JW MARRIOTT",
@@ -758,7 +1058,7 @@
     "texH": 171
   },
   {
-    "key": "brand_JW MARRIOTT_12",
+    "key": "brand_JW MARRIOTT_11",
     "text": [
       "JW MARRIOTT",
       "BENGALURU"
@@ -769,11 +1069,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 12.246853820616378,
-    "texH": 351
+    "w": 11.139407804803923,
+    "texH": 386
   },
   {
-    "key": "brand_ITC GARDENIA_24",
+    "key": "brand_ITC GARDENIA_25",
     "text": [
       "ITC GARDENIA",
       "A LUXURY COLLECTION HOTEL"
@@ -784,8 +1084,8 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 24.056369230104607,
-    "texH": 179
+    "w": 25.200000000000003,
+    "texH": 171
   },
   {
     "key": "brand_ITC GARDENIA_12",
@@ -799,8 +1099,8 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 12.372783655915407,
-    "texH": 348
+    "w": 11.978221558055374,
+    "texH": 359
   },
   {
     "key": "brand_TAJ MG ROAD_10",
@@ -814,11 +1114,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 10.464835294662043,
-    "texH": 411
+    "w": 10.441076524253003,
+    "texH": 412
   },
   {
-    "key": "brand_TAJ MG ROAD_8",
+    "key": "brand_TAJ MG ROAD_7",
     "text": [
       "TAJ MG ROAD",
       "BENGALURU"
@@ -829,8 +1129,8 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 7.6240973362536169,
-    "texH": 564
+    "w": 7.45082914474653,
+    "texH": 577
   },
   {
     "key": "brand_PHOENIX MARKETCITY_22",
@@ -848,7 +1148,7 @@
     "texH": 171
   },
   {
-    "key": "brand_PHOENIX MARKETCITY_11",
+    "key": "brand_PHOENIX MARKETCITY_8",
     "text": [
       "PHOENIX MARKETCITY",
       "MAHADEVAPURA"
@@ -859,8 +1159,8 @@
       "bold 72px \"Oswald\", Arial, sans-serif",
       "34px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 11.225949449997859,
-    "texH": 328
+    "w": 8.4833534641866581,
+    "texH": 435
   },
   {
     "key": "brand_NEXUS SHANTINIKETAN_22",
@@ -889,8 +1189,157 @@
       "bold 72px \"Oswald\", Arial, sans-serif",
       "34px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 11.219782302316743,
+    "w": 11.213393011244479,
     "texH": 329
+  },
+  {
+    "key": "afsHold",
+    "text": [
+      "09 - 27"
+    ],
+    "bg": "#c0181a",
+    "fg": "#ffffff",
+    "w": 2.6,
+    "texH": 354
+  },
+  {
+    "key": "afsSk",
+    "text": [
+      "SURYA KIRAN AEROBATIC TEAM",
+      "ಸೂರ್ಯ ಕಿರಣ್"
+    ],
+    "bg": "#c8202a",
+    "fg": "#ffffff",
+    "w": 12.0,
+    "texH": 137
+  },
+  {
+    "key": "afsH0",
+    "text": [
+      "HANGAR 1"
+    ],
+    "bg": "#2a3a2a",
+    "fg": "#f0f0e0",
+    "w": 9.0,
+    "texH": 171
+  },
+  {
+    "key": "afsH1",
+    "text": [
+      "HANGAR 2"
+    ],
+    "bg": "#2a3a2a",
+    "fg": "#f0f0e0",
+    "w": 9.0,
+    "texH": 171
+  },
+  {
+    "key": "afsH2",
+    "text": [
+      "HANGAR 3"
+    ],
+    "bg": "#2a3a2a",
+    "fg": "#f0f0e0",
+    "w": 9.0,
+    "texH": 171
+  },
+  {
+    "key": "afsH3",
+    "text": [
+      "HANGAR 4"
+    ],
+    "bg": "#2a3a2a",
+    "fg": "#f0f0e0",
+    "w": 9.0,
+    "texH": 171
+  },
+  {
+    "key": "afsGate",
+    "text": [
+      "ವಾಯುಪಡೆ ನಿಲ್ದಾಣ ಯಲಹಂಕ",
+      "AIR FORCE STATION YELAHANKA"
+    ],
+    "bg": "#1a2a5a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 147
+  },
+  {
+    "key": "afsGateIn",
+    "text": [
+      "ವಾಯುಪಡೆ ನಿಲ್ದಾಣ ಯಲಹಂಕ",
+      "AIR FORCE STATION YELAHANKA"
+    ],
+    "bg": "#1a2a5a",
+    "fg": "#ffffff",
+    "w": 16.0,
+    "texH": 147
+  },
+  {
+    "key": "afsMig",
+    "text": [
+      "MiG-21 · GATE GUARDIAN",
+      "ಮಿಗ್-21"
+    ],
+    "bg": "#1a2a5a",
+    "fg": "#ffffff",
+    "w": 2.1,
+    "texH": 439
+  },
+  {
+    "key": "kia1",
+    "text": [
+      "ಕೆಂಪೇಗೌಡ ಅಂತರರಾಷ್ಟ್ರೀಯ ವಿಮಾನ ನಿಲ್ದಾಣ",
+      "KEMPEGOWDA INTERNATIONAL AIRPORT BENGALURU"
+    ],
+    "bg": "#0f2a4a",
+    "fg": "#ffffff",
+    "w": 120.0,
+    "texH": 64
+  },
+  {
+    "key": "kia2",
+    "text": [
+      "TERMINAL 2",
+      "ಟರ್ಮಿನಲ್ 2"
+    ],
+    "bg": "#3a5a2a",
+    "fg": "#f4f0e0",
+    "w": 40.0,
+    "texH": 128
+  },
+  {
+    "key": "kia3",
+    "text": [
+      "TERMINAL 1 · DEPARTURES",
+      "ನಿರ್ಗಮನ"
+    ],
+    "bg": "#1a1a1a",
+    "fg": "#f2c200",
+    "w": 40.0,
+    "texH": 102
+  },
+  {
+    "key": "csb",
+    "text": [
+      "ಕೇಂದ್ರ ರೇಷ್ಮೆ ಮಂಡಳಿ",
+      "CENTRAL SILK BOARD"
+    ],
+    "bg": "#5a1a3a",
+    "fg": "#f8e0a0",
+    "w": 18.0,
+    "texH": 171
+  },
+  {
+    "key": "kempfortShiva",
+    "text": [
+      "ಶಿವೋಹಂ ಶಿವ ದೇವಾಲಯ",
+      "SHIVOHAM SHIVA TEMPLE"
+    ],
+    "bg": "#8a2a1a",
+    "fg": "#ffe8a0",
+    "w": 14.0,
+    "texH": 110
   },
   {
     "key": "brand_GOLDEN GRAND_25",
@@ -904,11 +1353,11 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 24.855322328442707,
-    "texH": 173
+    "w": 25.200000000000003,
+    "texH": 171
   },
   {
-    "key": "brand_GOLDEN GRAND_8",
+    "key": "brand_GOLDEN GRAND_9",
     "text": [
       "GOLDEN GRAND",
       "YESHWANTHPUR"
@@ -919,8 +1368,19 @@
       "bold 96px \"Oswald\", Arial, sans-serif",
       "40px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 7.6713628986026157,
-    "texH": 561
+    "w": 9.4425944897905,
+    "texH": 455
+  },
+  {
+    "key": "gurudwara",
+    "text": [
+      "ಶ್ರೀ ಗುರು ಸಿಂಗ್ ಸಭಾ ಗುರುದ್ವಾರ",
+      "GURUDWARA SRI GURU SINGH SABHA"
+    ],
+    "bg": "#1a3a7a",
+    "fg": "#f8d860",
+    "w": 15.0,
+    "texH": 102
   },
   {
     "key": "brand_ORION MALL_22",
@@ -938,7 +1398,7 @@
     "texH": 171
   },
   {
-    "key": "brand_ORION MALL_9",
+    "key": "brand_ORION MALL_11",
     "text": [
       "ORION MALL",
       "BRIGADE GATEWAY"
@@ -949,8 +1409,176 @@
       "bold 72px \"Oswald\", Arial, sans-serif",
       "34px \"Oswald\", Arial, sans-serif"
     ],
-    "w": 9.04570177519694,
-    "texH": 408
+    "w": 10.862438395640348,
+    "texH": 339
+  },
+  {
+    "key": "bullTemple",
+    "text": [
+      "ದೊಡ್ಡ ಬಸವನ ಗುಡಿ",
+      "DODDA BASAVANA GUDI · BULL TEMPLE"
+    ],
+    "bg": "#7a1a12",
+    "fg": "#f8e0a0",
+    "w": 8.0,
+    "texH": 205
+  },
+  {
+    "key": "townHall",
+    "text": [
+      "ಸರ್ ಪುಟ್ಟಣ್ಣ ಚೆಟ್ಟಿ ಪುರಭವನ",
+      "SIR PUTTANNA CHETTY TOWN HALL"
+    ],
+    "bg": "#f8f4ea",
+    "fg": "#5a3a1a",
+    "w": 24.0,
+    "texH": 77
+  },
+  {
+    "key": "kanteerava",
+    "text": [
+      "ಶ್ರೀ ಕಂಠೀರವ ಕ್ರೀಡಾಂಗಣ",
+      "SREE KANTEERAVA STADIUM"
+    ],
+    "bg": "#1a4a8a",
+    "fg": "#ffffff",
+    "w": 13.0,
+    "texH": 158
+  },
+  {
+    "key": "kanteeravaN",
+    "text": [
+      "ಶ್ರೀ ಕಂಠೀರವ ಕ್ರೀಡಾಂಗಣ",
+      "SREE KANTEERAVA STADIUM"
+    ],
+    "bg": "#1a4a8a",
+    "fg": "#ffffff",
+    "w": 26.0,
+    "texH": 142
+  },
+  {
+    "key": "forum",
+    "text": [
+      "THE FORUM",
+      "ಫೋರಮ್ ಮಾಲ್"
+    ],
+    "bg": "#c0182a",
+    "fg": "#fff",
+    "w": 20.0,
+    "texH": 164
+  },
+  {
+    "key": "manyata0",
+    "text": [
+      "PINE"
+    ],
+    "bg": "#12324a",
+    "fg": "#ffffff",
+    "w": 12.0,
+    "texH": 188
+  },
+  {
+    "key": "manyata1",
+    "text": [
+      "CEDAR"
+    ],
+    "bg": "#12324a",
+    "fg": "#ffffff",
+    "w": 12.0,
+    "texH": 188
+  },
+  {
+    "key": "manyata2",
+    "text": [
+      "MAGNOLIA"
+    ],
+    "bg": "#12324a",
+    "fg": "#ffffff",
+    "w": 12.0,
+    "texH": 188
+  },
+  {
+    "key": "manyata3",
+    "text": [
+      "MULBERRY"
+    ],
+    "bg": "#12324a",
+    "fg": "#ffffff",
+    "w": 12.0,
+    "texH": 188
+  },
+  {
+    "key": "manyata4",
+    "text": [
+      "SILVER OAK"
+    ],
+    "bg": "#12324a",
+    "fg": "#ffffff",
+    "w": 12.0,
+    "texH": 188
+  },
+  {
+    "key": "manyataGate",
+    "text": [
+      "ಮಾನ್ಯತಾ ಎಂಬಸಿ ಬಿಸಿನೆಸ್ ಪಾರ್ಕ್",
+      "MANYATA EMBASSY BUSINESS PARK"
+    ],
+    "bg": "#2a3a4a",
+    "fg": "#ffffff",
+    "w": 20.0,
+    "texH": 82
+  },
+  {
+    "key": "biecHall-1",
+    "text": [
+      "HALL 1"
+    ],
+    "bg": "#1f4f8f",
+    "fg": "#ffffff",
+    "w": 8.0,
+    "texH": 205
+  },
+  {
+    "key": "biecHall0",
+    "text": [
+      "HALL 2"
+    ],
+    "bg": "#1f4f8f",
+    "fg": "#ffffff",
+    "w": 8.0,
+    "texH": 205
+  },
+  {
+    "key": "biecHall1",
+    "text": [
+      "HALL 3"
+    ],
+    "bg": "#1f4f8f",
+    "fg": "#ffffff",
+    "w": 8.0,
+    "texH": 205
+  },
+  {
+    "key": "biec",
+    "text": [
+      "ಬೆಂಗಳೂರು ಅಂತರರಾಷ್ಟ್ರೀಯ ಪ್ರದರ್ಶನ ಕೇಂದ್ರ",
+      "BANGALORE INTERNATIONAL EXHIBITION CENTRE"
+    ],
+    "bg": "#1f4f8f",
+    "fg": "#ffffff",
+    "w": 60.0,
+    "texH": 64
+  },
+  {
+    "key": "biecPylon",
+    "text": [
+      "BIEC",
+      "ಬಿಐಇಸಿ"
+    ],
+    "bg": "#1f4f8f",
+    "fg": "#ffffff",
+    "w": 5.4,
+    "texH": 948
   },
   {
     "key": "garage_Chikka Motors",

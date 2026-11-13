@@ -2,10 +2,10 @@
 // around polygon blocks, buildings on lots that face their road, trees, lamps and water tanks.
 // Port of buildCity (src/world/city.js) and buildInfrastructure (src/world/infrastructure.js),
 // drawing from the same seeded RNG in the same order.
-// Not yet ported (their blocks are reserved, and nothing is drawn there): the landmark builders,
-// Cubbon Park's walks and Poly Haven street props. Each of those draws random numbers in the JS,
-// so until they land, building choices after the first of them differ from the web game's. Text
-// signs are collected in `signs` and put up by TextSigns; the railway is in City.Railway.cs.
+// The landmarks are replayed from the web game's own builders and Cubbon Park is ported in
+// City.Landmarks.cs; the railway is in City.Railway.cs. Not yet ported: the Poly Haven street
+// props (their spots are collected in `props`). Text signs are collected in `signs` and put up
+// by TextSigns.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -563,7 +563,7 @@ namespace NammaBengaluru.Render
                 case "park": BuildPark(block); break;
                 case "rural": BuildRural(block); break;
                 case "lake": BuildLake(block); break;
-                case "landmark": PlaceholderLandmark(block); ReserveInner(block); break;
+                case "landmark": pois.landmarks.Add(Landmark(block.landmark, block)); ReserveInner(block); break;
                 case "towers": BuildTowers(block); break;
                 case "gov": BuildGov(block); break;
                 case "residential": BuildResidential(block); break;
@@ -574,14 +574,6 @@ namespace NammaBengaluru.Render
             }
         }
 
-        // Landmark builders (src/world/landmarks.js) aren't ported yet: the site stays clear and
-        // still shows on the map.
-        void PlaceholderLandmark(Block block)
-        {
-            var i = block.inner;
-            pois.landmarks.Add(new Poi { name = block.district ?? block.landmark, x = (i.minX + i.maxX) / 2, z = (i.minZ + i.maxZ) / 2 });
-            Plaza(block, 0xd8d0c4);
-        }
 
         void ReserveInner(Block block, double pad = 0)
         {
@@ -908,7 +900,7 @@ namespace NammaBengaluru.Render
             {
                 Mid(block, out double cx, out double cz);
                 ReserveRect(block, cx - 2, cz, 44, 24);
-                pois.landmarks.Add(new Poi { name = "St. Mark's Cathedral", x = cx, z = cz });
+                pois.landmarks.Add(Landmark("cathedral", null, cx, cz));
             }
             BuildStreetBlock(block, new[] { 8.0, 15 }, new[] { 12.0, 18 }, block.pubs ? new[] { 2.0, 5 } : new[] { 2.0, 6 }, 0.9, block.pubs ? BRIGHTS.Concat(PASTELS).ToArray() : PASTELS, new[] { "plaster", "apartment", "plaster" });
         }
@@ -917,8 +909,8 @@ namespace NammaBengaluru.Render
         {
             Plaza(block, 0xf0ece4);
             Mid(block, out double cx, out double cz);
-            if (block.landmark == "skyTower") { ReserveRect(block, cx, cz, 34, 34); pois.landmarks.Add(new Poi { name = "Sky Tower", x = cx, z = cz }); }
-            if (block.landmark == "wtc") { ReserveRect(block, cx, cz, 64, 44); pois.landmarks.Add(new Poi { name = "World Trade Center", x = cx, z = cz }); }
+            if (block.landmark == "skyTower") { ReserveRect(block, cx, cz, 34, 34); pois.landmarks.Add(Landmark("skyTower", null, cx, cz)); }
+            if (block.landmark == "wtc") { ReserveRect(block, cx, cz, 64, 44); pois.landmarks.Add(Landmark("wtc", null, cx, cz)); }
             var hotel = HotelFor(block);
             var lots = LotsAlong(block, new[] { 22.0, 36 }, new[] { 18.0, 28 }, 0.6);
             Lot site = null;
@@ -1051,12 +1043,7 @@ namespace NammaBengaluru.Render
         {
             Lawn(block);
             Mid(block, out double cx, out double cz);
-            if (block.park != null && block.park.name == "Cubbon Park")
-            {
-                // Cubbon Park's walks, lamps, benches and railings aren't ported yet: its canopy is.
-                if (block.innerPoly != null) ScatterInBlock(block, Math.Min(700, (int)JRound(block.area / 70)), 0.2, 4, new[] { 1.2, 2.2 });
-                return;
-            }
+            if (block.park != null && block.park.name == "Cubbon Park") { BuildCubbon(block, cx, cz); return; }
             // Footpaths from the middle out to each side.
             var path = B.Get("plaza");
             if (block.innerPoly != null && RoadNet.PointInPoly(cx, cz, block.innerPoly))
@@ -1070,8 +1057,8 @@ namespace NammaBengaluru.Render
                     B.xf = null;
                     block.placed.Add(Geom.RectCorners((cx + ex) / 2, (cz + ez) / 2, dz / l, -dx / l, 3, l / 2));
                 }
-            if (block.landmark == "statue") ReserveRect(block, cx + 14, cz + 14, 10, 10);
-            else if (block.landmark != null) { pois.landmarks.Add(new Poi { name = block.district, x = cx, z = cz }); ReserveRect(block, cx, cz, 76, 40); }
+            if (block.landmark == "statue") { Landmark("statue", null, cx + 14, cz + 14); ReserveRect(block, cx + 14, cz + 14, 10, 10); }
+            else if (block.landmark != null) { pois.landmarks.Add(Landmark(block.landmark, block)); ReserveRect(block, cx, cz, 76, 40); }
             ScatterInBlock(block, Math.Min(160, (int)JRound(block.area / 220)));
             pois.parking.Add(new Poi { x = block.poly[0][0], z = block.poly[0][1] });
             if (block.park != null && !labelledParks.Contains(block.park)) { labelledParks.Add(block.park); pois.landmarks.Add(new Poi { name = block.park.name, x = cx, z = cz }); }

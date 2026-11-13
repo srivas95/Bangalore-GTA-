@@ -15,6 +15,7 @@ namespace NammaBengaluru
             Render.TextSigns.ResetStatics();
             Render.CityMaterials.ResetStatics();
             Render.City.ResetStatics();
+            Render.City.ResetLandmarks();
             Entities.StreetLife.ResetStatics();
             Entities.VehicleView.ResetStatics();
             Systems.Weapons.ResetStatics();

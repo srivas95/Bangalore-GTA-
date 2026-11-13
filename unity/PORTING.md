@@ -78,7 +78,8 @@ builds.
 | `systems/settings.js`, the pause screen (`#help`) | `Systems/Settings.cs`, `UI/Menus.cs` | Done (world detail levels and dynamic resolution aren't ported) |
 | `systems/liveWeather.js` | `Systems/LiveWeather.cs` | Done |
 | `ui/touch.js` | `UI/Menus.cs` (touch controls) | Done |
-| `world/landmarks.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 6 |
+| `world/landmarks.js` | `Render/City.Landmarks.cs`, `Resources/Models/landmarks.json` | Done (baked from the JS builders; airport and air-force animations not replayed) |
+| `world/props.js`, `halos.js`, `blobs.js` | | Phase 6 |
 
 ### Phase 1 check (world core)
 
@@ -98,16 +99,12 @@ flyovers, the NICE Road toll plaza, footpaths with painted kerbs, and every zone
 industrial sheds, fuel stations, lakes, rural fields) are drawn with the web game's own textures
 and its world-space surface shading. See `docs/unity/city-street.png` and `city-aerial.png`.
 
-Still to come for the city, each tracked below:
-- Landmark builders (`landmarks.js`): their sites are reserved and paved, nothing stands there yet.
-- Cubbon Park's walks, lamps and railings (its trees are there).
-- The railway, and the metro viaducts and their clearances.
-- Text signs (street, underpass, hotel crowns, fuel totems): collected, not drawn yet.
-- Poly Haven street props (`props.js`): positions are collected; needs a glTF importer.
-- Baked ground shading (`ao.js`), lamp light pools at night.
+Landmarks, Cubbon Park, the railway, the metro and the text signs came in phases 6a to 6e. The
+city's random choices now follow the web game's all the way through.
 
-Each of the first four draws random numbers in the JS, so until they're in, the building
-choices after the first of them differ from the web game's (the layout and lots don't).
+Still to come for the city:
+- Poly Haven street props (`props.js`): positions are collected; needs a glTF importer.
+- Light halos (`halos.js`), contact shadows (`blobs.js`), baked ground shading (`ao.js`).
 
 ### Phase 3 (playable)
 
@@ -237,6 +234,16 @@ See `docs/unity/metro-station.png`, `metro-ride.png` and `railway.png`.
 - **Act III.** Act III is played as Vinay, who is baked with the other people now. Passers-by are looked up by name (`ModelLibrary.Ped(k)`).
 
 See `docs/unity/mission-passed.png`. Re-export after editing the story: `node tools/unity/export_story.mjs`.
+
+### Phase 6e (landmarks and Cubbon Park)
+
+- **How they're baked.** `tools/unity/bake/landmarks.mjs` runs the real `buildCity` in headless Chromium and wraps every `LANDMARKS[key]` call. Each call draws into its own builder set, so its meshes (per material), colliders, signs (`ctx.sign` and `signs.push`, in world space) and tree scatters are recorded and written to `Resources/Models/landmarks.json`.
+- **How they're replayed.** `Render/City.Landmarks.cs` replays each call by key and call index: meshes (mirrored into Unity space), colliders, text signs and the tree scatters, which go through the ported `ScatterTrees`. The RNG therefore advances exactly as in the JS, and the buildings after a landmark match the web game's. All 25 landmarks are in: the Vidhana Soudha, the High Court, the cathedral, the towers, the stadium, the temples, the airport terminal and the rest.
+- **Cubbon Park.** Cubbon Park's walks, lamps, benches, bamboo, canopy and railing are a direct port of its builder.
+- **Signs.** The landmark signs were added to the text-sign bake (331 boards now).
+- **Not yet.** The airport's and air-force station's moving parts (taxiing planes, the radar) are drawn still.
+
+See `docs/unity/vidhana-soudha.png`. Re-bake after editing landmarks.js: `node tools/unity/bake/landmarks.mjs`, then export and re-bake the text signs.
 
 ### Phase 6f (pause screen, settings, live weather, touch)
 
