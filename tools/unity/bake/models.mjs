@@ -16,7 +16,7 @@ try {
   page.on('pageerror', (e) => console.error('page error:', e.message));
   await page.goto('http://localhost:5197/tools/unity/bake/models.html');
   await page.waitForFunction(() => window.ready, null, { timeout: 120000 });
-  const { models, humans, decalAtlas, decalGlow } = await page.evaluate(() => window.bake());
+  const { models, humans, atlases, props, propAtlas, decalAtlas, decalGlow } = await page.evaluate(() => window.bake());
   // Binary layout per mesh: [vcount u32][icount u32] pos f32*3v, nor i8*3v, col u8*3v, uv f32*2v, pbr u8*3v, bone u8*v, idx u32*i (4-byte aligned).
   const chunks = []; let offset = 0;
   const put = (m) => {
@@ -41,6 +41,15 @@ try {
   writeFileSync(outDir + 'humans.bytes', Buffer.concat(chunks));
   writeFileSync(outDir + 'humans_index.json', JSON.stringify(hindex));
   console.log(`baked ${humans.length} people, ${(offset / 1048576).toFixed(1)} MB`);
+  // The traffic-cars pack's texture atlases, and the street props (mesh per kind, one texture).
+  atlases.forEach((a, i) => { if (a) writeFileSync(`unity/NammaBengaluru/Assets/Resources/Baked/pack_atlas${i}.png`, Buffer.from(a.split(',')[1], 'base64')); });
+  console.log(`baked ${models.filter((m) => m.pack).length} pack vehicles, ${atlases.length} atlases`);
+  const b64 = (arr) => Buffer.from(new Float32Array(arr).buffer).toString('base64');
+  const pj = {};
+  for (const [k, p] of Object.entries(props)) pj[k] = { pos: b64(p.pos), nor: b64(p.nor), uv: b64(p.uv), size: p.size };
+  writeFileSync(outDir + 'props.json', JSON.stringify(pj));
+  if (propAtlas) writeFileSync('unity/NammaBengaluru/Assets/Resources/Baked/props.png', Buffer.from(propAtlas.split(',')[1], 'base64'));
+  console.log(`baked ${Object.keys(props).length} street props`);
   writeFileSync('unity/NammaBengaluru/Assets/Resources/Baked/decals.png', Buffer.from(decalAtlas.split(',')[1], 'base64'));
   if (decalGlow) writeFileSync('unity/NammaBengaluru/Assets/Resources/Baked/decals_glow.png', Buffer.from(decalGlow.split(',')[1], 'base64'));
 } finally {

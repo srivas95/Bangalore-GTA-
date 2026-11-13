@@ -27,6 +27,7 @@ namespace NammaBengaluru.Entities
         {
             rig = ModelLibrary.BuildHuman(def);
             go = rig.go;
+            Render.BlobShadows.Add(go, 1.2, 1.2);
             outfit = def.outfit; female = def.female; gait = def.gait > 0 ? def.gait : 1;
             phase = (rng ?? new System.Random().NextDouble)() * 6;
         }

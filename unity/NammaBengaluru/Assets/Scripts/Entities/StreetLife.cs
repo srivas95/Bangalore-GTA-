@@ -809,6 +809,7 @@ namespace NammaBengaluru.Entities
             if (rng.Next() < 0.4) for (int k = 0; k < 9; k++) { double a = k / 8.0 * Math.PI; hb.Put(rb, Math.Cos(a) * 0.2, -0.2 - Math.Sin(a) * 0.12, 0.05, 0xf0a020, 0, 0.07, 0.07, 0.07); }
             var c = new Cow { isCow = true, r = 0.8 };
             c.go = new GameObject("cow");
+            BlobShadows.Add(c.go, 1.3, 2.6);
             c.go.transform.SetParent(root, false);
             Attach(c, b, c.go.transform, "body");
             var head = new GameObject("head").transform;

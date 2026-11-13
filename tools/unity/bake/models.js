@@ -1,11 +1,14 @@
 // Builds the web game's vehicle models with its own procedural builders (several seeded variants
-// per type; the traffic-cars GLB pack isn't loaded, so every model is procedural) and packs them
+// per type, then every vehicle of the traffic-cars GLB pack) and packs them
 // for Unity: vertices de-duplicated, positions float32, normals int8, colour and PBR uint8, one
 // rigid bone per vertex. models.mjs writes the result.
 import { buildVehicleModel, VEHICLE_TYPES } from '/src/entities/vehicleModels.js';
 import { decalAtlas } from '/src/entities/liveries.js';
 import { createHuman, B as BONES } from '/src/entities/human.js';
 import { mulberry32 } from '/src/world/textures.js';
+import { loadPackVehicles, packTemplates, buildPackModel, PACK_TYPES } from '/src/entities/packVehicles.js';
+import { loadProps, PropField, PROP_KINDS } from '/src/world/props.js';
+import * as THREE from 'three';
 
 // garages.js FOR_SALE: [type, model].
 const GARAGE = [['scooter', 'activa'], ['scooter', 'ola'], ['scooter', 'ather'], ['bike', null], ['sportBike', null], ['auto', null], ['van', 'omni'], ['van', 'eeco'],
@@ -14,13 +17,14 @@ const GARAGE = [['scooter', 'activa'], ['scooter', 'ola'], ['scooter', 'ather'],
   ['suv', 'hector'], ['suv', 'xuv700'], ['suv', 'fortuner']];
 const VARIANTS = { default: 4, hatch: 8, sedan: 8, taxi: 4, suv: 6, scooter: 6, bike: 5, auto: 4, bus: 6, cityBus: 4, ksrtc: 4 };
 
-function pack(geo, withPbr, withSkin) {
+function pack(geo, withPbr, withSkin, opts = {}) {
+  if (geo.index) geo = geo.toNonIndexed(); // (the pack's meshes are indexed; the builders' aren't)
   const P = geo.attributes.position, N = geo.attributes.normal, C = geo.attributes.color, U = geo.attributes.uv, R = geo.attributes.pbr, S = geo.attributes.skinIndex;
   const map = new Map(), pos = [], nor = [], col = [], uv = [], pbr = [], bone = [], idx = [];
   for (let i = 0; i < P.count; i++) {
     const v = [P.getX(i), P.getY(i), P.getZ(i)], n = [N.getX(i), N.getY(i), N.getZ(i)];
-    const c = C ? [C.getX(i), C.getY(i), C.getZ(i)] : [1, 1, 1], t = U ? [U.getX(i), U.getY(i)] : [0, 0];
-    const p = withPbr && R ? [R.getX(i), R.getY(i), R.getZ(i)] : [0.6, 0, 0], b = withSkin && S ? S.getX(i) : 0;
+    const c = C ? [C.getX(i), C.getY(i), C.getZ(i)] : [1, 1, 1], t = U ? [U.getX(i), opts.flipV ? 1 - U.getY(i) : U.getY(i)] : [0, 0];
+    const p = withPbr && R ? [R.getX(i), R.getY(i), R.getZ(i)] : opts.pbr || [0.6, 0, 0], b = withSkin && S ? S.getX(i) : 0;
     const key = [...v, ...n, ...c, ...t, ...p, b].map((x) => Math.round(x * 4096)).join(',');
     let k = map.get(key);
     if (k === undefined) {
@@ -44,9 +48,9 @@ window.bake = async () => {
       type, seed, spec: m.spec, color: m.color ?? null, modelKey: m.modelKey ?? null, livery: m.livery?.name ?? m.livery ?? null,
       driverSeat: m.driverSeat ?? null, lightBar: m.lightBar ?? null,
       bones, wheels: m.wheels.map((w) => ({ steer: w.steer ? sk.bones.indexOf(w.steer) : -1, spin: sk.bones.indexOf(w.spin), r: w.r })),
-      body: pack(m.mesh.geometry, true, true),
+      body: pack(m.mesh.geometry, true, true, extra.packOpts),
       decal: m.decalMesh ? pack(m.decalMesh.geometry, false, false) : null,
-      ...extra,
+      ...extra, packOpts: undefined,
     });
   };
   for (const type of Object.keys(VEHICLE_TYPES)) {
@@ -60,6 +64,39 @@ window.bake = async () => {
   // the base paint 0xb01c22, flagged so traffic never picks them. The port repaints them by
   // swapping that colour's vertices, as garages.js recolor() does.
   for (const [type, model] of GARAGE) add(type, 4242, buildVehicleModel(type, mulberry32(4242), { model: model ?? undefined, color: 0xb01c22 }), { garage: true, modelKey: model });
+  // The traffic-cars pack (loaded only now, so the procedural variants above stay procedural).
+  // glTF textures aren't flipped, so v is flipped here for Unity; the pack's material is
+  // roughness 0.5, metalness 0.15, no glow.
+  const toPng = (tex) => {
+    const img = tex.image, c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    c.getContext('2d').drawImage(img, 0, 0);
+    return c.toDataURL('image/png');
+  };
+  await loadPackVehicles('/models/traffic-cars.glb');
+  const atlases = [], atlasOf = new Map();
+  for (const type of [...new Set(Object.values(PACK_TYPES))]) {
+    for (const t of packTemplates(type)) {
+      if (!atlasOf.has(t.material)) { atlasOf.set(t.material, atlases.length); atlases.push(t.material.map ? toPng(t.material.map) : null); }
+      add(type, 0, buildPackModel(t, VEHICLE_TYPES[type]), { pack: t.name, atlas: atlasOf.get(t.material), packOpts: { flipV: true, pbr: [0.5, 0.15, 0] } });
+    }
+  }
+  // Street props (props.js): each kind's merged mesh, centred and standing on y = 0.
+  await loadProps('/models/street-props.glb');
+  const field = new PropField(new THREE.Scene(), []);
+  const props = {};
+  let propAtlas = null;
+  for (const kind of PROP_KINDS) {
+    const m = field.meshes[kind];
+    if (!m) continue;
+    const g = m.geometry, P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv;
+    const pos = [], nor = [], uv = [];
+    for (let i = 0; i < P.count; i++) { pos.push(P.getX(i), P.getY(i), P.getZ(i)); nor.push(N.getX(i), N.getY(i), N.getZ(i)); uv.push(U.getX(i), 1 - U.getY(i)); }
+    g.computeBoundingBox();
+    const s = g.boundingBox.getSize(new THREE.Vector3());
+    props[kind] = { pos, nor, uv, size: [s.x, s.y, s.z] };
+    if (!propAtlas && m.material.map) propAtlas = toPng(m.material.map);
+  }
   // People: the player, then seeded passers-by in every outfit (and police, riders, hawkers).
   const humans = [];
   const bakeHuman = (name, opts, seed) => {
@@ -75,6 +112,6 @@ window.bake = async () => {
   for (let k = 0; k < 4; k++) bakeHuman('police' + k, { outfit: 'police', lathi: k % 2 === 0 }, 12000 + k);
   for (let k = 0; k < 4; k++) bakeHuman('helmet' + k, { helmet: true }, 13000 + k * 7);
   const mat = decalAtlas();
-  return { models, humans, decalAtlas: mat.map.image.toDataURL('image/png'), decalGlow: mat.emissiveMap ? mat.emissiveMap.image.toDataURL('image/png') : null };
+  return { models, humans, atlases, props, propAtlas, decalAtlas: mat.map.image.toDataURL('image/png'), decalGlow: mat.emissiveMap ? mat.emissiveMap.image.toDataURL('image/png') : null };
 };
 window.ready = true;

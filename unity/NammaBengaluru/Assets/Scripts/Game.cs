@@ -55,6 +55,8 @@ namespace NammaBengaluru
         MetroRide.Entrance entranceNear;
         Rides.Shelter shelterNear;
         public int money = 1000; // START_MONEY
+        public Halos halos;
+        public StreetProps props;
         public readonly List<Vehicle> dynamic = new List<Vehicle>(); // free vehicles and the police
         List<Place> policeStations, hospitals;
         double screenT, rowdyT = 5;
@@ -195,6 +197,10 @@ namespace NammaBengaluru
             rides = new Rides(this, root);
             metro = Metro.Build(layout, md, colliders, root);
             metroRide = new MetroRide(this, metro);
+            // Baked ground shading next to buildings, walls, trees and under the metro viaducts.
+            halos = new Halos(city.lampHeads);
+            props = new StreetProps(city.props, Settings.IsTouchDevice);
+            GroundShading.Bake(layout.world, colliders.all, city.trees, GroundShading.MetroStrips(metro.routes), Settings.IsTouchDevice ? 3 : 2.5);
             story = new Story(this, root);
             // Settings, the pause screen and the touch controls.
             settings = new Settings();
@@ -393,6 +399,8 @@ namespace NammaBengaluru
         void OnDestroy()
         {
             if (urp != null) { urp.renderScale = urpScale; urp.shadowDistance = urpShadowDist; }
+            halos?.Destroy();
+            props?.Destroy();
         }
 
         // Advance the simulation n frames of dt without waiting for rendering, as
@@ -487,6 +495,7 @@ namespace NammaBengaluru
             player.rigPitch = rig.pitch;
             if (!freeCam && !metroCam) rig.Update(dt, input, player, colliders, rideCam);
             metro.Update(dt, focus.x, focus.z);
+            { var cp = Camera.main.transform.position; props.Update(dt, cp.x, -cp.z); }
             city.rail.Update(dt, focus.x, focus.z);
             hud.SetTunnel(metroRide.tunnel);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
@@ -498,7 +507,14 @@ namespace NammaBengaluru
             particles.Step(dt, rig.camera);
         }
 
-        void LateUpdate() { particles?.Draw(); }
+        void LateUpdate()
+        {
+            particles?.Draw();
+            var cam = Camera.main;
+            BlobShadows.Draw(cam);
+            props?.Draw();
+            if (env != null) halos?.Draw(cam, env.night, signals);
+        }
 
         // ---------- money, crime, gunfire, bullets, explosions (main.js) ----------
         public void AddMoney(int n) { money = Math.Max(0, money + n); hud.SetMoney(money); }

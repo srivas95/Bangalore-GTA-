@@ -10,6 +10,7 @@ Shader "NammaBengaluru/Instanced"
         _Cutoff ("Alpha cutoff", Range(0, 1)) = 0.5
         [Toggle(_ALPHATEST_ON)] _AlphaTest ("Alpha test", Float) = 0
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
+        _AO ("Baked ambient shading", Float) = 0
     }
 
     HLSLINCLUDE
@@ -17,7 +18,7 @@ Shader "NammaBengaluru/Instanced"
     TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
     float4 _BaseMap_ST;
     half4 _BaseColor;
-    half _Roughness, _Cutoff;
+    half _Roughness, _Cutoff, _AO;
     UNITY_INSTANCING_BUFFER_START(PerInstance)
         UNITY_DEFINE_INSTANCED_PROP(half4, _InstColor)
     UNITY_INSTANCING_BUFFER_END(PerInstance)
@@ -43,6 +44,7 @@ Shader "NammaBengaluru/Instanced"
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "GroundAO.hlsl"
 
             struct A { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 uv : TEXCOORD0; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct V { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; float3 positionWS : TEXCOORD1; half3 normalWS : TEXCOORD2; half4 color : TEXCOORD3; half fog : TEXCOORD4; UNITY_VERTEX_INPUT_INSTANCE_ID };
@@ -74,7 +76,7 @@ Shader "NammaBengaluru/Instanced"
                 input.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(i.positionCS);
                 input.shadowMask = half4(1, 1, 1, 1);
                 SurfaceData s = (SurfaceData)0;
-                s.albedo = tex.rgb * i.color.rgb; s.alpha = 1; s.smoothness = 1 - _Roughness; s.occlusion = 1; s.normalTS = half3(0, 0, 1);
+                s.albedo = tex.rgb * i.color.rgb * lerp(1.0, NBGroundAO(float3(i.positionWS.x, i.positionWS.y, -i.positionWS.z), normalize(i.normalWS).y), _AO); s.alpha = 1; s.smoothness = 1 - _Roughness; s.occlusion = 1; s.normalTS = half3(0, 0, 1);
                 half4 c = UniversalFragmentPBR(input, s);
                 c.rgb = MixFog(c.rgb, i.fog);
                 return c;

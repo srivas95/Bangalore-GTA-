@@ -21,6 +21,9 @@ namespace NammaBengaluru
             Systems.Weapons.ResetStatics();
             Systems.Pickups.ResetStatics();
             World.MetroRoutes.ResetStatics();
+            Render.GroundShading.ResetStatics();
+            Render.BlobShadows.ResetStatics();
+            Render.Halos.ResetStatics();
         }
     }
 }

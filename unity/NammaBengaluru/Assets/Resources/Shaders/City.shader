@@ -32,6 +32,7 @@ Shader "NammaBengaluru/City"
         [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
         _OffsetFactor ("Depth offset factor", Float) = 0
         _OffsetUnits ("Depth offset units", Float) = 0
+        _AO ("Baked ambient shading", Float) = 1
     }
 
     HLSLINCLUDE
@@ -49,7 +50,7 @@ Shader "NammaBengaluru/City"
         half _EmissionDay, _EmissionNight;
         half _Roughness, _Metallic, _Cutoff;
         float4 _MapScale, _WindowGrid, _ShopCells;
-        half _GroundStrength, _WetResponse;
+        half _GroundStrength, _WetResponse, _AO;
     CBUFFER_END
 
     // Set every frame by the environment (day/night, monsoon).
@@ -86,6 +87,7 @@ Shader "NammaBengaluru/City"
             #pragma multi_compile_instancing
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "GroundAO.hlsl"
 
             struct Attributes
             {
@@ -204,6 +206,8 @@ Shader "NammaBengaluru/City"
                         albedo.rgb = lerp(half3(0.42, 0.4, 0.37), kc, paint) * lerp(0.7, 1.0, svNoise(gp.xz * 2.0));
                     }
                 #endif
+
+                albedo.rgb *= lerp(1.0, NBGroundAO(gp, normalize(i.normalWS).y), _AO);
 
                 // Monsoon: road-like surfaces darken and turn glossy in the rain.
                 half wet = _NB_Wet * _WetResponse;

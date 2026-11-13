@@ -8,6 +8,7 @@ Shader "NammaBengaluru/Vehicle"
         _UsePbr ("Per-vertex PBR", Float) = 1
         _Roughness ("Roughness (without per-vertex PBR)", Range(0, 1)) = 0.82
         _Albedo ("Albedo scale", Float) = 1
+        _BaseMap ("Base map (pack vehicles)", 2D) = "white" {}
     }
 
     HLSLINCLUDE
@@ -16,6 +17,7 @@ Shader "NammaBengaluru/Vehicle"
         half _UsePbr, _Roughness, _Albedo;
     CBUFFER_END
     float _NB_Night;
+    TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
     ENDHLSL
 
     SubShader
@@ -35,10 +37,11 @@ Shader "NammaBengaluru/Vehicle"
             #pragma multi_compile _ _FORWARD_PLUS _CLUSTER_LIGHT_LOOP
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
+            #pragma shader_feature_local _BASEMAP
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-            struct A { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float4 pbr : TEXCOORD1; UNITY_VERTEX_INPUT_INSTANCE_ID };
-            struct V { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; half3 normalWS : TEXCOORD1; half4 color : TEXCOORD2; half3 pbr : TEXCOORD3; half fog : TEXCOORD4; };
+            struct A { float4 positionOS : POSITION; float3 normalOS : NORMAL; half4 color : COLOR; float2 uv : TEXCOORD0; float4 pbr : TEXCOORD1; UNITY_VERTEX_INPUT_INSTANCE_ID };
+            struct V { float4 positionCS : SV_POSITION; float3 positionWS : TEXCOORD0; half3 normalWS : TEXCOORD1; half4 color : TEXCOORD2; half3 pbr : TEXCOORD3; half fog : TEXCOORD4; float2 uv : TEXCOORD5; };
 
             V Vert(A v)
             {
@@ -47,6 +50,7 @@ Shader "NammaBengaluru/Vehicle"
                 o.positionCS = p.positionCS; o.positionWS = p.positionWS;
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.color = v.color;
+                o.uv = v.uv;
                 o.pbr = _UsePbr > 0.5 ? v.pbr.xyz : half3(_Roughness, 0, 0);
                 o.fog = ComputeFogFactor(p.positionCS.z);
                 return o;
@@ -64,6 +68,9 @@ Shader "NammaBengaluru/Vehicle"
                 input.shadowMask = half4(1, 1, 1, 1);
                 SurfaceData s = (SurfaceData)0;
                 s.albedo = i.color.rgb * _Albedo;
+                #if defined(_BASEMAP)
+                    s.albedo *= SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv).rgb;
+                #endif
                 s.alpha = 1;
                 s.smoothness = 1 - i.pbr.x;
                 s.metallic = i.pbr.y;

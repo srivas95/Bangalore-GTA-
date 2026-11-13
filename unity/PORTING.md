@@ -44,20 +44,20 @@ builds.
 | `world/meshBuilder.js`, `geom.js` | `Render/MeshBuilder.cs`, `Render/Geom.cs`, `World/Earcut.cs`, `World/Primitives.cs` | Done |
 | `world/textures.js`, `signboards.js` | Baked to `Resources/Baked/*.png` by `tools/unity/bake` | Done (painted by the JS itself) |
 | `world/surface.js` | `Resources/Shaders/City.shader` (+ `Instanced`, `Glow`) | Done |
-| `world/city.js` | `Render/City.cs`, `Render/InstancedForest.cs`, `Render/CityMaterials.cs` | Mostly: see below |
+| `world/city.js` | `Render/City.cs`, `Render/InstancedForest.cs`, `Render/CityMaterials.cs` | Done |
 | `world/infrastructure.js` | in `Render/City.cs` | Done |
 | `systems/colliders.js` | `World/Colliders.cs` | Done |
-| `world/ao.js` (baked ground shading) | | Not yet |
+| `world/ao.js` (baked ground shading) | `Render/GroundShading.cs`, `Resources/Shaders/GroundAO.hlsl` | Done |
 | `entities/vehicle.js` | `Entities/Vehicle.cs` (physics, damage), `Entities/VehicleView.cs` (dents, smoke, fire, scorch) | Done |
-| `entities/vehicleModels.js`, `carBodies.js`, `liveries.js` | Baked by `tools/unity/bake/models.mjs` to `Resources/Models/vehicles.*`, built by `Render/ModelLibrary.cs` | Done (123 variants of all 27 types) |
-| `entities/packVehicles.js` | | Not yet (the GLB traffic-cars pack) |
+| `entities/vehicleModels.js`, `carBodies.js`, `liveries.js` | Baked by `tools/unity/bake/models.mjs` to `Resources/Models/vehicles.*`, built by `Render/ModelLibrary.cs` | Done (variants of all 27 types, plus the garage stock) |
+| `entities/packVehicles.js` | Baked with the other vehicles by `tools/unity/bake/models.mjs` (+ `Baked/pack_atlas*.png`); picked in `Render/ModelLibrary.cs` | Done (31 vehicles, 7 atlases) |
 | `entities/human.js` | Baked to `Resources/Models/humans.*`; poses in `Entities/Human.cs` | Done (78 people) |
 | `entities/player.js` | `Entities/Player.cs` | Done (on foot, driving, punching, kicking, weapons, aiming, the GUNDA cheat) |
 | `systems/cameraRig.js`, `input.js` | `Systems/CameraRig.cs`, `Systems/GameInput.cs` | Done |
 | `main.js` (start-up, parking, vehicle contacts, `__game.step`) | `Game.cs` | In part |
 | `entities/traffic.js` | `Entities/Traffic.cs` | Done |
 | `systems/signals.js` | `Systems/Signals.cs` | Done |
-| `systems/environment.js`, `world/sky.js` (colours) | `Systems/Environment.cs`, `Resources/Shaders/Sky.shader` | Done (live weather to come) |
+| `systems/environment.js`, `world/sky.js` (colours) | `Systems/Environment.cs`, `Resources/Shaders/Sky.shader` | Done |
 | `entities/pedestrians.js` | `Entities/StreetLife.cs` | Done (cows have square edges; bus-platform crowds wait for the landmarks) |
 | `ui/hud.js` | `UI/Hud.cs` (uGUI + TextMeshPro; Oswald and DejaVu Sans in `Resources/Fonts`) | Done (metro and railway lines, GPS route and garages join the map with their ports) |
 | `systems/audio.js`, `audioSynth.js` (cues and radio), `soundBank.json` | `Systems/GameAudio.cs`, the 261 recordings in `Resources/Audio` | Done (no convolution reverb) |
@@ -79,7 +79,8 @@ builds.
 | `systems/liveWeather.js` | `Systems/LiveWeather.cs` | Done |
 | `ui/touch.js` | `UI/Menus.cs` (touch controls) | Done |
 | `world/landmarks.js` | `Render/City.Landmarks.cs`, `Resources/Models/landmarks.json` | Done (baked from the JS builders; airport and air-force animations not replayed) |
-| `world/props.js`, `halos.js`, `blobs.js` | | Phase 6 |
+| `world/props.js` | `Render/StreetProps.cs`, meshes baked by `tools/unity/bake/models.mjs` to `Resources/Models/props.json` | Done |
+| `world/halos.js`, `blobs.js` | `Render/Glows.cs`, `Resources/Shaders/Halo.shader`, `Blob.shader` | Done |
 
 ### Phase 1 check (world core)
 
@@ -102,9 +103,7 @@ and its world-space surface shading. See `docs/unity/city-street.png` and `city-
 Landmarks, Cubbon Park, the railway, the metro and the text signs came in phases 6a to 6e. The
 city's random choices now follow the web game's all the way through.
 
-Still to come for the city:
-- Poly Haven street props (`props.js`): positions are collected; needs a glTF importer.
-- Light halos (`halos.js`), contact shadows (`blobs.js`), baked ground shading (`ao.js`).
+The street props, light halos, contact shadows and baked ground shading came in phase 7.
 
 ### Phase 3 (playable)
 
@@ -255,3 +254,15 @@ See `docs/unity/vidhana-soudha.png`. Re-bake after editing landmarks.js: `node t
 - **Touch controls.** The touch controls are touch.js's: a floating joystick on the left, drag to look on the right, and context buttons that change between on foot and driving, plus the strip along the top (pause, map, accept, duty, skip, get off, leave). With touch controls on, the HUD moves aside as style.css does.
 
 See `docs/unity/pause.png`, `settings.png` and `touch.png`.
+
+### Phase 7 (street props, the car pack, halos, contact shadows, ground shading)
+
+- **Baked ground shading** (`ao.js`). `Render/GroundShading.cs` paints the same top-down map at load as the JS: shade next to buildings, walls and piers, under trees and under the metro viaducts, then blurred. The City and Instanced shaders darken the ground by it near street level, and darken walls towards their foot (`Resources/Shaders/GroundAO.hlsl`). The lit signs, water and leaves are left out, as in the web game.
+- **Contact shadows** (`blobs.js`). Every vehicle, person and cow standing in the world gets a soft rounded shadow, drawn as one mesh per frame.
+- **Halos** (`halos.js`). Glows round the street lamps (at night), the lit signal bulbs, headlights and tail lights at dusk and night, and police light bars while the siren is on. They're camera-facing quads built in the vertex shader and blended additively, with the web game's gain for a linear frame.
+- **The traffic-cars pack** (`packVehicles.js`). `models.mjs` loads `public/models/traffic-cars.glb` after the procedural variants, so those bake unchanged. It builds each pack vehicle with `buildPackModel` and bakes it like the others (one skinned mesh, wheels as bones), with its texture atlas as `Baked/pack_atlas*.png`. `ModelLibrary.Pick` gives a type the pack's vehicles at the JS's `PACK_SHARE` rate. They're drawn on the vehicle shader with its `_BASEMAP` variant, and dents, scorching and fire work on them as on the rest.
+- **Street props** (`props.js`). The Poly Haven benches, chairs, utility boxes, barrels, tyres, planters and rubbish bags are baked from `public/models/street-props.glb` (their meshes into `Resources/Models/props.json`, the texture into `Baked/props.png`). `Render/StreetProps.cs` draws the nearest 30 of each kind round the camera, refilled every 0.3 s, as an instanced draw per kind.
+
+Both GLBs keep their licences (CC-BY-4.0 for the car pack, CC0 for the props): see `MODEL_CREDITS.md`.
+
+See `docs/unity/ground-shading.png`, `halos-night.png`, `pack-vehicle.png` and `street-props.png`. Re-bake after changing either GLB or the vehicle builders: `node --max-old-space-size=6144 tools/unity/bake/models.mjs`.

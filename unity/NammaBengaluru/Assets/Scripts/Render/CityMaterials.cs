@@ -95,6 +95,11 @@ namespace NammaBengaluru.Render
                 ["trunk"] = Instanced("trunk", null, 0x5a4636, 1, false),
                 ["tank"] = Instanced("tank", null, 0x1a1a1a, 0.6f, false),
             };
+            // Baked ambient shading (ao.js's withAO) on everything but the lit signs and water;
+            // of the instanced sets, only the trunks.
+            mats["signs"].SetFloat("_AO", 0);
+            mats["water"].SetFloat("_AO", 0);
+            mats["trunk"].SetFloat("_AO", 1);
             return mats;
         }
 

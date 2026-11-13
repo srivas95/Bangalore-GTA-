@@ -152,6 +152,18 @@ namespace NammaBengaluru.Systems
             cops.Add((h, n));
         }
 
+        // The lit bulb of every signal head within r of (x, z): position and which (0 red, 1 amber, 2 green).
+        public void ForLitBulbs(double x, double z, double r, Action<double, double, double, int> f)
+        {
+            foreach (var head in heads)
+            {
+                if (Math.Abs(head.node.x - x) > r || Math.Abs(head.node.z - z) > r) continue;
+                int on = State(head.node, head.axis) switch { Light.Red => 0, Light.Amber => 1, _ => 2 };
+                var p = bulbPos[head.bulbBase + on];
+                f(p[0], p[1], p[2], on);
+            }
+        }
+
         public void Update(double dt, double fx, double fz)
         {
             time += dt;

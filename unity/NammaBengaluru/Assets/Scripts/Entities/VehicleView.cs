@@ -50,6 +50,8 @@ namespace NammaBengaluru.Entities
             steerRest = new Quaternion[rig.def.wheels.Count];
             for (int i = 0; i < rig.def.wheels.Count; i++) if (rig.def.wheels[i].steer >= 0) steerRest[i] = rig.bones[rig.def.wheels[i].steer].localRotation;
             if (rig.def.lightBar != null) BuildLightBar(rig.def.lightBar);
+            BlobShadows.Add(rig.go, v.spec.width * 1.6, v.spec.length * 1.2);
+            Halos.Add(this);
             v.OnDent = Dent;
             v.OnRepair = Repair;
             v.OnSay = text => Game.Instance?.Say(text, 3);
@@ -111,6 +113,18 @@ namespace NammaBengaluru.Entities
                 int phase = (int)(Time.time / 0.12) % 4;
                 lamps[0].GetComponent<MeshRenderer>().sharedMaterial = v.siren && phase < 2 ? lampRed : lampOff;
                 lamps[1].GetComponent<MeshRenderer>().sharedMaterial = v.siren && phase >= 2 ? lampBlue : lampOff;
+            }
+        }
+
+        // The light bar's lit lamps (for their halos): world position and colour.
+        public void ForLitLamps(Action<Vector3, Color> f)
+        {
+            if (lamps == null) return;
+            foreach (var g in lamps)
+            {
+                var m = g.GetComponent<MeshRenderer>().sharedMaterial;
+                if (m == lampOff) continue; // the dark half of the flash
+                f(g.transform.position, m.GetColor("_BaseColor"));
             }
         }
 

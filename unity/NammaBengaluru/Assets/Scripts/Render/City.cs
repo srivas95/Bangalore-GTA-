@@ -3,8 +3,8 @@
 // Port of buildCity (src/world/city.js) and buildInfrastructure (src/world/infrastructure.js),
 // drawing from the same seeded RNG in the same order.
 // The landmarks are replayed from the web game's own builders and Cubbon Park is ported in
-// City.Landmarks.cs; the railway is in City.Railway.cs. Not yet ported: the Poly Haven street
-// props (their spots are collected in `props`). Text signs are collected in `signs` and put up
+// City.Landmarks.cs; the railway is in City.Railway.cs. The Poly Haven street props' spots are
+// collected in `props` (StreetProps draws them); text signs are collected in `signs` and put up
 // by TextSigns.
 using System;
 using System.Collections.Generic;
@@ -1171,7 +1171,7 @@ namespace NammaBengaluru.Render
             });
         }
 
-        // Street furniture positions (props.js draws them; the Poly Haven props aren't imported yet).
+        // Street furniture positions (Render/StreetProps.cs draws them).
         void StreetProps(Block block)
         {
             string z = block.zone;
