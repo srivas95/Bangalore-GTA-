@@ -51,7 +51,7 @@ namespace NammaBengaluru
         double trafficMul = 1;
         SettingsValues beforeLow;
         UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp;
-        float urpScale, urpShadowDist;
+        float urpScale, urpShadowDist; int urpMsaa = 4;
         MetroRide.Entrance entranceNear;
         Rides.Shelter shelterNear;
         public int money = 1000; // START_MONEY
@@ -230,7 +230,7 @@ namespace NammaBengaluru
             hud.onPause = Pause;
             settings.onReset = () => { story.Reset(); money = 1000; hud.SetMoney(money, true); garages.Reset(); };
             urp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
-            if (urp != null) { urpScale = urp.renderScale; urpShadowDist = urp.shadowDistance; }
+            if (urp != null) { urpScale = urp.renderScale; urpShadowDist = urp.shadowDistance; urpMsaa = urp.msaaSampleCount; }
             settings.OnChange(ApplySettings);
             hud.ShowPause(true, false);
             city.rail.hitByTrain = (t, nx, nz) =>
@@ -261,7 +261,9 @@ namespace NammaBengaluru
             env = new Systems.Environment(layout, root, city.materials);
             audio = GameAudio.Create(md);
             env.onThunder = d => audio.Thunder(d, 0.6 + rnd.NextDouble() * 0.4);
+            skyReflection = new SkyReflection(root, Detail.lite);
         }
+        SkyReflection skyReflection;
 
         // A point on a footpath near a place (footpathNear in main.js).
         public (double x, double z) FootpathNear(double x, double z)
@@ -457,6 +459,7 @@ namespace NammaBengaluru
                 if (!dynRes) dynScale = 1;
                 urp.renderScale = (float)(v.resScale * dynScale);
                 urp.shadowDistance = v.shadows == "near" ? 60 : urpShadowDist;
+                urp.msaaSampleCount = Detail.min ? 1 : urpMsaa; // (4x anti-aliasing, except at minimum detail)
             }
             var cam = Camera.main;
             if (cam != null)
@@ -481,8 +484,9 @@ namespace NammaBengaluru
         // The URP asset is project data: put back what the settings changed.
         void OnDestroy()
         {
-            if (urp != null) { urp.renderScale = urpScale; urp.shadowDistance = urpShadowDist; }
+            if (urp != null) { urp.renderScale = urpScale; urp.shadowDistance = urpShadowDist; urp.msaaSampleCount = urpMsaa; }
             halos?.Destroy();
+            skyReflection?.Destroy();
             props?.Destroy();
         }
 
@@ -584,6 +588,7 @@ namespace NammaBengaluru
             city.rail.Update(dt, focus.x, focus.z);
             hud.SetTunnel(metroRide.tunnel);
             env.Update(dt, focus.x, focus.z, pv, rig.camera);
+            skyReflection?.Update(dt, env.hour, env.rain);
             UpdateHud(dt);
             if (player.vehicle != radioVehicle) { radioVehicle = player.vehicle; audio.Radio(radioVehicle != null && radioOn); }
             audio.SetRain(env.rain);

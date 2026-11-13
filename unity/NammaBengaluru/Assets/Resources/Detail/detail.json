@@ -1,0 +1,38 @@
+{
+ "asphalt": {
+  "asset": "asphalt_02",
+  "url": "https://polyhaven.com/a/asphalt_02",
+  "meanLum": 0.3508,
+  "meanRough": 0.7703
+ },
+ "pavement": {
+  "asset": "concrete_floor_02",
+  "url": "https://polyhaven.com/a/concrete_floor_02",
+  "meanLum": 0.4345,
+  "meanRough": 0.5171
+ },
+ "plaster": {
+  "asset": "painted_plaster_wall",
+  "url": "https://polyhaven.com/a/painted_plaster_wall",
+  "meanLum": 0.6463,
+  "meanRough": 0.9188
+ },
+ "concrete": {
+  "asset": "concrete_wall_003",
+  "url": "https://polyhaven.com/a/concrete_wall_003",
+  "meanLum": 0.7355,
+  "meanRough": 0.6188
+ },
+ "grass": {
+  "asset": "grass_ground",
+  "url": "https://polyhaven.com/a/grass_ground",
+  "meanLum": 0.3782,
+  "meanRough": 0.9367
+ },
+ "soil": {
+  "asset": "brown_mud_dry",
+  "url": "https://polyhaven.com/a/brown_mud_dry",
+  "meanLum": 0.3712,
+  "meanRough": 0.5271
+ }
+}

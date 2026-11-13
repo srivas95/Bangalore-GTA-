@@ -306,3 +306,11 @@ Free Asset Store packs can be shipped in builds but not published, so anything t
 - **Decoration** (`Render/StoreDecor.cs`):
   - Polytope Studio's nature pack puts shrubs round the parks' edges, grass, poppies, rocks and a few fruit trees across the lawns, and rocks along the lakes.
   - It's drawn with the game's instanced shader, from its own random numbers, so the city is unchanged.
+
+### Graphics upgrade
+
+- **Surface detail.** Roads, junctions, footpaths, plazas, lawns, bare ground, facades, roofs and stonework carry a world-space detail layer: Poly Haven CC0 photo sets (colour, normal and roughness at 1K, `Resources/Detail`, fetched by `tools/unity/detail/fetch_detail.py`).
+  - **How it's applied** (`City.shader`, `_DETAIL`): planar projection per face, with colour and roughness modulated around each photo's own mean so the original palette, lane markings and shopfronts stay.
+  - **Range:** it fades out beyond about 170 m (90 m on phones), and is off at minimum detail.
+- **Sky reflections** (`Render/SkyReflection.cs`). Unity had captured the sky reflection once at start-up, so cars and wet roads reflected the afternoon sky all night and glowed in the dark. A sky-only camera now re-renders a cube map as the clock and the monsoon change it, one face per frame.
+- **Image quality.** 4× MSAA (off at minimum detail), a 4096 px sun shadow map on PC, and 16× anisotropic filtering on the city textures.

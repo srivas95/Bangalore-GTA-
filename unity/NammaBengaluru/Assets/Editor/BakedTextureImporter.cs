@@ -10,8 +10,23 @@ namespace NammaBengaluru.EditorTools
     {
         void OnPreprocessTexture()
         {
-            if (!assetPath.Replace('\\', '/').Contains("/Resources/Baked/")) return;
             var ti = (TextureImporter)assetImporter;
+            if (assetPath.Replace('\\', '/').Contains("/Resources/Detail/"))
+            {
+                // Poly Haven surface detail (tools/unity/detail): colour (sRGB), normal map, roughness (linear).
+                string n = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+                ti.textureType = n.EndsWith("_nor") ? TextureImporterType.NormalMap : TextureImporterType.Default;
+                ti.sRGBTexture = n.EndsWith("_col");
+                ti.wrapMode = TextureWrapMode.Repeat;
+                ti.filterMode = FilterMode.Trilinear;
+                ti.anisoLevel = 16;
+                ti.mipmapEnabled = true;
+                ti.maxTextureSize = 1024;
+                ti.textureCompression = TextureImporterCompression.CompressedHQ;
+                if (n.EndsWith("_rough")) ti.textureType = TextureImporterType.SingleChannel;
+                return;
+            }
+            if (!assetPath.Replace('\\', '/').Contains("/Resources/Baked/")) return;
             string name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
             bool normal = name.EndsWith("_normal");
             bool clamp = name == "signs" || name == "leaves" || name == "light_pool" || assetPath.Replace('\\', '/').Contains("/Baked/Text/");
@@ -19,7 +34,7 @@ namespace NammaBengaluru.EditorTools
             ti.sRGBTexture = !normal;
             ti.wrapMode = clamp ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;
             ti.filterMode = FilterMode.Trilinear;
-            ti.anisoLevel = 8;
+            ti.anisoLevel = 16; // (sharper ground at grazing angles than three.js's 8)
             ti.mipmapEnabled = true;
             ti.alphaIsTransparency = name == "leaves" || name == "light_pool";
             ti.maxTextureSize = 2048;

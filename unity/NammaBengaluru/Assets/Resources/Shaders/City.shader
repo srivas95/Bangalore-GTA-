@@ -33,6 +33,12 @@ Shader "NammaBengaluru/City"
         _OffsetFactor ("Depth offset factor", Float) = 0
         _OffsetUnits ("Depth offset units", Float) = 0
         _AO ("Baked ambient shading", Float) = 1
+        _DetailCol ("Detail colour", 2D) = "grey" {}
+        [Normal] _DetailNor ("Detail normal", 2D) = "bump" {}
+        _DetailRough ("Detail roughness", 2D) = "grey" {}
+        _DetailParams ("Detail: metres per tile, strength, normal scale, fade distance", Vector) = (4, 0.7, 0.8, 160)
+        _DetailMeans ("Detail: mean luminance, mean roughness", Vector) = (0.5, 0.5, 0, 0)
+        [Toggle(_DETAIL)] _UseDetail ("World-space surface detail", Float) = 0
     }
 
     HLSLINCLUDE
@@ -41,6 +47,9 @@ Shader "NammaBengaluru/City"
     TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
     TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
     TEXTURE2D(_EmissionMap); SAMPLER(sampler_EmissionMap);
+    TEXTURE2D(_DetailCol); SAMPLER(sampler_DetailCol);
+    TEXTURE2D(_DetailNor);
+    TEXTURE2D(_DetailRough);
 
     CBUFFER_START(UnityPerMaterial)
         float4 _BaseMap_ST;
@@ -51,6 +60,7 @@ Shader "NammaBengaluru/City"
         half _Roughness, _Metallic, _Cutoff;
         float4 _MapScale, _WindowGrid, _ShopCells;
         half _GroundStrength, _WetResponse, _AO;
+        float4 _DetailParams, _DetailMeans;
     CBUFFER_END
 
     // Set every frame by the environment (day/night, monsoon).
@@ -76,6 +86,7 @@ Shader "NammaBengaluru/City"
             #pragma shader_feature_local _NORMALMAP
             #pragma shader_feature_local _EMISSION
             #pragma shader_feature_local _ALPHATEST_ON
+            #pragma shader_feature_local _DETAIL
             #pragma shader_feature_local _ _SURF_FACADE _SURF_WINDOWS _SURF_SHOP _SURF_GROUND _SURF_KERB
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
@@ -208,6 +219,32 @@ Shader "NammaBengaluru/City"
                 #endif
 
                 albedo.rgb *= lerp(1.0, NBGroundAO(gp, normalize(i.normalWS).y), _AO);
+
+                // World-space surface detail (Poly Haven photo sets, Resources/Detail): planar
+                // projection chosen per face (ground: from above; walls: from the side they face),
+                // colour and roughness modulated around the photo's own mean so the base palette
+                // stays, its normal map bent into the surface; fades out with distance.
+                #if defined(_DETAIL)
+                    half3 dT = 0, dB = 0;
+                    half dFade = 0;
+                    {
+                        half3 ng = normalize(i.normalWS);
+                        half3 an = abs(ng);
+                        half3 na = an.y > 0.6 ? half3(0, sign(ng.y), 0) : (an.x > an.z ? half3(sign(ng.x), 0, 0) : half3(0, 0, sign(ng.z)));
+                        if (an.y > 0.6) { dT = half3(1, 0, 0); dB = cross(na, dT); }
+                        else { dB = half3(0, 1, 0); dT = cross(dB, na); }
+                        float2 duv = float2(dot(i.positionWS, dT), dot(i.positionWS, dB)) / _DetailParams.x;
+                        dFade = _DetailParams.y * (1.0 - smoothstep(_DetailParams.w * 0.5, _DetailParams.w, distance(_WorldSpaceCameraPos, i.positionWS)));
+                        half3 dc = SAMPLE_TEXTURE2D(_DetailCol, sampler_DetailCol, duv).rgb;
+                        half3 kc = dc / max(0.05, _DetailMeans.x);
+                        half kl = dot(dc, half3(0.299, 0.587, 0.114)) / max(0.05, _DetailMeans.x);
+                        albedo.rgb *= lerp(1.0, clamp(lerp(kl.xxx, kc, 0.35), 0.4, 1.8), dFade);
+                        half dr = SAMPLE_TEXTURE2D(_DetailRough, sampler_DetailCol, duv).r;
+                        rough = saturate(rough * lerp(1.0, dr / max(0.05, _DetailMeans.y), dFade));
+                        half3 dn = UnpackNormalScale(SAMPLE_TEXTURE2D(_DetailNor, sampler_DetailCol, duv), _DetailParams.z * dFade / max(0.01, _DetailParams.y));
+                        normalWS = normalize(dT * dn.x + dB * dn.y + normalWS * dn.z);
+                    }
+                #endif
 
                 // Monsoon: road-like surfaces darken and turn glossy in the rain.
                 half wet = _NB_Wet * _WetResponse;
