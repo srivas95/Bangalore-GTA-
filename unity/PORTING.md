@@ -294,3 +294,15 @@ See `docs/unity/sketchfab-vehicles.png`, `sketchfab-player.png` and `sketchfab-p
     unity build --target Android --execute-method NammaBengaluru.Editor.BuildPlayers.Android --output-path Builds/NammaBengaluru.apk
 
 Shaders that code finds only by name aren't included in builds. Give them a material in `Resources` (as `Resources/Materials/Rain.mat` does), or load them from `Resources/Shaders`.
+
+### Unity Asset Store packs (kept out of the repository)
+
+Free Asset Store packs can be shipped in builds but not published, so anything taken from them lives in the gitignored `Assets/StoreAssets/`. Without that folder the game builds and plays exactly as before. `tools/unity/store/` has the scripts that pull assets out of a pack and its README lists what's used.
+
+- **Sounds** (`StoreAssets/Resources/StoreAudio`, merged by `GameAudio` over its own bank):
+  - Replaced: the ambience and rain beds, thunder, the car engine and horn, doors and guns.
+  - Added to the pools: voices, punches, crashes, metal, glass, explosions and footsteps.
+  - Every clip is matched in loudness to what it replaces or joins.
+- **Decoration** (`Render/StoreDecor.cs`):
+  - Polytope Studio's nature pack puts shrubs round the parks' edges, grass, poppies, rocks and a few fruit trees across the lawns, and rocks along the lakes.
+  - It's drawn with the game's instanced shader, from its own random numbers, so the city is unchanged.

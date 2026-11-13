@@ -10,7 +10,8 @@ namespace NammaBengaluru.EditorTools
     {
         void OnPreprocessAudio()
         {
-            if (!assetPath.Replace('\\', '/').Contains("/Resources/Audio/")) return;
+            string path = assetPath.Replace('\\', '/');
+            if (!path.Contains("/Resources/Audio/") && !path.Contains("/Resources/StoreAudio/")) return; // (StoreAudio: Asset Store recordings)
             var imp = (AudioImporter)assetImporter;
             string name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
             bool bed = name.StartsWith("amb_") || name.StartsWith("rain_");

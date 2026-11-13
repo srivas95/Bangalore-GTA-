@@ -12,3 +12,4 @@ tools/unity/bake/sketchfab_cache/
 # Unity Asset Store packages: their licence allows shipping them in builds, not publishing them here
 unity/NammaBengaluru/Assets/StoreAssets/
 unity/NammaBengaluru/Assets/StoreAssets.meta
+tools/unity/store/raw/

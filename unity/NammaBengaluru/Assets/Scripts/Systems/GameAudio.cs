@@ -87,7 +87,7 @@ namespace NammaBengaluru.Systems
             ["train"] = new HornDef { s = "horn_train", p = 1.0, v = 1.0, d = new[] { 1.6, 2.8 }, once = true, @ref = 40 },
         };
 
-        class BankEntry { public string file; public double[] loop, sustain; public double f0, gain = 1; public string g; }
+        class BankEntry { public string file; public double[] loop, sustain; public double f0, gain = 1; public string g; public bool store; }
         Dictionary<string, BankEntry> bank;
         readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>(); // whole recordings
         readonly Dictionary<string, AudioClip> loops = new Dictionary<string, AudioClip>(); // just the loop region
@@ -171,7 +171,7 @@ namespace NammaBengaluru.Systems
         {
             if (clips.TryGetValue(key, out var c)) return c;
             if (bank == null || !bank.TryGetValue(key, out var info)) return null;
-            c = Resources.Load<AudioClip>("Audio/" + info.file);
+            c = Resources.Load<AudioClip>((info.store ? "StoreAudio/" : "Audio/") + info.file);
             if (c != null && c.loadState != AudioDataLoadState.Loaded) c.LoadAudioData();
             clips[key] = c;
             return c;
@@ -346,6 +346,20 @@ namespace NammaBengaluru.Systems
                     f0 = (double?)o["f0"] ?? 0, gain = (double?)o["gain"] ?? 1, g = (string)o["g"],
                 };
             }
+            // Recordings from Unity Asset Store packs, when this build has them (Assets/StoreAssets is
+            // kept out of the public repository): they replace the game's own under the same key, and
+            // new numbered keys join the pools (punch_10 is picked with the other punches).
+            var store = Resources.Load<TextAsset>("StoreAudio/bank");
+            if (store != null)
+                foreach (var p in JObject.Parse(store.text).Properties())
+                {
+                    var o = (JObject)p.Value;
+                    bank[p.Name] = new BankEntry
+                    {
+                        file = (string)o["file"], loop = o["loop"]?.ToObject<double[]>(), sustain = o["sustain"]?.ToObject<double[]>(),
+                        f0 = (double?)o["f0"] ?? 0, gain = (double?)o["gain"] ?? 1, g = (string)o["g"], store = true,
+                    };
+                }
             (double, double, double) Circle(List<double[]> poly)
             {
                 double x = poly.Average(q => q[0]), z = poly.Average(q => q[1]), r = 0;

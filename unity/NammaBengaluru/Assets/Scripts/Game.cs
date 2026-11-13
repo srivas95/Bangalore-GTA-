@@ -57,6 +57,7 @@ namespace NammaBengaluru
         public int money = 1000; // START_MONEY
         public Halos halos;
         public StreetProps props;
+        public StoreDecor decor; // (Asset Store pack decoration, when the build has it)
         public readonly List<Vehicle> dynamic = new List<Vehicle>(); // free vehicles and the police
         List<Place> policeStations, hospitals;
         double screenT, rowdyT = 5;
@@ -217,6 +218,8 @@ namespace NammaBengaluru
             // Baked ground shading next to buildings, walls, trees and under the metro viaducts.
             halos = new Halos(city.lampHeads);
             props = new StreetProps(city.props, Detail.lite);
+            decor = StoreDecor.TryBuild(layout, colliders);
+            if (decor != null) Debug.Log($"[Game] Store decoration: {decor.count} pieces");
             GroundShading.Bake(layout.world, colliders.all, city.trees, GroundShading.MetroStrips(metro.routes), Detail.lite ? 3 : 2.5);
             story = new Story(this, root);
             // Settings, the pause screen and the touch controls.
@@ -603,6 +606,7 @@ namespace NammaBengaluru
             var cam = Camera.main;
             BlobShadows.Draw(cam);
             props?.Draw();
+            decor?.Draw(cam);
             if (env != null) halos?.Draw(cam, env.night, signals);
         }
 
