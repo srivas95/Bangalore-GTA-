@@ -75,7 +75,9 @@ builds.
 | `systems/metroRide.js` | `Systems/MetroRide.cs` | Done |
 | `world/railway.js` | `Render/City.Railway.cs` | Done |
 | `systems/story.js` | `Systems/Story.cs`, missions exported by `tools/unity/export_story.mjs` to `Resources/Data/story.json` | Done |
-| `systems/settings.js`, `liveWeather.js`, `ui/touch.js` | | Phase 6 (next) |
+| `systems/settings.js`, the pause screen (`#help`) | `Systems/Settings.cs`, `UI/Menus.cs` | Done (world detail levels and dynamic resolution aren't ported) |
+| `systems/liveWeather.js` | `Systems/LiveWeather.cs` | Done |
+| `ui/touch.js` | `UI/Menus.cs` (touch controls) | Done |
 | `world/landmarks.js`, `props.js`, `halos.js`, `blobs.js` | | Phase 6 |
 
 ### Phase 1 check (world core)
@@ -235,3 +237,14 @@ See `docs/unity/metro-station.png`, `metro-ride.png` and `railway.png`.
 - **Act III.** Act III is played as Vinay, who is baked with the other people now. Passers-by are looked up by name (`ModelLibrary.Ped(k)`).
 
 See `docs/unity/mission-passed.png`. Re-export after editing the story: `node tools/unity/export_story.mjs`.
+
+### Phase 6f (pause screen, settings, live weather, touch)
+
+- **Pause screen.** The game opens on the pause screen, the web game's `#help` card with the full key list. Play (or Enter) starts it, and Esc pauses.
+- **Settings.** The settings panel has the same options and presets as settings.js (resolution, shadows off, near or full, bloom, draw distance, traffic, pedestrians, look sensitivity, invert, live weather, volume, touch controls) and saves to PlayerPrefs. The sliders are − / + steppers, and a select cycles when you tap it.
+- **Performance mode.** O toggles the Low preset and back.
+- **Where settings go.** They're applied to the URP asset (render scale and shadow distance, put back when Play mode ends), the camera (shadows, draw distance), the post-processing volume (bloom), traffic density, the walker count, the camera rig and the audio.
+- **Live weather.** The weather polls Open-Meteo every 10 minutes and sets the rain to Bengaluru's real sky. The clock shows it, for example "Overcast 27°C · live". K takes over the weather for the session.
+- **Touch controls.** The touch controls are touch.js's: a floating joystick on the left, drag to look on the right, and context buttons that change between on foot and driving, plus the strip along the top (pause, map, accept, duty, skip, get off, leave). With touch controls on, the HUD moves aside as style.css does.
+
+See `docs/unity/pause.png`, `settings.png` and `touch.png`.

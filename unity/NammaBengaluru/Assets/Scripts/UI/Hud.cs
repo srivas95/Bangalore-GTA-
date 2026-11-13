@@ -20,7 +20,7 @@ namespace NammaBengaluru.UI
 {
     public struct MapMarker { public double x, z; public Color color; }
 
-    public class Hud
+    public partial class Hud
     {
         static readonly Dictionary<string, int> ZONE_COLOURS = new Dictionary<string, int> {
             ["park"] = 0x5d8a46, ["lake"] = 0x5d8a46, ["rural"] = 0x9aa66a, ["landmark"] = 0xb8ad98, ["gov"] = 0xa8a090, ["residential"] = 0xbfb29a,

@@ -45,6 +45,13 @@ namespace NammaBengaluru
         public MetroWorld metro;
         public MetroRide metroRide;
         public Story story;
+        public Settings settings;
+        public LiveWeather liveWeather;
+        bool started, paused = true;
+        double trafficMul = 1;
+        SettingsValues beforeLow;
+        UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp;
+        float urpScale, urpShadowDist;
         MetroRide.Entrance entranceNear;
         Rides.Shelter shelterNear;
         public int money = 1000; // START_MONEY
@@ -87,7 +94,7 @@ namespace NammaBengaluru
         public List<Obstacle> Obstacles => obstacles;
         public double Hour => hour;
         public double Rain => env.rain;
-        public double TrafficScale => (hour >= 8 && hour < 11) || (hour >= 17 && hour < 21) ? 1.3 : hour >= 23 || hour < 5 ? 0.4 : 1; // rush hour is real
+        public double TrafficScale => ((hour >= 8 && hour < 11) || (hour >= 17 && hour < 21) ? 1.3 : hour >= 23 || hour < 5 ? 0.4 : 1) * trafficMul; // rush hour is real
         public bool InitialFill => elapsed <= 3;
         public IVehicleWorld VehicleWorld => this;
         public void Release(Vehicle v) { if (!free.Contains(v)) free.Add(v); }
@@ -189,6 +196,18 @@ namespace NammaBengaluru
             metro = Metro.Build(layout, md, colliders, root);
             metroRide = new MetroRide(this, metro);
             story = new Story(this, root);
+            // Settings, the pause screen and the touch controls.
+            settings = new Settings();
+            liveWeather = new LiveWeather(env, settings, this);
+            hud.BuildMenus(settings);
+            hud.touchInput = input;
+            hud.onPlay = Play;
+            hud.onPause = Pause;
+            settings.onReset = () => { story.Reset(); money = 1000; hud.SetMoney(money, true); garages.Reset(); };
+            urp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            if (urp != null) { urpScale = urp.renderScale; urpShadowDist = urp.shadowDistance; }
+            settings.OnChange(ApplySettings);
+            hud.ShowPause(true, false);
             city.rail.hitByTrain = (t, nx, nz) =>
             {
                 if (player.vehicle != null || player.knock > 0) return;
@@ -205,6 +224,7 @@ namespace NammaBengaluru
             var cam = Camera.main;
             cam.farClipPlane = 1400; cam.nearClipPlane = 0.2f; cam.fieldOfView = 62;
             rig = new CameraRig(cam) { yaw = 0 };
+            ApplySettings(settings.values);
             if (freeCam && cam.GetComponent<FreeCamera>() == null) cam.gameObject.AddComponent<FreeCamera>();
             Debug.Log($"[Game] Layout {tLayout} ms, city {tCity} ms, total {sw.ElapsedMilliseconds} ms: {layout.blocks.Count} blocks, {city.trees.Count} trees, " +
                       $"{city.lamps.Count} lamps, {city.tanks.Count} tanks, {colliders.all.Count} colliders, {free.Count} parked vehicles");
@@ -303,14 +323,76 @@ namespace NammaBengaluru
         void Update()
         {
             input.Poll();
-            if (input.Hit("Mouse0") && !input.locked && !freeCam && !hud.MapOpen) input.Lock(true);
-            if (input.Hit("KeyM")) { bool open = hud.ToggleMap(); if (open) input.Lock(false); }
-            if (input.Hit("Escape")) input.Lock(false);
-            // K brings on (or stops) the rain; T speeds the clock up 30× (debug keys in main.js).
-            if (input.Hit("KeyK")) { env.SetRain(!env.Raining); Say(env.Raining ? "Dark clouds roll in over Bengaluru…" : "The rain eases off.", 2.5); }
+            if (paused)
+            {
+                // The pause screen: Enter (or the Play button) plays; Esc closes the settings first.
+                if (input.Hit("Enter")) Play();
+                if (input.Hit("Escape")) hud.ShowSettings(false);
+                return;
+            }
+            bool touch = settings.TouchEnabled;
+            if (input.Hit("Mouse0") && !input.locked && !freeCam && !hud.MapOpen && !touch) input.Lock(true);
+            if (input.Hit("KeyM")) { bool open = hud.ToggleMap(); if (open) input.Lock(false); else if (!touch) input.Lock(true); }
+            if (input.Hit("Escape")) { if (hud.MapOpen) hud.ToggleMap(); else { Pause(); return; } }
+            // K brings on (or stops) the rain; T speeds the clock up 30×; O is performance mode (main.js).
+            if (input.Hit("KeyK")) { liveWeather.paused = true; liveWeather.Release(); env.SetRain(!env.Raining); Say(env.Raining ? "Dark clouds roll in over Bengaluru…" : "The rain eases off.", 2.5); }
             if (input.Hit("KeyR")) { radioOn = !radioOn; Say(radioOn ? "Radio on" : "Radio off", 1.2); audio.Radio(radioOn && player.vehicle != null); }
-            if (input.Hit("KeyT")) { env.timeScale = env.timeScale > 1 ? 1 : 30; Say(env.timeScale > 1 ? "Time ×30" : "Time normal", 1.5); }
+            if (input.Hit("KeyT") && !metroRide.Active && !rides.Active) { env.timeScale = env.timeScale > 1 ? 1 : 30; Say(env.timeScale > 1 ? "Time ×30" : "Time normal", 1.5); }
+            if (input.Hit("KeyO"))
+            {
+                if (settings.values.quality == "low" && beforeLow != null) { settings.Replace(beforeLow); beforeLow = null; Say("Performance mode OFF", 2); }
+                else { beforeLow = settings.values.Clone(); settings.Preset("low"); Say("Performance mode ON (Low preset; see Settings)", 2.5); }
+            }
+            liveWeather.Update(Time.deltaTime);
             Tick(Math.Min(Time.deltaTime, 1.0 / 20));
+        }
+
+        public void Play()
+        {
+            started = true; paused = false;
+            hud.ShowPause(false, true);
+            if (!settings.TouchEnabled && !freeCam) input.Lock(true);
+        }
+
+        public void Pause()
+        {
+            paused = true;
+            input.Lock(false);
+            hud.ShowPause(true, started);
+        }
+
+        // Settings (settings.js onChange in main.js).
+        void ApplySettings(SettingsValues v)
+        {
+            if (urp != null)
+            {
+                urp.renderScale = v.resScale;
+                urp.shadowDistance = v.shadows == "near" ? 60 : urpShadowDist;
+            }
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                var data = cam.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                if (data != null) data.renderShadows = v.shadows != "off";
+                cam.farClipPlane = 1400 * v.drawDist;
+            }
+            var vol = FindAnyObjectByType<UnityEngine.Rendering.Volume>();
+            if (vol != null)
+            {
+                if (!vol.profile.TryGet(out UnityEngine.Rendering.Universal.Bloom bloom)) bloom = vol.profile.Add<UnityEngine.Rendering.Universal.Bloom>(true);
+                bloom.active = v.bloom;
+            }
+            trafficMul = v.traffic;
+            streetLife.walkerTarget = (int)Math.Round(110 * v.peds);
+            if (rig != null) { rig.sens = v.sensitivity; rig.invert = v.invertY; }
+            audio.volume = v.volume; AudioListener.volume = 0.9f * v.volume;
+            if (!v.liveWeather) liveWeather.Release(); else liveWeather.Restart();
+        }
+
+        // The URP asset is project data: put back what the settings changed.
+        void OnDestroy()
+        {
+            if (urp != null) { urp.renderScale = urpScale; urp.shadowDistance = urpShadowDist; }
         }
 
         // Advance the simulation n frames of dt without waiting for rendering, as
@@ -632,7 +714,15 @@ namespace NammaBengaluru
             hud.Update(dt, player, rig.yaw, markers);
             var w = Weapons.WEAPONS[player.weapon];
             hud.SetWeapon(w.name, player.clip.TryGetValue(player.weapon, out var cl) ? cl : 0, player.ammo.TryGetValue(player.weapon, out var am) ? am : 0, player.reloadT > 0, player.aiming, w.Gun);
-            hud.SetClock(env.ClockString(), env.rain > 0.6 ? "☂ Monsoon" : env.rain > 0.1 ? "☂ Rain" : env.night > 0.5 ? "☾ Clear" : "☀ Clear");
+            hud.SetClock(env.ClockString(), liveWeather.On ? LiveWeather.Describe(liveWeather.now) + " · live" : env.rain > 0.6 ? "☂ Monsoon" : env.rain > 0.1 ? "☂ Rain" : env.night > 0.5 ? "☾ Clear" : "☀ Clear");
+            var w2 = Weapons.WEAPONS[player.weapon];
+            hud.UpdateTouch(new UI.Hud.TouchContext
+            {
+                driving = player.vehicle != null, gun = w2.Gun, police = player.vehicle != null && (player.vehicle.spec.police || player.vehicle.spec.siren),
+                use = entranceNear != null || shelterNear != null || story.IsActive || garages.nearStall || garages.menu, offer = missions.offer != null, metro = metroRide.Active,
+                ride = rides.Blocking ? rides.state : null, waiting = rides.Active && !rides.Blocking ? rides.state : null,
+                hail = player.vehicle == null && entranceNear == null && shelterNear == null, duty = player.vehicle != null && player.vehicle.type == "auto" && !autoDuty.HasFare,
+            });
         }
 
         // ---------- Vehicle-vehicle contacts (resolveVehicleContacts in main.js) ----------
