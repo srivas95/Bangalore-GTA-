@@ -708,9 +708,13 @@ namespace NammaBengaluru.Systems
 
         public void Gunshot(string kind, double? x = null, double? z = null)
         {
-            string key = kind == "katta" ? "gun_katta" : "gun_revolver";
+            string key = kind == "katta" || kind == "shotgun" ? "gun_katta" : "gun_revolver";
+            // Each gun its own voice from the two recordings: the shotgun deeper, the pistol sharper,
+            // the SMG a quick light crack.
+            double pitch = kind == "shotgun" ? 0.78 : kind == "pistol" ? 1.12 : kind == "smg" ? 1.3 : 1;
+            double vol = kind == "smg" ? 0.7 : kind == "shotgun" ? 1.0 : 0.95;
             var p = At(x, z, 15, 0.7);
-            Play(key, 0.95, 0.95 + Rnd() * 0.1, x, z, 15, 0.7);
+            Play(key, vol, pitch * (0.95 + Rnd() * 0.1), x, z, 15, 0.7);
             // Far away you mostly hear the crack bouncing off the buildings.
             if (p.d > 40) Play("gun_far", 0.5 * Clamp((p.d - 40) / 80, 0, 1), 1, x, z, 60, 0.5);
         }

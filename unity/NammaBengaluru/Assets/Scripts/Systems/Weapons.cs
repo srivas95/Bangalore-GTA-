@@ -15,7 +15,9 @@ namespace NammaBengaluru.Systems
         public string name, kn, kind, pose;
         public double dmg, range, t, spread, reload, rate, misfire;
         public int clip;
-        public bool lethal;
+        public int pellets = 1;   // shotgun: pellets per shot, each with its own spread and damage
+        public int pickup = 12;   // rounds in a pickup of this gun
+        public bool lethal, auto; // auto: keeps firing while the trigger is held
         public bool Gun => kind == "gun";
     }
 
@@ -39,10 +41,15 @@ namespace NammaBengaluru.Systems
             ["knife"] = new WeaponDef { name = "Chaaku", kn = "ಚಾಕು", kind = "melee", dmg = 50, range = 1.35, t = 0.34, pose = "stab", lethal = true },
             ["sickle"] = new WeaponDef { name = "Kudugolu (Sickle)", kn = "ಕುಡುಗೋಲು", kind = "melee", dmg = 60, range = 1.6, t = 0.5, pose = "swing", lethal = true },
             ["machete"] = new WeaponDef { name = "\"Long\" (Machete)", kn = "ಲಾಂಗ್", kind = "melee", dmg = 78, range = 1.95, t = 0.66, pose = "overhead", lethal = true },
-            ["katta"] = new WeaponDef { name = "Nadan Katta", kn = "ಕಟ್ಟಾ", kind = "gun", dmg = 75, range = 32, spread = 0.05, clip = 1, reload = 2.3, rate = 0.5, misfire = 0.12, lethal = true },
+            ["katta"] = new WeaponDef { name = "Nadan Katta", kn = "ಕಟ್ಟಾ", kind = "gun", dmg = 75, range = 32, spread = 0.05, clip = 1, reload = 2.3, rate = 0.5, misfire = 0.12, lethal = true, pickup = 4 },
             ["revolver"] = new WeaponDef { name = ".32 Revolver", kn = "ರಿವಾಲ್ವರ್", kind = "gun", dmg = 46, range = 45, spread = 0.022, clip = 6, reload = 2.6, rate = 0.32, misfire = 0, lethal = true },
+            // (Not in the web game.)
+            ["hockey"] = new WeaponDef { name = "Hockey Stick", kn = "ಹಾಕಿ ಸ್ಟಿಕ್", kind = "melee", dmg = 38, range = 2.0, t = 0.55, pose = "swing" },
+            ["pistol"] = new WeaponDef { name = "9mm Pistol", kn = "ಪಿಸ್ತೂಲ್", kind = "gun", dmg = 38, range = 50, spread = 0.02, clip = 15, reload = 1.8, rate = 0.2, lethal = true, pickup = 30 },
+            ["shotgun"] = new WeaponDef { name = "Double-Barrel Shotgun", kn = "ಡಬಲ್ ಬ್ಯಾರೆಲ್", kind = "gun", dmg = 20, range = 28, spread = 0.09, clip = 2, reload = 2.8, rate = 0.35, lethal = true, pellets = 8, pickup = 8 },
+            ["smg"] = new WeaponDef { name = "SMG", kn = "ಮೆಷಿನ್ ಗನ್", kind = "gun", dmg = 22, range = 40, spread = 0.045, clip = 30, reload = 2.2, rate = 0.085, lethal = true, auto = true, pickup = 60 },
         };
-        public static readonly string[] ORDER = { "fists", "lathi", "bat", "chain", "knife", "sickle", "machete", "katta", "revolver" };
+        public static readonly string[] ORDER = { "fists", "lathi", "bat", "hockey", "chain", "knife", "sickle", "machete", "katta", "revolver", "pistol", "shotgun", "smg" };
 
         // ---------- models ----------
         // Melee weapons extend along +z from the fist (perpendicular to the forearm); guns point
@@ -90,6 +97,26 @@ namespace NammaBengaluru.Systems
                     b.Put(cyl, 0, -0.1, 0.03, black, 0, 0.011, 0.14, 0.011);
                     b.Put(cyl, 0, -0.02, 0.03, 0x2a2a2a, 0, 0.022, 0.05, 0.022);
                     b.Put(box, 0, 0.03, -0.03, 0x5a3a20, 0, 0.026, 0.05, 0.09, -0.45);
+                    break;
+                case "hockey":
+                    Along(true, 0x1a1a1a, -0.05, 0.22, 0.016, 0.016);              // taped grip
+                    Along(true, 0x8a5a30, 0.17, 0.62, 0.014, 0.014);               // shaft
+                    b.Put(box, 0, 0.05, 0.83, 0x8a5a30, 0, 0.02, 0.12, 0.05, 0.9); // the hook
+                    break;
+                case "pistol":
+                    b.Put(box, 0, -0.08, 0.035, 0x2a2a2a, 0, 0.022, 0.15, 0.03);   // slide and barrel, down the forearm
+                    b.Put(box, 0, 0.01, -0.01, black, 0, 0.024, 0.06, 0.085, -0.3); // grip
+                    break;
+                case "shotgun":
+                    for (int s2 = -1; s2 <= 1; s2 += 2) b.Put(cyl, s2 * 0.011, -0.24, 0.04, 0x3a3a3a, 0, 0.011, 0.5, 0.011);
+                    b.Put(box, 0, 0.02, 0.04, wood, 0, 0.03, 0.12, 0.05);           // action
+                    b.Put(box, 0, 0.14, 0.01, wood, 0, 0.032, 0.22, 0.06, 0.25);     // stock, back along the arm
+                    break;
+                case "smg":
+                    b.Put(box, 0, -0.06, 0.04, 0x222222, 0, 0.035, 0.2, 0.05);      // body
+                    b.Put(cyl, 0, -0.2, 0.05, black, 0, 0.01, 0.08, 0.01);         // barrel
+                    b.Put(box, 0, -0.05, -0.04, black, 0, 0.022, 0.03, 0.12);       // magazine
+                    b.Put(box, 0, 0.04, 0.0, black, 0, 0.024, 0.05, 0.08, -0.3);    // grip
                     break;
                 default: cache[key] = null; return null;
             }
@@ -203,13 +230,17 @@ namespace NammaBengaluru.Systems
             double moving = pl.vehicle != null ? Math.Min(1, pl.vehicle.Speed / 15) : Math.Min(1, pl.speed / 8) * 0.5;
             double chance = accuracy * Math.Max(0.1, 1 - dd / (w.range * 1.3)) * (1 - moving * 0.5);
             double ty = pl.vehicle != null ? pl.vehicle.y + 1.0 : pl.y + 1.2;
-            double dx = tx - o.x, dy = ty - o.y, dz = tz - o.z, l = Math.Sqrt(dx * dx + dy * dy + dz * dz);
-            double miss = R.NextDouble() > chance ? 0.04 + R.NextDouble() * 0.08 : 0;
-            dx = dx / l + (R.NextDouble() - 0.5) * miss * 2; dy = dy / l + (R.NextDouble() - 0.3) * miss; dz = dz / l + (R.NextDouble() - 0.5) * miss * 2;
-            double dl = Math.Sqrt(dx * dx + dy * dy + dz * dz);
-            var dir = (dx / dl, dy / dl, dz / dl);
-            var hit = Raycast(world, o, dir, w.range, shooter);
-            if (hit != null) world.BulletHitAt(hit.Value, w, dir, shooter);
+            double bx = tx - o.x, by = ty - o.y, bz = tz - o.z, l = Math.Sqrt(bx * bx + by * by + bz * bz);
+            for (int p = 0; p < w.pellets; p++)
+            {
+                double miss = R.NextDouble() > chance ? 0.04 + R.NextDouble() * 0.08 : 0;
+                if (w.pellets > 1) miss += w.spread;
+                double dx = bx / l + (R.NextDouble() - 0.5) * miss * 2, dy = by / l + (R.NextDouble() - 0.3) * miss, dz = bz / l + (R.NextDouble() - 0.5) * miss * 2;
+                double dl = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+                var dir = (dx / dl, dy / dl, dz / dl);
+                var hit = Raycast(world, o, dir, w.range, shooter);
+                if (hit != null) world.BulletHitAt(hit.Value, w, dir, shooter);
+            }
         }
     }
 

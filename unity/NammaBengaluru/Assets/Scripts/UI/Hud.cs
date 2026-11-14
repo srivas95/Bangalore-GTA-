@@ -113,8 +113,12 @@ namespace NammaBengaluru.UI
             public void Tick(float dt) { g.alpha = Mathf.MoveTowards(g.alpha, show ? 1 : 0, dt * speed); }
         }
 
-        public Hud(Layout layout, Pois pois)
+        readonly List<MetroRoute> metroLines;
+
+        // metro: the Namma Metro lines, drawn on the map with the railway (layout.rails).
+        public Hud(Layout layout, Pois pois, List<MetroRoute> metro = null)
         {
+            metroLines = metro ?? new List<MetroRoute>();
             this.layout = layout; this.pois = pois; W = layout.world;
             // District label positions for the big map.
             var acc = new Dictionary<string, (double x, double z, int n)>();
@@ -446,6 +450,62 @@ namespace NammaBengaluru.UI
                 Fill(b.innerPoly, Css(ZONE_COLOURS.TryGetValue(b.zone ?? "", out int zc) ? zc : 0xc4b8a4));
                 if (b.zone == "lake") Fill(b.innerPoly.Select(p => new[] { b.cx + (p[0] - b.cx) * 0.85, b.cz + (p[1] - b.cz) * 0.85 }).ToList(), lakeC);
             }
+            // Thick lines with round ends, stamped as discs along the way (pixel radius r); dash/gap
+            // in pixels for dashed lines (0: solid).
+            void Disc(double cx, double cy, double r, Color32 c)
+            {
+                int i0 = Math.Max(0, (int)Math.Floor(cx - r)), i1 = Math.Min(w - 1, (int)Math.Ceiling(cx + r));
+                int j0 = Math.Max(0, (int)Math.Floor(cy - r)), j1 = Math.Min(h - 1, (int)Math.Ceiling(cy + r));
+                for (int j = j0; j <= j1; j++)
+                    for (int i = i0; i <= i1; i++)
+                        if ((i + 0.5 - cx) * (i + 0.5 - cx) + (j + 0.5 - cy) * (j + 0.5 - cy) <= r * r) px[(h - 1 - j) * w + i] = c;
+            }
+            double PX(double x) => (x - W.minX) * scale;
+            double PY(double z) => (z - W.minZ) * scale;
+            double run = 0;
+            void Line(double ax, double az, double bx, double bz, double r, Color32 c, double dash = 0, double gap = 0)
+            {
+                double x0 = PX(ax), y0 = PY(az), x1 = PX(bx), y1 = PY(bz);
+                double len = Math.Sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+                int n = Math.Max(1, (int)Math.Ceiling(len / 0.5));
+                for (int k = 0; k <= n; k++)
+                {
+                    double d = run + len * k / n;
+                    if (dash > 0 && d % (dash + gap) > dash) continue;
+                    Disc(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n, r, c);
+                }
+                run += len;
+            }
+            double lw = Math.Max(1, scale / 0.32); // line widths grow with the map scale, as in hud.js
+            // Railway: brown with sleepers.
+            foreach (var rl in layout.rails ?? new List<Road>())
+            {
+                for (int k = 0; k + 1 < rl.pts.Count; k++) Line(rl.pts[k][0], rl.pts[k][1], rl.pts[k + 1][0], rl.pts[k + 1][1], 2 * lw, Css(0x5a3a2a));
+                run = 0;
+                for (int k = 0; k + 1 < rl.pts.Count; k++) Line(rl.pts[k][0], rl.pts[k][1], rl.pts[k + 1][0], rl.pts[k + 1][1], 1 * lw, Css(0xc8b090), 3 * lw, 5 * lw);
+                run = 0;
+            }
+            // Namma Metro: each line in its colour along the track, solid where elevated, dashed
+            // underground; white station dots with a ring in the line's colour.
+            foreach (var m in metroLines)
+            {
+                var col = Css(m.color);
+                for (double s = 0; s < m.path.length; s += 6)
+                {
+                    double s1 = Math.Min(m.path.length, s + 6);
+                    var a = m.path.AtS(s); var b = m.path.AtS(s1);
+                    bool ug = m.YAt((s + s1) / 2) < 0;
+                    if (!ug) run = 0;
+                    Line(a.x, a.z, b.x, b.z, 2.8 * lw, col, ug ? 7 * lw : 0, ug ? 4 * lw : 0);
+                }
+                run = 0;
+            }
+            foreach (var m in metroLines)
+                foreach (var st in m.stations)
+                {
+                    Disc(PX(st.x), PY(st.z), 6 * lw, Css(m.color));
+                    Disc(PX(st.x), PY(st.z), 4 * lw, Css(0xffffff));
+                }
             foreach (var u in layout.underpasses)
             {
                 double qx = -u.uz, qz = u.ux;
@@ -826,6 +886,12 @@ namespace NammaBengaluru.UI
             foreach (var d in districtLabels) Label(d.name.ToUpperInvariant(), d.x, d.z, 0, 15, Color.white);
             if (viewPpm > 0.25) foreach (var l in pois.landmarks) if (l != null && l.name != null) Label("◆ " + l.name, l.x, l.z, 14, 11, Css(0xffe9a8));
             if (viewPpm > 0.6) foreach (var f in pois.fuel) Label("● " + f.name, f.x, f.z, 0, 11, Css(0x9fd8ff));
+            // Namma Metro stations, in their line's colour (once each: an interchange is on two lines).
+            if (viewPpm > 0.3)
+            {
+                var seen = new HashSet<string>();
+                foreach (var m in metroLines) foreach (var st in m.stations) if (seen.Add(st.en)) Label($"<color=#{m.color:x6}>●</color> {st.en}", st.x, st.z, -12, 11, Color.white);
+            }
             for (int i = li; i < labelPool.Count; i++) if (labelPool[i].gameObject.activeSelf) labelPool[i].gameObject.SetActive(false);
             int n = 0;
             if (markers != null) foreach (var m in markers) { var img = Marker(bigMarkerPool, bigMarkers, n++, 14); img.color = m.color; img.transform.parent.GetComponent<RectTransform>().anchoredPosition = At(m.x, m.z); }

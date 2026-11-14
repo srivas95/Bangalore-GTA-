@@ -1,0 +1,185 @@
+{
+ "places": {
+  "jayanagar1": [12.9301, 77.5835],
+  "jayanagar2": [12.9255, 77.5938],
+  "jayanagar3": [12.9218, 77.5869],
+  "mgRoad": [12.9755, 77.6066],
+  "silkBoard": [12.9177, 77.6238],
+  "cubbon": [12.9763, 77.5929]
+ },
+ "missions": [
+  {
+   "id": "homecoming", "title": "Homecoming", "act": "Act IV · Return", "giver": "chikka", "reward": 6000,
+   "steps": [
+    {"type": "talk", "lines": [
+     {"who": "Chikka", "text": "Raghu-anna! Three years and you still walk like you own Majestic."},
+     {"who": "Raghu", "text": "I do own Majestic. What I don't own any more, apparently, is Jayanagar."},
+     {"who": "Chikka", "text": "Seenu's boys took the 4th Block shops while you were in Dubai. The shopkeepers pay them now."},
+     {"who": "Raghu", "text": "Then the shopkeepers can pay me back. With interest."}
+    ]},
+    {"type": "collect", "places": ["jayanagar1", "jayanagar2", "jayanagar3"], "text": "Collect from the Jayanagar shops", "each": [
+     [{"op": "cash"}, {"op": "say", "text": "Shopkeeper: \"Raghu-avaru! We thought you were finished!\"", "d": 3}],
+     [{"op": "cash"}, {"op": "say", "text": "Shopkeeper: \"Seenu's men will kill me for this. Take it.\"", "d": 3}],
+     [{"op": "cash"}, {"op": "say", "text": "Shopkeeper: \"They're here! Seenu's boys, behind you!\"", "d": 3}]
+    ]},
+    {"type": "fight", "place": "jayanagar3", "text": "Seenu's collectors want their money. Teach them whose it is.", "crew": "collectors", "members": [
+     {"weapon": "chain", "name": "Seenu's collector"},
+     {"weapon": "bat", "name": "Seenu's collector"},
+     {"weapon": "knife", "name": "Seenu's collector"},
+     {"weapon": "pistol", "name": "Seenu's collector", "accuracy": 0.3}
+    ]},
+    {"type": "wanted", "stars": 2, "reason": "Brawl in Jayanagar 4th Block"},
+    {"type": "escape", "text": "Lose the police."},
+    {"type": "talk", "lines": [
+     {"who": "Raghu", "text": "(on the phone) Chikka. Jayanagar pays us again."},
+     {"who": "Chikka", "text": "Seenu won't take it quietly, anna."},
+     {"who": "Raghu", "text": "I'm counting on it."}
+    ]}
+   ],
+   "after": null
+  },
+  {
+   "id": "metroRun", "title": "Rush Hour on the Purple Line", "act": "Act IV · Return", "giver": "hub", "reward": 7000,
+   "steps": [
+    {"type": "talk", "lines": [
+     {"who": "Lakshmi Akka", "text": "(on the phone) Raghu. One of Seenu's accountants has a pen drive. Our accounts. All of them."},
+     {"who": "Lakshmi Akka", "text": "He's selling it to ACP Shalini Rao tonight. He's taking the metro from MG Road."},
+     {"who": "Raghu", "text": "Then he's not getting on that train."}
+    ]},
+    {"type": "go", "place": "mgRoad", "text": "Get to MG Road metro station before his train.", "radius": 30, "timer": 200, "vehicleVar": null, "slow": true, "failText": "His train left. The pen drive is on its way to Shalini Rao."},
+    {"type": "talk", "lines": [
+     {"who": "Security guard", "text": "The man with the laptop bag? He saw you and ran out the other exit. Jumped in an auto!"}
+    ]},
+    {"type": "stop", "place": "mgRoad", "vtype": "auto", "text": "Stop the accountant's auto."},
+    {"type": "talk", "lines": [
+     {"who": "Accountant", "text": "Take it! Take it! I'm only a CA, I have a family!"},
+     {"who": "Raghu", "text": "Then go and be a CA somewhere else. Hosur is nice."}
+    ]},
+    {"type": "escape", "text": "Lose the police."}
+   ],
+   "after": null
+  },
+  {
+   "id": "silkBoardStandoff", "title": "Silk Board Standoff", "act": "Act IV · Return", "giver": "lakshmi", "reward": 9000,
+   "steps": [
+    {"type": "talk", "lines": [
+     {"who": "Lakshmi Akka", "text": "Seenu has a new business. His boys stop every lorry at Silk Board junction and take a 'toll'."},
+     {"who": "Lakshmi Akka", "text": "Half of those lorries carry my vegetables. Make it stop."},
+     {"who": "Lakshmi Akka", "text": "And take this. My late husband's. He never missed."}
+    ]},
+    {"type": "act", "ops": [
+     {"op": "give", "key": "shotgun", "n": 10},
+     {"op": "say", "text": "You got a double-barrel shotgun. Tab to switch weapons.", "d": 3}
+    ]},
+    {"type": "go", "place": "silkBoard", "text": "Go to Silk Board junction.", "radius": 30, "timer": null, "vehicleVar": null, "slow": true, "failText": null},
+    {"type": "fight", "place": "silkBoard", "text": "Clear Seenu's 'toll booth'.", "crew": "toll", "members": [
+     {"weapon": "pistol", "name": "Toll collector", "accuracy": 0.3},
+     {"weapon": "pistol", "name": "Toll collector", "accuracy": 0.3},
+     {"weapon": "machete", "name": "Toll collector"},
+     {"weapon": "hockey", "name": "Toll collector"},
+     {"weapon": "shotgun", "name": "\"Bullet\" Babu", "boss": true, "health": 220, "accuracy": 0.35, "r": 10}
+    ]},
+    {"type": "wanted", "stars": 3, "reason": "Shootout at Silk Board junction"},
+    {"type": "escape", "text": "Lose the police. (Good luck getting out of Silk Board.)"},
+    {"type": "talk", "lines": [
+     {"who": "Lakshmi Akka", "text": "(on the phone) The lorries are moving again. First time anyone has said that about Silk Board."}
+    ]}
+   ],
+   "after": null
+  },
+  {
+   "id": "trap", "title": "Shalini's Trap", "act": "Act IV · Return", "giver": "hub", "reward": 10000,
+   "steps": [
+    {"type": "talk", "lines": [
+     {"who": "ACP Shalini Rao", "text": "(on the phone) Raghavendra. I hear you found a pen drive. I'd like to talk. Cubbon Park bandstand, tonight. Alone."},
+     {"who": "Raghu", "text": "And if I don't come?"},
+     {"who": "ACP Shalini Rao", "text": "Then I'll come to you. With a hundred constables."}
+    ]},
+    {"type": "act", "ops": [{"op": "setHour", "h": 22.5}]},
+    {"type": "go", "place": "cubbon", "text": "Meet ACP Shalini Rao at the Cubbon Park bandstand.", "radius": 25, "timer": 300, "vehicleVar": null, "slow": true, "failText": "You stood up the ACP. She won't ask nicely again."},
+    {"type": "talk", "lines": [
+     {"who": "ACP Shalini Rao", "text": "You came. Good. Raghavendra, you are under arrest."},
+     {"who": "Raghu", "text": "You said alone."},
+     {"who": "ACP Shalini Rao", "text": "I am alone. They're not with me. They're with the Crime Branch."}
+    ]},
+    {"type": "wanted", "stars": 4, "reason": "Walked into ACP Shalini Rao's sting"},
+    {"type": "escape", "text": "It's a trap! Shake off Shalini's task force."},
+    {"type": "go", "place": "chikka", "text": "Lie low at Chikka's garage.", "radius": 8, "timer": null, "vehicleVar": null, "slow": true, "failText": null},
+    {"type": "talk", "lines": [
+     {"who": "Chikka", "text": "Anna! Your face is on every news channel!"},
+     {"who": "Raghu", "text": "Only one person knew I would be at Cubbon Park tonight. Hanu Anna. He sold me to Shalini."}
+    ]}
+   ],
+   "after": null
+  },
+  {
+   "id": "hanuBill", "title": "Hanu Anna's Bill", "act": "Act IV · Return", "giver": "chikka", "reward": 12000,
+   "steps": [
+    {"type": "talk", "lines": [
+     {"who": "Chikka", "text": "Hanu Anna keeps his files in his SUV. Every deal, every bribe. He never lets it out of his sight."},
+     {"who": "Raghu", "text": "Then we take the sight and the SUV."},
+     {"who": "Chikka", "text": "His bodyguards are ex-army. You'll want this."}
+    ]},
+    {"type": "act", "ops": [
+     {"op": "give", "key": "smg", "n": 90},
+     {"op": "say", "text": "You got an SMG. Hold the trigger to keep firing.", "d": 3}
+    ]},
+    {"type": "go", "place": "hanu", "text": "Go to Hanu Anna's house.", "radius": 20, "timer": null, "vehicleVar": null, "slow": true, "failText": null},
+    {"type": "act", "ops": [{"op": "park", "type": "suv", "place": "hanu", "var": "suv"}]},
+    {"type": "fight", "place": "hanu", "text": "Take out Hanu Anna's bodyguards.", "crew": "bodyguards", "members": [
+     {"weapon": "pistol", "name": "Bodyguard", "accuracy": 0.35, "health": 140},
+     {"weapon": "pistol", "name": "Bodyguard", "accuracy": 0.35, "health": 140},
+     {"weapon": "smg", "name": "Bodyguard", "accuracy": 0.3, "health": 160},
+     {"weapon": "lathi", "name": "Bodyguard", "health": 140}
+    ]},
+    {"type": "getIn", "vehicleVar": "suv", "text": "Get in Hanu Anna's SUV."},
+    {"type": "wanted", "stars": 3, "reason": "Stole an MLA's car"},
+    {"type": "escape", "text": "Lose the police, and keep the SUV in one piece."},
+    {"type": "go", "place": "chikka", "text": "Bring the SUV to Chikka's garage.", "radius": 8, "timer": null, "vehicleVar": "suv", "slow": true, "failText": null},
+    {"type": "talk", "lines": [
+     {"who": "Chikka", "text": "Anna... these files. Hanu Anna, Seenu, and half the corporation. Even Shalini's boss."},
+     {"who": "Raghu", "text": "(on the phone) Hanu Anna. I have your files. Call off Shalini, or the newspapers get them."},
+     {"who": "Hanu Anna", "text": "...What do you want, Raghavendra?"},
+     {"who": "Raghu", "text": "Seenu. Tonight. Tell me where he sleeps."}
+    ]}
+   ],
+   "after": null
+  },
+  {
+   "id": "returnKing", "title": "Return of the King", "act": "Act IV · Return", "giver": "hub", "reward": 25000,
+   "steps": [
+    {"type": "talk", "lines": [
+     {"who": "Raghu", "text": "Hanu Anna sang. Seenu is hiding in the Nayandahalli godowns with every gun he has left."},
+     {"who": "Kotte Kumar", "text": "Twenty years I've known Seenu. He never runs. He'll be waiting."},
+     {"who": "Raghu", "text": "Good. So will I."}
+    ]},
+    {"type": "act", "ops": [
+     {"op": "setHour", "h": 23.2},
+     {"op": "give", "key": "smg", "n": 60},
+     {"op": "give", "key": "shotgun", "n": 8, "select": false},
+     {"op": "say", "text": "Kotte Kumar loaded you up: SMG and shotgun rounds.", "d": 3}
+    ]},
+    {"type": "go", "place": "nayandahalli", "text": "Go to Seenu's godowns in Nayandahalli.", "radius": 25, "timer": null, "vehicleVar": null, "slow": true, "failText": null},
+    {"type": "fight", "place": "nayandahalli", "text": "End it. Take out Seenu and everyone with him.", "crew": "lastStand", "members": [
+     {"weapon": "smg", "name": "Seenu's shooter", "accuracy": 0.28},
+     {"weapon": "pistol", "name": "Seenu's shooter", "accuracy": 0.3},
+     {"weapon": "pistol", "name": "Seenu's shooter", "accuracy": 0.3},
+     {"weapon": "shotgun", "name": "Seenu's shooter", "accuracy": 0.3},
+     {"weapon": "machete", "name": "Seenu's man"},
+     {"weapon": "sickle", "name": "Seenu's man"},
+     {"weapon": "shotgun", "name": "Seenu \"Sickle\" Srinivas", "boss": true, "health": 450, "accuracy": 0.4, "r": 14}
+    ]},
+    {"type": "wanted", "stars": 4, "reason": "Gang war in Nayandahalli"},
+    {"type": "escape", "text": "Lose the police."},
+    {"type": "go", "place": "hub", "text": "Go home to Majestic.", "radius": 12, "timer": null, "vehicleVar": null, "slow": true, "failText": null},
+    {"type": "talk", "lines": [
+     {"who": "Babu", "text": "Raghu! Everyone is saying it. Seenu is finished!"},
+     {"who": "Kotte Kumar", "text": "Majestic, Chickpete, Jayanagar, Silk Board. All of it is yours, Raghu."},
+     {"who": "ACP Shalini Rao", "text": "(on the phone) Enjoy it while it lasts, Raghavendra. Files go missing. People don't forget."},
+     {"who": "Raghu", "text": "Neither do I, madam. Neither do I."}
+    ]}
+   ],
+   "after": {"title": "ACT IV COMPLETE", "sub": "Majestic is Raghu's again. Bengaluru never sleeps, and neither does ACP Shalini Rao."}
+  }
+ ]
+}

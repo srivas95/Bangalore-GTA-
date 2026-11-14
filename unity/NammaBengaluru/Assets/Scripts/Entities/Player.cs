@@ -2,6 +2,7 @@
 // vehicle, punching, kicking, swinging and shooting (port of src/entities/player.js).
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NammaBengaluru.Render;
 using NammaBengaluru.Systems;
 using NammaBengaluru.World;
@@ -117,12 +118,12 @@ namespace NammaBengaluru.Entities
         {
             var parts = what.Split(':');
             string key = parts[0], n = parts.Length > 1 ? parts[1] : null;
-            if (key == "ammo") { if (!weapons.Contains(n)) return false; ammo[n] = (ammo.TryGetValue(n, out var a) ? a : 0) + (n == "katta" ? 4 : 12); world.Say($"+ {Weapons.WEAPONS[n].name} rounds", 1.5); return true; }
+            if (key == "ammo") { if (!weapons.Contains(n)) return false; ammo[n] = (ammo.TryGetValue(n, out var a) ? a : 0) + Weapons.WEAPONS[n].pickup; world.Say($"+ {Weapons.WEAPONS[n].name} rounds", 1.5); return true; }
             if (key == "cash") { world.AddMoney(int.Parse(n)); world.Say($"+ ₹{n}", 1.5); return true; }
             if (key == "health") { if (health >= 100) return false; health = 100; return true; }
             if (!Weapons.WEAPONS.TryGetValue(key, out var w)) return false;
             bool had = weapons.Contains(key);
-            Give(key, w.Gun ? (key == "katta" ? 3 : 12) : 0, !had);
+            Give(key, w.Gun ? w.pickup : 0, !had);
             world.Say(had ? $"{w.name}: more rounds" : $"Picked up: {w.name}{(w.kn != null ? $" ({w.kn})" : "")}", 2);
             return true;
         }
@@ -170,18 +171,25 @@ namespace NammaBengaluru.Entities
                 if (t != null) { dx = t.x - o.x; dy = t.y + 1.2 - o.y; dz = t.z - o.z; heading = Math.Atan2(t.x - x, t.z - z); }
                 else { dx = Math.Sin(heading); dy = 0; dz = Math.Cos(heading); }
             }
-            double spread = w.spread * (aiming ? 1 : 2.5) * (speed > 3 ? 1.6 : 1);
-            double l = Math.Sqrt(dx * dx + dy * dy + dz * dz);
-            dx = dx / l + (rnd.NextDouble() - 0.5) * spread; dy = dy / l + (rnd.NextDouble() - 0.5) * spread; dz = dz / l + (rnd.NextDouble() - 0.5) * spread;
-            l = Math.Sqrt(dx * dx + dy * dy + dz * dz);
-            var dir = (dx / l, dy / l, dz / l);
-            world.particles.Emit("flash", o.x + dir.Item1 * 0.1, o.y + dir.Item2 * 0.1, o.z + dir.Item3 * 0.1, 0, 0, 0, weapon == "katta" ? 1.2 : 0.8);
-            world.particles.Emit("smoke", o.x, o.y, o.z, dir.Item1, 0.3, dir.Item3, 0.25);
+            // (A shotgun's pellets spread the same aimed or not.)
+            double spread = w.pellets > 1 ? w.spread : w.spread * (aiming ? 1 : 2.5) * (speed > 3 ? 1.6 : 1);
+            double l0 = Math.Sqrt(dx * dx + dy * dy + dz * dz);
+            double bx = dx / l0, by = dy / l0, bz = dz / l0;
+            (double, double, double) dir = (bx, by, bz);
+            for (int p = 0; p < w.pellets; p++)
+            {
+                double ex = bx + (rnd.NextDouble() - 0.5) * spread, ey = by + (rnd.NextDouble() - 0.5) * spread, ez = bz + (rnd.NextDouble() - 0.5) * spread;
+                double l = Math.Sqrt(ex * ex + ey * ey + ez * ez);
+                dir = (ex / l, ey / l, ez / l);
+                var hit = Weapons.Raycast(world, o, dir, w.range, this);
+                if (hit != null) world.BulletHitAt(hit.Value, w, dir, null);
+            }
+            bool heavy = weapon == "katta" || weapon == "shotgun";
+            world.particles.Emit("flash", o.x + dir.Item1 * 0.1, o.y + dir.Item2 * 0.1, o.z + dir.Item3 * 0.1, 0, 0, 0, heavy ? 1.3 : weapon == "smg" ? 0.6 : 0.8);
+            world.particles.Emit("smoke", o.x, o.y, o.z, dir.Item1, 0.3, dir.Item3, heavy ? 0.45 : 0.25);
             GameAudio.I?.Gunshot(weapon);
-            world.Shake(weapon == "katta" ? 0.12 : 0.06);
-            recoil = 1;
-            var hit = Weapons.Raycast(world, o, dir, w.range, this);
-            if (hit != null) world.BulletHitAt(hit.Value, w, dir, null);
+            world.Shake(heavy ? 0.13 : weapon == "smg" ? 0.03 : 0.06);
+            recoil = weapon == "smg" ? 0.5 : 1;
             world.Gunfire(x, z, false);
             if (Clip <= 0 && Ammo > 0) Reload();
         }
@@ -218,7 +226,7 @@ namespace NammaBengaluru.Entities
             if (cheat.EndsWith("GUNDA"))
             {
                 cheat = "";
-                foreach (var k in Weapons.ORDER) Give(k, k == "katta" ? 10 : k == "revolver" ? 36 : 0, false);
+                foreach (var k in Weapons.ORDER) Give(k, Weapons.WEAPONS[k].Gun ? Weapons.WEAPONS[k].pickup * 3 : 0, false);
                 Select("revolver");
                 world.Say("Cheat: the full Majestic arsenal.", 2.5);
             }
@@ -331,7 +339,8 @@ namespace NammaBengaluru.Entities
                 }
             }
             if (input.Hit("Tab")) CycleWeapon(input.Down("ShiftLeft") ? -1 : 1);
-            for (int k = 1; k <= 9; k++) if (input.Hit("Digit" + k)) { var key = Weapons.ORDER[k - 1]; if (weapons.Contains(key)) Select(key); }
+            // 1-9: the 1st to 9th weapon you carry (in the usual order).
+            for (int k = 1; k <= 9; k++) if (input.Hit("Digit" + k)) { var owned = Weapons.ORDER.Where(weapons.Contains).ToList(); if (k <= owned.Count) Select(owned[k - 1]); }
             if (vehicle != null) { aiming = false; Drive(dt, input, world); return; }
             if (human.weaponGo != null && !human.weaponGo.activeSelf) human.weaponGo.SetActive(true);
 
@@ -354,7 +363,7 @@ namespace NammaBengaluru.Entities
             bool gun = wpn.Gun;
             // Guns: hold the right mouse button to aim over the shoulder, left to fire.
             aiming = gun && input.Down("Mouse2") && knock <= 0;
-            if (game != null && gun && (input.Hit("Mouse0", "KeyZ") || (weapon == "revolver" && input.Down("Mouse0") && aiming))) Shoot(game);
+            if (game != null && gun && (input.Hit("Mouse0", "KeyZ") || (weapon == "revolver" && input.Down("Mouse0") && aiming) || (Weapons.WEAPONS[weapon].auto && input.Down("Mouse0", "KeyZ")))) Shoot(game);
             if (gun && input.Hit("KeyR") && input.Down("ShiftLeft")) Reload();
             // Melee (fists or a weapon), and kicks.
             bool wantKick = input.Hit("KeyX") || (!gun && input.Hit("Mouse2"));

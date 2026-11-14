@@ -187,6 +187,7 @@ namespace NammaBengaluru
             // The player at Majestic bus stand, on the footpath.
             var spawn = FootpathNear(md.SPAWN[0], md.SPAWN[1]);
             player = new Player(this, spawn.x, spawn.z) { heading = Math.PI, y = GameConfig.CURB_H };
+            GiveStartingKit();
             ParkVehicles(spawn);
             signals = new Signals(layout, root, city.materials);
             traffic = new Traffic(layout, signals);
@@ -196,7 +197,7 @@ namespace NammaBengaluru
                 if (lm.crowds != null) foreach (var c in lm.crowds) streetLife.stalls.Add(new Stall { x = c.x, z = c.z, n = c.n, spread = c.spread, face = c.face });
             traffic.Prewarm(150, hour, this);
             input = new GameInput();
-            hud = new UI.Hud(layout, city.pois);
+            hud = new UI.Hud(layout, city.pois, MetroRoutes.Routes(layout, md));
             hud.SetMoney(money, true); // START_MONEY
             particles = new Particles();
             VehicleView.particles = particles;
@@ -380,6 +381,7 @@ namespace NammaBengaluru
         public void Play()
         {
             if (!started && fellBack) Say($"The last start ran out of memory, so the city is now built with {(Detail.min ? "minimum" : "lite")} detail (Settings → World detail).", 6);
+            if (!started && !fellBack) Say("You carry a cricket bat, a chaaku and a .32 revolver. Tab or 1-4 to switch weapons.", 5);
             started = true; paused = false;
             hud.ShowPause(false, true);
             if (!settings.TouchEnabled && !freeCam) input.Lock(true);
@@ -750,13 +752,25 @@ namespace NammaBengaluru
         // ---------- weapons lying around, and rowdies (main.js) ----------
         // Bats in the parks, blades in the markets, machetes in the industrial yards, and a
         // couple of kattas if you know where to look.
+        // Everyone starts with a basic kit: a cricket bat, a chaaku and a .32 revolver with two
+        // spare cylinders (fists still in hand).
+        public void GiveStartingKit()
+        {
+            player.Give("bat", 0, false);
+            player.Give("knife", 0, false);
+            player.Give("revolver", 18, false);
+        }
+
         void PlacePickups()
         {
-            int n = 0, ind = 0, mk = 0;
+            int n = 0, ind = 0, mk = 0, com = 0, rur = 0;
             foreach (var b in layout.blocks)
             {
                 if (b.edge) continue;
-                if (b.zone == "park" && n++ % 2 == 0) { var c = KerbSpot(b, n, 0.04, 1.8); pickups.Add(n % 4 == 0 ? "lathi" : "bat", c.x, c.z, GameConfig.CURB_H, 180); }
+                if (b.zone == "park" && n++ % 2 == 0) { var c = KerbSpot(b, n, 0.04, 1.8); pickups.Add(n % 4 == 0 ? "lathi" : n % 6 == 2 ? "hockey" : "bat", c.x, c.z, GameConfig.CURB_H, 180); }
+                // Pistols and their rounds in the commercial districts; shotguns out in the farmland.
+                if (b.zone == "commercial" && com++ % 9 == 4) { var c = KerbSpot(b, com, 0.04, 1.8); pickups.Add(com % 2 == 0 ? "ammo:pistol" : "pistol", c.x, c.z, GameConfig.CURB_H, 300); }
+                if (b.zone == "rural" && rur++ % 7 == 3) { var c = KerbSpot(b, rur, 0.04, 1.8); pickups.Add(rur % 2 == 0 ? "ammo:shotgun" : "shotgun", c.x, c.z, GameConfig.CURB_H, 300); }
                 if (b.zone == "market") { var c = KerbSpot(b, mk, 0.04, 1.8); pickups.Add(new[] { "knife", "chain", "sickle" }[mk++ % 3], c.x, c.z, GameConfig.CURB_H, 180); }
                 if (b.zone == "industrial")
                 {
@@ -770,6 +784,11 @@ namespace NammaBengaluru
             var g = md.Geo(13.0305, 77.5345);
             var apmc = FootpathNear(g[0], g[1]);
             pickups.Add("revolver", apmc.x, apmc.z, GameConfig.CURB_H, 300);
+            // An SMG and its rounds, hidden in the Nayandahalli godowns.
+            var ng = md.Geo(12.941, 77.523);
+            var nay = FootpathNear(ng[0], ng[1]);
+            pickups.Add("smg", nay.x, nay.z, GameConfig.CURB_H, 420);
+            pickups.Add("ammo:smg", nay.x + 3, nay.z + 1, GameConfig.CURB_H, 240);
         }
 
         // Rowdies hang about the markets and yards after dark, and don't like being bothered.

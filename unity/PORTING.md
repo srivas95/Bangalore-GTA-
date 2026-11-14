@@ -314,3 +314,22 @@ Free Asset Store packs can be shipped in builds but not published, so anything t
   - **Range:** it fades out beyond about 170 m (90 m on phones), and is off at minimum detail.
 - **Sky reflections** (`Render/SkyReflection.cs`). Unity had captured the sky reflection once at start-up, so cars and wet roads reflected the afternoon sky all night and glowed in the dark. A sky-only camera now re-renders a cube map as the clock and the monsoon change it, one face per frame.
 - **Image quality.** 4× MSAA (off at minimum detail), a 4096 px sun shadow map on PC, and 16× anisotropic filtering on the city textures.
+
+### Map, weapons and Act IV
+
+- **The map shows Namma Metro and the railway.** It's painted into the map image in `UI/Hud.cs` RenderMap, as hud.js draws it: the Purple and Green lines along their track, solid where elevated and dashed underground, with white station dots ringed in the line's colour, and the railway in brown with sleepers. When zoomed in, the big map also names every station.
+- **Starting kit.** Every game starts with fists, a cricket bat, a chaaku (knife) and a .32 revolver with two spare cylinders (`Game.GiveStartingKit`).
+- **New weapons** (`Systems/Weapons.cs`), with models and pickups:
+  - a hockey stick (in the parks);
+  - a 9mm pistol (commercial districts);
+  - a double-barrel shotgun that fires 8 pellets (farmland);
+  - a fully automatic SMG that keeps firing while you hold the trigger (Nayandahalli godowns).
+  - Gang members carry them too, and the pistol, shotgun and SMG each have their own gunshot sound.
+  - Keys 1–9 now pick the 1st to 9th weapon you carry.
+- **Act IV · Return** (`Resources/Data/story_act4.json`, merged by `Story.cs` after the web game's three acts): six missions.
+  1. *Homecoming*: Jayanagar collections and a fight.
+  2. *Rush Hour on the Purple Line*: a timed run to MG Road metro and an auto chase.
+  3. *Silk Board Standoff*: you get the shotgun.
+  4. *Shalini's Trap*: a four-star sting at Cubbon Park.
+  5. *Hanu Anna's Bill*: you get the SMG and steal the MLA's SUV.
+  6. *Return of the King*: the last fight with Seenu at Nayandahalli.

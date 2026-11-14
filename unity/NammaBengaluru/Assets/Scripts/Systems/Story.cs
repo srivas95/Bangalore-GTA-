@@ -21,7 +21,7 @@ namespace NammaBengaluru.Systems
         const string SAVE_KEY = "namma-bengaluru-save-v1";
         static readonly System.Random R = new System.Random();
 
-        class Op { public string op, key, text, type, place, var; public int n; public double h, d; }
+        class Op { public string op, key, text, type, place, var; public int n; public double h, d; public bool? select; }
         class Line { public string who, text; }
         class Member { public string weapon, name; public double? health, accuracy, r; public bool? hostile; public bool boss; }
         class Step
@@ -59,6 +59,16 @@ namespace NammaBengaluru.Systems
         {
             this.game = game;
             data = JsonConvert.DeserializeObject<Data>(Resources.Load<TextAsset>("Data/story").text);
+            // Act IV (Unity only): more missions after the web game's three acts.
+            var act4 = Resources.Load<TextAsset>("Data/story_act4");
+            if (act4 != null)
+            {
+                var more = JsonConvert.DeserializeObject<Data>(act4.text);
+                foreach (var kv in more.places) data.places[kv.Key] = kv.Value;
+                var last = data.missions.LastOrDefault();
+                if (last?.after != null && last.after.sub != null) last.after.sub = last.after.sub.Replace("Act IV: Return is coming.", "Act IV: Return begins.");
+                data.missions.AddRange(more.missions);
+            }
             marker = new Marker(parent, 0xff4fa0);
             giver = new Marker(parent, 0xff4fa0);
             Load();
@@ -239,7 +249,7 @@ namespace NammaBengaluru.Systems
         {
             switch (op.op)
             {
-                case "give": game.player.Give(op.key, op.n); break;
+                case "give": game.player.Give(op.key, op.n, op.select ?? true); break;
                 case "setHour": game.hour = op.h; break;
                 case "say": game.Say(op.text, op.d > 0 ? op.d : 3); break;
                 case "cash": GameAudio.I?.Cash(); break;
