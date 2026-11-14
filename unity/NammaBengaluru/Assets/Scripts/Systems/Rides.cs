@@ -457,7 +457,7 @@ namespace NammaBengaluru.Systems
             var a = agent;
             // The vehicle was taken away (stolen by someone else, despawned): give up.
             if (a != null && !traffic.agents.Contains(a)) { game.Say("Your ride has gone.", 2); Abort(); return null; }
-            bool moved = input.Down("KeyW") || input.Down("KeyA") || input.Down("KeyS") || input.Down("KeyD");
+            bool moved = input.Down("KeyW") || input.Down("KeyA") || input.Down("KeyS") || input.Down("KeyD") || (input.stick.HasValue && input.stick.Value.magnitude > 0.3f);
             switch (state)
             {
                 case "hail":

@@ -361,7 +361,7 @@ namespace NammaBengaluru.UI
             Img(bigPlayer, disc, Css(0xe02020));
             Img(Rect(bigPlayer, "Dot", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(12, 12)), disc, Color.white);
             var hint = Text(Rect(panel, "Hint", BCv, BCv, new Vector2(0, 0.03f * 810 - 22), new Vector2(900, 22)), 14, Css(0xcccccc), TextAlignmentOptions.Center, null, sansFont);
-            hint.text = "Scroll to zoom · drag to move · click to set a waypoint · M to close";
+            mapHint = hint; hint.text = "Scroll to zoom · drag to move · click to set a waypoint · M to close";
             // Zoom buttons.
             var bar = Rect(panel, "Buttons", new Vector2(0.97f, 0.92f), new Vector2(1, 1), new Vector2(-10, -10), new Vector2(44, 44 * 4 + 24));
             string[] labels = { "+", "−", "◎", "✕" };
@@ -570,8 +570,33 @@ namespace NammaBengaluru.UI
             toastF.show = true; toastT = 3.5;
         }
 
+        // On a touch screen the hints name the on-screen buttons instead of keys.
+        bool Touch => settings != null && settings.TouchEnabled;
+        static readonly (string, string)[] TOUCH_TEXT =
+        {
+            ("W/S choose", "▲ ▼ choose"), ("A/D line", "LINE changes line"),
+            ("Tab or 1-4 to switch weapons", "Tap ⇆ to switch weapons"), ("Press J to go on duty", "Tap DUTY to go on duty"),
+            ("<b>[J]</b> accept", "Tap <b>ACCEPT</b>"),
+            ("Scroll to zoom · drag to move · click to set a waypoint · M to close", "+ − zoom · drag to move · tap to set a waypoint · ✕ close"),
+            ("F  Get out  ·  G  Siren", "EXIT  Get out  ·  SIREN"), ("F  Get out", "EXIT  Get out"), ("F  ", "CAR  "),
+            ("H  Wave down an auto", "AUTO  Wave down an auto"), ("Q  Give up waiting", "LEAVE  Give up waiting"),
+            ("T skip the wait", "SKIP » the wait"), ("T skip wait", "SKIP » the wait"), ("T skip ride", "SKIP » the ride"), ("T skip to your stop", "SKIP » to your stop"),
+            ("F stop here", "GET OFF here"), ("E get off at the next stop", "GET OFF at the next stop"),
+        };
+        public string ForTouch(string s, bool menu = false)
+        {
+            if (string.IsNullOrEmpty(s) || !Touch) return s;
+            foreach (var (k, v) in TOUCH_TEXT) s = s.Replace(k, v);
+            // Footers and banners: "· Q leave" → "· LEAVE"/"BACK", "E go" → "GO".
+            string Btn(string btn, string what) { what = what.Trim(); return what == "leave" || what == "cancel" || what == "go" ? btn + " " : $"{btn}: {what} "; }
+            s = System.Text.RegularExpressions.Regex.Replace(s, @"(^|· )Q (\w[^·]*)", m => m.Groups[1].Value + Btn(menu ? "BACK" : "LEAVE", m.Groups[2].Value));
+            if (menu) s = System.Text.RegularExpressions.Regex.Replace(s, @"(^|· )E (\w[^·]*)", m => m.Groups[1].Value + Btn("GO", m.Groups[2].Value));
+            return s;
+        }
+
         public void Say(string text, double dur = 3)
         {
+            text = ForTouch(text);
             subtitle.text = text;
             subF.show = true; subT = dur;
         }
@@ -581,7 +606,7 @@ namespace NammaBengaluru.UI
         {
             if (curPrompt == text) return;
             curPrompt = text;
-            if (!string.IsNullOrEmpty(text)) prompt.text = text;
+            if (!string.IsNullOrEmpty(text)) prompt.text = ForTouch(text);
             promptF.show = !string.IsNullOrEmpty(text);
         }
         public string CurrentPrompt => curPrompt;
@@ -597,7 +622,8 @@ namespace NammaBengaluru.UI
                 string mark = r.sel ? "<color=#ffc400>▶</color> " : "   ";
                 sb.Append($"{mark}<color={c}>{r.label}</color><pos=82%><color={(r.off ? "#6a6a6a" : "#7ee07e")}>{r.price}</color>\n");
             }
-            sb.Append($"\n<size=12><color=#9a9a9a>{foot}</color></size>");
+            menuFoot = foot;
+            sb.Append($"\n<size=12><color=#9a9a9a>{ForTouch(foot, true)}</color></size>");
             menuText.text = sb.ToString();
             menuEdge.color = Css(accent);
             float h = Mathf.Clamp(menuText.preferredHeight + 10, 160, 760);
@@ -624,7 +650,8 @@ namespace NammaBengaluru.UI
                 sb.Append($"{mark}<color={c}>{r.label}</color>{(r.sub != null ? $" <size=12><color=#9a9a9a>{r.sub}</color></size>" : "")}<pos=82%><color=#7ee07e>{r.price}</color>\n");
             }
             if (first + WINDOW < rows.Count) sb.Append("<color=#7a7a7a>   ▼</color>\n");
-            sb.Append($"\n<size=12><color=#9a9a9a>{foot}</color></size>");
+            menuFoot = foot;
+            sb.Append($"\n<size=12><color=#9a9a9a>{ForTouch(foot, true)}</color></size>");
             menuText.text = sb.ToString();
             menuEdge.color = Css(accent);
             float h = Mathf.Clamp(menuText.preferredHeight + 10, 160, 760);
@@ -637,7 +664,9 @@ namespace NammaBengaluru.UI
             string key = $"{color}|{title}|{text}|{keys}";
             if (bannerKey != key)
             {
-                bannerKey = key;
+                bannerKey = key; keys = ForTouch(keys);
+                // (On a touch screen, below the row of buttons along the top.)
+                ((RectTransform)banner.transform).anchoredPosition = new Vector2(0, Touch ? -60 : -24);
                 bannerText.text = $"<size=17><b>{title}</b></size>\n<color=#dddddd>{text}</color>\n<size=12><color=#aaaaaa>{keys}</color></size>";
                 bannerEdge.color = Css(color);
                 float w = Mathf.Clamp(bannerText.preferredWidth + 10, 340, 900);
@@ -654,10 +683,11 @@ namespace NammaBengaluru.UI
         }
         public void HideBanner() { if (banner.activeSelf) banner.SetActive(false); }
         public bool MenuOpen => menuPanel.activeSelf;
+        string menuFoot;
 
         public void Phone(string html)
         {
-            if (!string.IsNullOrEmpty(html)) phoneText.text = html.Replace("<br>", "\n");
+            if (!string.IsNullOrEmpty(html)) phoneText.text = ForTouch(html.Replace("<br>", "\n"));
             phoneF.show = !string.IsNullOrEmpty(html);
         }
 
@@ -689,10 +719,12 @@ namespace NammaBengaluru.UI
         }
         public void VehicleExited() => speedF.show = false;
 
+        TextMeshProUGUI mapHint;
         public bool ToggleMap()
         {
             bool on = !bigMap.activeSelf;
             bigMap.SetActive(on);
+            if (on && mapHint != null) mapHint.text = ForTouch("Scroll to zoom · drag to move · click to set a waypoint · M to close");
             if (on)
             {
                 // Open on the player, zoomed in enough to read the streets.

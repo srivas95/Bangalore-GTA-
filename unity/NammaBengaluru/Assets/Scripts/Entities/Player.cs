@@ -364,7 +364,7 @@ namespace NammaBengaluru.Entities
             // Guns: hold the right mouse button to aim over the shoulder, left to fire.
             aiming = gun && input.Down("Mouse2") && knock <= 0;
             if (game != null && gun && (input.Hit("Mouse0", "KeyZ") || (weapon == "revolver" && input.Down("Mouse0") && aiming) || (Weapons.WEAPONS[weapon].auto && input.Down("Mouse0", "KeyZ")))) Shoot(game);
-            if (gun && input.Hit("KeyR") && input.Down("ShiftLeft")) Reload();
+            if (gun && ((input.Hit("KeyR") && input.Down("ShiftLeft")) || input.Hit("Reload"))) Reload();
             // Melee (fists or a weapon), and kicks.
             bool wantKick = input.Hit("KeyX") || (!gun && input.Hit("Mouse2"));
             bool wantSwing = !gun && input.Hit("Mouse0", "KeyZ");

@@ -24,7 +24,8 @@ namespace NammaBengaluru.UI
     {
         GameObject pausePanel, settingsPanel, touchRoot;
         Settings settings;
-        TextMeshProUGUI playLabel, loading;
+        TextMeshProUGUI playLabel, loading, controlsText;
+        string keyboardHelp, touchHelp;
         readonly List<Action> settingsSync = new List<Action>();
         public Action onPlay, onPause;
         public bool Paused => pausePanel != null && pausePanel.activeSelf;
@@ -67,6 +68,22 @@ namespace NammaBengaluru.UI
             for (int i = 0; i < rows.Length; i += 2)
                 sb.Append($"{rows[i].Item1} {rows[i].Item2}<pos=50%>{(i + 1 < rows.Length ? rows[i + 1].Item1 + " " + rows[i + 1].Item2 : "")}\n");
             controls.text = sb.ToString(); controls.lineSpacing = 18;
+            keyboardHelp = controls.text; controlsText = controls;
+            var tr2 = new[] {
+                (K("Left thumb"), "walk / drive (joystick)"), (K("Right thumb"), "drag to look around"),
+                (K("HIT"), "punch / swing / fire (hold)"), (K("AIM"), "aim a gun, then HIT to fire"),
+                (K("KICK"), "kick"), (K("JUMP"), "jump"), (K("RUN"), "run on / off"), (K("⇆"), "switch weapon"),
+                (K("RELOAD"), "reload your gun"), (K("CAR"), "get in / out of a vehicle"),
+                (K("AUTO"), "wave down an auto"), (K("E"), "talk, metro, bus stop, garage"),
+                (K("▲ ▼ GO"), "choose in a menu"), (K("BACK"), "leave a menu"),
+                (K("BRAKE"), "handbrake"), (K("MAP"), "map, tap to set a waypoint"),
+                (K("ACCEPT"), "take a phone gig"), (K("SKIP"), "skip a wait or a ride"),
+                (K("HORN"), "horn (driving)"), (K("DUTY"), "auto-driver duty"), (K("LEAVE"), "leave, give up"), (K("» TIME"), "fast-forward time"), (K("☂ RAIN"), "summon / stop the monsoon"),
+            };
+            var sb2 = new System.Text.StringBuilder();
+            for (int i = 0; i < tr2.Length; i += 2)
+                sb2.Append($"{tr2[i].Item1} {tr2[i].Item2}<pos=50%>{(i + 1 < tr2.Length ? tr2[i + 1].Item1 + " " + tr2[i + 1].Item2 : "")}\n");
+            touchHelp = sb2.ToString();
             var play = Button(card, "Click to play", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-80, 58), new Vector2(380, 52), GOLD, Css(0x111111), () => onPlay?.Invoke(), 22);
             playLabel = play.GetComponentInChildren<TextMeshProUGUI>();
             Button(card, "Settings", new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(200, 58), new Vector2(150, 52), new Color(1, 1, 1, 0.08f), Color.white, () => ShowSettings(true), 18);
@@ -82,7 +99,9 @@ namespace NammaBengaluru.UI
         public void ShowPause(bool on, bool started)
         {
             pausePanel.SetActive(on);
-            if (playLabel != null) playLabel.text = started ? "Resume" : "Click to play";
+            bool touch = settings.TouchEnabled;
+            if (playLabel != null) playLabel.text = started ? "Resume" : touch ? "Tap to play" : "Click to play";
+            if (controlsText != null) controlsText.text = touch ? touchHelp : keyboardHelp;
             if (!on) ShowSettings(false);
             if (touchRoot != null) touchRoot.SetActive(!on && settings.TouchEnabled);
         }
@@ -149,8 +168,8 @@ namespace NammaBengaluru.UI
         public void ShowSettings(bool on) { if (settingsPanel == null) return; settingsPanel.SetActive(on); if (on) Sync(); }
 
         // ---------- touch controls ----------
-        class TButton { public string id, label, code; public bool hold, toggle, foot, car, both, big, top, pause; public Func<TouchContext, bool> when; public RectTransform rt; public UnityEngine.UI.Image img; public TextMeshProUGUI text; }
-        public struct TouchContext { public bool driving, gun, police, use, offer, metro, hail, duty; public string ride, waiting; }
+        class TButton { public string id, label, code; public bool hold, toggle, foot, car, both, big, top, pause, menu, repeat; public float heldT; public Func<TouchContext, bool> when; public RectTransform rt; public UnityEngine.UI.Image img; public TextMeshProUGUI text; }
+        public struct TouchContext { public bool driving, gun, police, use, offer, metro, hail, duty, menu, menuLine; public string ride, waiting; }
         readonly List<TButton> tbuttons = new List<TButton>();
         readonly HashSet<string> toggled = new HashSet<string>();
         public GameInput touchInput;
@@ -189,14 +208,15 @@ namespace NammaBengaluru.UI
             lr.up = e => looks.Remove(e.pointerId);
 
             // Context buttons (bottom right), as in touch.js; and the strip along the top.
-            void B(string id, string label, string code, bool hold = false, bool toggle = false, bool foot = false, bool car = false, bool both = false, bool big = false, Func<TouchContext, bool> when = null, bool top = false, bool pause = false)
-                => tbuttons.Add(new TButton { id = id, label = label, code = code, hold = hold, toggle = toggle, foot = foot, car = car, both = both, big = big, when = when, top = top, pause = pause });
+            void B(string id, string label, string code, bool hold = false, bool toggle = false, bool foot = false, bool car = false, bool both = false, bool big = false, Func<TouchContext, bool> when = null, bool top = false, bool pause = false, bool menu = false)
+                => tbuttons.Add(new TButton { id = id, label = label, code = code, hold = hold, toggle = toggle, foot = foot, car = car, both = both, big = big, when = when, top = top, pause = pause, menu = menu });
             B("attack", "HIT", "Mouse0", hold: true, foot: true, big: true);
             B("aim", "AIM", "Mouse2", toggle: true, foot: true, when: c => c.gun);
             B("kick", "KICK", "KeyX", foot: true);
             B("jump", "JUMP", "Space", foot: true);
             B("run", "RUN", "ShiftLeft", toggle: true, foot: true);
             B("weapon", "⇆", "Tab", foot: true);
+            B("reload", "RELOAD", "Reload", foot: true, when: c => c.gun);
             B("hail", "AUTO", "KeyH", foot: true, when: c => c.hail);
             B("hand", "BRAKE", "Space", hold: true, car: true, big: true);
             B("horn", "HORN", "KeyH", hold: true, car: true);
@@ -208,9 +228,18 @@ namespace NammaBengaluru.UI
             B("map", "MAP", "KeyM", top: true);
             B("gig", "ACCEPT", "KeyJ", top: true, when: c => c.offer);
             B("duty", "DUTY", "KeyJ", top: true, when: c => c.duty);
-            B("skip", "SKIP »", "KeyT", top: true, when: c => c.metro || c.ride == "ride" || c.ride == "busRide" || c.waiting == "wait");
+            B("skip", "SKIP »", "KeyT", top: true, when: c => !c.menu && (c.metro || c.ride == "ride" || c.ride == "busRide" || c.waiting == "wait"));
             B("stop", "GET OFF", "KeyF", top: true, when: c => c.ride == "ride" || c.ride == "busRide");
             B("leave", "LEAVE", "KeyQ", top: true, when: c => c.metro || c.waiting != null);
+            B("radio", "RADIO", "KeyR", top: true, when: c => c.driving);
+            B("time", "» TIME", "KeyT", top: true, when: c => !c.metro && c.ride == null && c.waiting == null);
+            B("rain", "☂ RAIN", "KeyK", top: true, when: c => !c.metro && c.ride == null);
+            // A menu on screen (metro tokens, a bus stop, the garage): choose, confirm, go back.
+            B("mGo", "GO", "Enter", big: true, menu: true);
+            B("mDown", "▼", "ArrowDown", menu: true); tbuttons[tbuttons.Count - 1].repeat = true;
+            B("mUp", "▲", "ArrowUp", menu: true); tbuttons[tbuttons.Count - 1].repeat = true;
+            B("mBack", "BACK", "Backspace", menu: true);
+            B("mLine", "LINE", "ArrowRight", menu: true, when: c => c.menuLine);
             foreach (var b in tbuttons)
             {
                 float size = b.top ? 38 : b.big ? 84 : 62;
@@ -280,7 +309,7 @@ namespace NammaBengaluru.UI
                 else { toggled.Add(b.id); i.virtualDown.Add(b.code); i.virtualHit.Add(b.code); b.img.color = new Color(1, 196 / 255f, 0, 0.55f); }
                 return;
             }
-            i.virtualDown.Add(b.code); i.virtualHit.Add(b.code);
+            i.virtualDown.Add(b.code); i.virtualHit.Add(b.code); b.heldT = 0;
             b.img.color = new Color(1, 196 / 255f, 0, 0.55f);
         }
 
@@ -296,6 +325,15 @@ namespace NammaBengaluru.UI
         {
             if (touchRoot == null) return;
             bool want = settings.TouchEnabled && !Paused && !MapOpen;
+            // Held ▲ / ▼ in a menu repeat, so long station lists scroll.
+            if (touchInput != null)
+                foreach (var b in tbuttons)
+                    if (b.repeat && touchInput.virtualDown.Contains(b.code))
+                    {
+                        float before = b.heldT; b.heldT += Time.unscaledDeltaTime;
+                        if (b.heldT > 0.4f && Mathf.Floor((b.heldT - 0.4f) / 0.08f) != Mathf.Floor((before - 0.4f) / 0.08f)) touchInput.virtualHit.Add(b.code);
+                    }
+            c.menu = MenuOpen; c.menuLine = MenuOpen && menuFoot != null && menuFoot.Contains("A/D");
             TouchLayout(settings.TouchEnabled);
             if (touchRoot.activeSelf != want) { touchRoot.SetActive(want); if (!want) { StickEnd(); foreach (var b in tbuttons) TUp(b, true); toggled.Clear(); } }
             if (!want) return;
@@ -307,6 +345,9 @@ namespace NammaBengaluru.UI
                 bool show = b.top ? (b.when == null || b.when(c)) : (b.both || (b.foot && !car) || (b.car && car));
                 if (!b.top && show && b.when != null) show = b.when(c);
                 if (!b.top && (c.metro || c.ride != null) && b.id != "use") show = false;
+                // With a menu open only the menu's own buttons (and the top strip) show.
+                if (b.menu) show = c.menu && (b.when == null || b.when(c));
+                else if (!b.top && c.menu) show = false;
                 if (b.rt.gameObject.activeSelf != show) { b.rt.gameObject.SetActive(show); if (!show) { TUp(b, true); toggled.Remove(b.id); } }
                 if (!show) continue;
                 if (b.top) { tops.Add(b); topW += b.rt.sizeDelta.x + 8; continue; }
